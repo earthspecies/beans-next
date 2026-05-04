@@ -2,13 +2,58 @@
   "@context": {
     "@language": "en",
     "@vocab": "https://schema.org/",
-    "cr": "http://mlcommons.org/croissant/"
+    "citeAs": "cr:citeAs",
+    "column": "cr:column",
+    "conformsTo": "dct:conformsTo",
+    "cr": "http://mlcommons.org/croissant/",
+    "rai": "http://mlcommons.org/croissant/RAI/",
+    "data": {
+      "@id": "cr:data",
+      "@type": "@json"
+    },
+    "dataType": {
+      "@id": "cr:dataType",
+      "@type": "@vocab"
+    },
+    "dct": "http://purl.org/dc/terms/",
+    "examples": {
+      "@id": "cr:examples",
+      "@type": "@json"
+    },
+    "equivalentProperty": "cr:equivalentProperty",
+    "extract": "cr:extract",
+    "field": "cr:field",
+    "fileProperty": "cr:fileProperty",
+    "fileObject": "cr:fileObject",
+    "fileSet": "cr:fileSet",
+    "format": "cr:format",
+    "includes": "cr:includes",
+    "isLiveDataset": "cr:isLiveDataset",
+    "jsonPath": "cr:jsonPath",
+    "key": "cr:key",
+    "md5": "cr:md5",
+    "parentField": "cr:parentField",
+    "path": "cr:path",
+    "recordSet": "cr:recordSet",
+    "references": "cr:references",
+    "regex": "cr:regex",
+    "repeated": "cr:repeated",
+    "replace": "cr:replace",
+    "samplingRate": "cr:samplingRate",
+    "sc": "https://schema.org/",
+    "separator": "cr:separator",
+    "source": "cr:source",
+    "subField": "cr:subField",
+    "transform": "cr:transform",
+    "wd": "https://www.wikidata.org/wiki/"
   },
-  "@type": "Dataset",
+  "@type": "sc:Dataset",
   "name": "BEANS-Next: Bioacoustic Audio-Language Benchmark",
   "description": "BEANS-Next is a benchmark for evaluating bioacoustic audio-language models across a taxonomy of tasks including acoustic perception, semantic recognition, structural and temporal reasoning, and in-context learning. It extends BEANS-Zero and BirdSet with new task families aligned with ethological workflows.",
   "url": "https://your-benchmark-page",
   "version": "1.0.0",
+  "datePublished": "2026",
+  "citeAs": "To be added (BEANS-Next paper citation).",
   "license": "Mixed; inherits licenses from source datasets",
   "isAccessibleForFree": true,
   "keywords": [
@@ -31,40 +76,6 @@
       "name": "Benchmark tasks and metadata",
       "encodingFormat": "application/json",
       "contentUrl": "https://link-to-benchmark-json"
-    }
-  ],
-  "cr:recordSet": [
-    {
-      "@type": "cr:RecordSet",
-      "@id": "tasks",
-      "name": "Evaluation tasks",
-      "description": "Each record represents a benchmark task instance",
-      "field": [
-        {
-          "@type": "cr:Field",
-          "@id": "audio",
-          "description": "Audio input",
-          "dataType": "sc:URL"
-        },
-        {
-          "@type": "cr:Field",
-          "@id": "question",
-          "description": "Task prompt or question",
-          "dataType": "sc:Text"
-        },
-        {
-          "@type": "cr:Field",
-          "@id": "answer",
-          "description": "Ground-truth answer",
-          "dataType": "sc:Text"
-        },
-        {
-          "@type": "cr:Field",
-          "@id": "tier",
-          "description": "Task tier (perception, semantic, structural, in-context)",
-          "dataType": "sc:Text"
-        }
-      ]
     }
   ],
   "citation": "To be added (paper citation)",
@@ -94,5 +105,7 @@
     },
     "safetyMitigations": "Users should interpret benchmark results cautiously and validate model performance in real-world conditions before deployment. Benchmark evaluation should be complemented with domain-specific testing and expert analysis, especially for high-stakes ecological applications.",
     "recommendations": "We recommend using BEANS-Next as a research tool for comparing models and diagnosing strengths and weaknesses across task types. It should be used in conjunction with additional datasets and evaluation protocols to assess real-world performance and generalization."
-  }
+  },
+  "conformsTo": "http://mlcommons.org/croissant/1.0",
+  "isLiveDataset": true
 }

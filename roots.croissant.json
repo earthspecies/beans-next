@@ -2,13 +2,58 @@
   "@context": {
     "@language": "en",
     "@vocab": "https://schema.org/",
-    "cr": "http://mlcommons.org/croissant/"
+    "citeAs": "cr:citeAs",
+    "column": "cr:column",
+    "conformsTo": "dct:conformsTo",
+    "cr": "http://mlcommons.org/croissant/",
+    "rai": "http://mlcommons.org/croissant/RAI/",
+    "data": {
+      "@id": "cr:data",
+      "@type": "@json"
+    },
+    "dataType": {
+      "@id": "cr:dataType",
+      "@type": "@vocab"
+    },
+    "dct": "http://purl.org/dc/terms/",
+    "examples": {
+      "@id": "cr:examples",
+      "@type": "@json"
+    },
+    "equivalentProperty": "cr:equivalentProperty",
+    "extract": "cr:extract",
+    "field": "cr:field",
+    "fileProperty": "cr:fileProperty",
+    "fileObject": "cr:fileObject",
+    "fileSet": "cr:fileSet",
+    "format": "cr:format",
+    "includes": "cr:includes",
+    "isLiveDataset": "cr:isLiveDataset",
+    "jsonPath": "cr:jsonPath",
+    "key": "cr:key",
+    "md5": "cr:md5",
+    "parentField": "cr:parentField",
+    "path": "cr:path",
+    "recordSet": "cr:recordSet",
+    "references": "cr:references",
+    "regex": "cr:regex",
+    "repeated": "cr:repeated",
+    "replace": "cr:replace",
+    "samplingRate": "cr:samplingRate",
+    "sc": "https://schema.org/",
+    "separator": "cr:separator",
+    "source": "cr:source",
+    "subField": "cr:subField",
+    "transform": "cr:transform",
+    "wd": "https://www.wikidata.org/wiki/"
   },
-  "@type": "Dataset",
+  "@type": "sc:Dataset",
   "name": "ROOTS: Bioacoustic Audio-Language Training Dataset",
   "description": "ROOTS is a large-scale bioacoustic audio-language training dataset constructed from curated bioacoustic archives, structured metadata, metadata-grounded text synthesis, and synthetic audio pipelines. It supports a taxonomy of tasks including acoustic perception, semantic recognition, structural and temporal reasoning, and in-context learning.",
   "url": "https://your-project-page-or-repo",
   "version": "1.0.0",
+  "datePublished": "2026",
+  "citeAs": "To be added (ROOTS paper citation).",
   "license": "Mixed; see source datasets (e.g., Xeno-Canto, WABAD, BirdSet)",
   "isAccessibleForFree": true,
   "keywords": [
@@ -27,7 +72,7 @@
   ],
   "distribution": [
     {
-      "@type": "cr:FileSet",
+      "@type": "cr:FileObject",
       "@id": "audio_files",
       "name": "Audio files",
       "description": "Collection of raw and synthetic bioacoustic audio recordings",
@@ -40,40 +85,6 @@
       "name": "Metadata and prompts",
       "encodingFormat": "application/json",
       "contentUrl": "https://link-to-metadata-json"
-    }
-  ],
-  "cr:recordSet": [
-    {
-      "@type": "cr:RecordSet",
-      "@id": "examples",
-      "name": "Audio-language training examples",
-      "description": "Each record consists of audio, prompt, and target output",
-      "field": [
-        {
-          "@type": "cr:Field",
-          "@id": "audio",
-          "description": "Audio file path or reference",
-          "dataType": "sc:URL"
-        },
-        {
-          "@type": "cr:Field",
-          "@id": "prompt",
-          "description": "Instruction or query in natural language",
-          "dataType": "sc:Text"
-        },
-        {
-          "@type": "cr:Field",
-          "@id": "response",
-          "description": "Target output (label, description, or structured answer)",
-          "dataType": "sc:Text"
-        },
-        {
-          "@type": "cr:Field",
-          "@id": "task_type",
-          "description": "Task category (acoustic, semantic, temporal, in-context)",
-          "dataType": "sc:Text"
-        }
-      ]
     }
   ],
   "citation": "To be added (paper citation)",
@@ -108,5 +119,7 @@
     },
     "safetyMitigations": "Users should apply ecological and ethical safeguards when using models trained on this dataset. This includes avoiding disclosure of sensitive species information, validating outputs with domain experts, and combining model predictions with other monitoring tools. Care should be taken when interpreting results for underrepresented taxa or in high-stakes conservation contexts.",
     "recommendations": "We recommend using the dataset for research and model development, validating performance across taxa and environments, and applying additional fine-tuning or in-context learning for specialized tasks. Users should be aware of dataset biases and limitations when deploying models trained on ROOTS."
-  }
+  },
+  "conformsTo": "http://mlcommons.org/croissant/1.0",
+  "isLiveDataset": true
 }
