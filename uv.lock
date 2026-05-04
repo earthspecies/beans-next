@@ -464,7 +464,6 @@ dev = [
 ]
 esp = [
     { name = "esp-data" },
-    { name = "esp-sweep" },
 ]
 
 [package.metadata]
@@ -498,10 +497,7 @@ dev = [
     { name = "uvicorn", specifier = "<=0.35.0" },
     { name = "yamllint", specifier = "<=1.35.1" },
 ]
-esp = [
-    { name = "esp-data", specifier = ">=1.8.0", index = "https://us-central1-python.pkg.dev/okapi-274503/esp-pypi/simple/" },
-    { name = "esp-sweep", specifier = ">=0.2.0", index = "https://us-central1-python.pkg.dev/okapi-274503/esp-pypi/simple/" },
-]
+esp = [{ name = "esp-data", specifier = ">=1.8.0", index = "https://us-central1-python.pkg.dev/okapi-274503/esp-pypi/simple/" }]
 
 [[package]]
 name = "botocore"
@@ -866,15 +862,6 @@ wheels = [
 ]
 
 [[package]]
-name = "coolname"
-version = "5.0.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/fe/45/deae12f31934301a488df985880240a200119aca2e4b5ceba71d73bc5e86/coolname-5.0.0.tar.gz", hash = "sha256:594bc6c98ebc75ddd51c0ce10efbb5d2556c14eac60b5b36900dfdd5db20eecf", size = 45800, upload-time = "2026-04-23T06:04:50.824Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/97/35/cf824e535233c432048bd7455b28808776471ab5861375772b2c98ea4cbd/coolname-5.0.0-py3-none-any.whl", hash = "sha256:b86eea9670aa0620965167d1bfadfe654fabec839a5b51e8da611c4a64f86192", size = 47368, upload-time = "2026-04-23T06:04:49.374Z" },
-]
-
-[[package]]
 name = "cryptography"
 version = "46.0.7"
 source = { registry = "https://pypi.org/simple" }
@@ -1068,21 +1055,6 @@ dependencies = [
 sdist = { url = "https://us-central1-python.pkg.dev/okapi-274503/esp-pypi/esp-data/esp_data-1.8.0.tar.gz", hash = "sha256:6d76e288fb986b2f980cff9e1237c917612a8b9896052ab932ebdf67977aa977" }
 wheels = [
     { url = "https://us-central1-python.pkg.dev/okapi-274503/esp-pypi/esp-data/esp_data-1.8.0-py3-none-any.whl", hash = "sha256:37d2bbdf58436b307bcc1e54631cc21780e35d653e81096320e4cbca199db85f" },
-]
-
-[[package]]
-name = "esp-sweep"
-version = "0.2.0"
-source = { registry = "https://us-central1-python.pkg.dev/okapi-274503/esp-pypi/simple/" }
-dependencies = [
-    { name = "click" },
-    { name = "coolname" },
-    { name = "pyyaml" },
-    { name = "sweeps" },
-]
-sdist = { url = "https://us-central1-python.pkg.dev/okapi-274503/esp-pypi/esp-sweep/esp_sweep-0.2.0.tar.gz", hash = "sha256:a0c2b302079c2aab62393cb63653ca6824a714e6d30ca1368a9a384b177c85c7" }
-wheels = [
-    { url = "https://us-central1-python.pkg.dev/okapi-274503/esp-pypi/esp-sweep/esp_sweep-0.2.0-py3-none-any.whl", hash = "sha256:ea6cef2fd17850154a34888bd7de15665b88d227c939d4fa678543e8a8ee5795" },
 ]
 
 [[package]]
@@ -1851,15 +1823,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/41/f2/d34e8b3a08a9cc79a50b2208a93dce981fe615b64d5a4d4abee421d898df/joblib-1.5.3.tar.gz", hash = "sha256:8561a3269e6801106863fd0d6d84bb737be9e7631e33aaed3fb9ce5953688da3", size = 331603, upload-time = "2025-12-15T08:41:46.427Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/7b/91/984aca2ec129e2757d1e4e3c81c3fcda9d0f85b74670a094cc443d9ee949/joblib-1.5.3-py3-none-any.whl", hash = "sha256:5fc3c5039fc5ca8c0276333a188bbd59d6b7ab37fe6632daa76bc7f9ec18e713", size = 309071, upload-time = "2025-12-15T08:41:44.973Z" },
-]
-
-[[package]]
-name = "jsonref"
-version = "1.1.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/aa/0d/c1f3277e90ccdb50d33ed5ba1ec5b3f0a242ed8c1b1a85d3afeb68464dca/jsonref-1.1.0.tar.gz", hash = "sha256:32fe8e1d85af0fdefbebce950af85590b22b60f9e95443176adbde4e1ecea552", size = 8814, upload-time = "2023-01-16T16:10:04.455Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/0c/ec/e1db9922bceb168197a558a2b8c03a7963f1afe93517ddd3cf99f202f996/jsonref-1.1.0-py3-none-any.whl", hash = "sha256:590dc7773df6c21cbf948b5dac07a72a251db28b0238ceecce0a2abfa8ec30a9", size = 9425, upload-time = "2023-01-16T16:10:02.255Z" },
 ]
 
 [[package]]
@@ -3893,24 +3856,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/b3/08/efd28d49162ce89c2ad61a88bd80e11fb77bc9f6c145402589112d38f8af/strictyaml-1.7.3.tar.gz", hash = "sha256:22f854a5fcab42b5ddba8030a0e4be51ca89af0267961c8d6cfa86395586c407", size = 115206, upload-time = "2023-03-10T12:50:27.062Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/96/7c/a81ef5ef10978dd073a854e0fa93b5d8021d0594b639cc8f6453c3c78a1d/strictyaml-1.7.3-py3-none-any.whl", hash = "sha256:fb5c8a4edb43bebb765959e420f9b3978d7f1af88c80606c03fb420888f5d1c7", size = 123917, upload-time = "2023-03-10T12:50:17.242Z" },
-]
-
-[[package]]
-name = "sweeps"
-version = "0.2.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "jsonref" },
-    { name = "jsonschema" },
-    { name = "numpy" },
-    { name = "pydantic" },
-    { name = "pyyaml" },
-    { name = "scikit-learn" },
-    { name = "scipy" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/fb/eb/1b8153f71e34b7753b0094e7ccd6f8300a40642f50b7c8b600af93153ed2/sweeps-0.2.0.tar.gz", hash = "sha256:bea18c72c09ad71254bd4e20f46c4b936ac629750e660c8cdbeebde13239065c", size = 25966, upload-time = "2022-08-15T21:12:55.249Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/75/ae/cf8e8e31026fff986a9efabef86bf401435818b60f5704ae8b413695fc6d/sweeps-0.2.0-py3-none-any.whl", hash = "sha256:4f69f82ee3aabae84db08c334338f5b6cb20901d6f17bee5ae06a17020b112c9", size = 28416, upload-time = "2022-08-15T21:12:52.282Z" },
 ]
 
 [[package]]

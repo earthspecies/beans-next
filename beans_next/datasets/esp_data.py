@@ -626,52 +626,53 @@ def _load_beans_next_rows_from_gcs_jsonl(
     split_to_jsonl_and_root: dict[str, tuple[str, str]] = {
         # Acoustic description MCQ (audio copied under beans-next ingestion root)
         "crow-description": (
-            "gs://esp-data-ingestion/beans-next/v0.1.0/raw/"
+            "gs://esp-data-ingestion/beans-pro/v0.1.0/raw/"
             "carrion_crow_descriptions/test.jsonl",
-            "gs://esp-data-ingestion/beans-next/v0.1.0/raw/carrion_crow_descriptions/",
+            "gs://esp-data-ingestion/beans-pro/v0.1.0/raw/carrion_crow_descriptions/",
         ),
         "zebra-description": (
-            "gs://esp-data-ingestion/beans-next/v0.1.0/raw/zebra_descriptions/test.jsonl",
-            "gs://esp-data-ingestion/beans-next/v0.1.0/raw/zebra_descriptions/",
+            "gs://esp-data-ingestion/beans-pro/v0.1.0/raw/zebra_descriptions/test.jsonl",
+            "gs://esp-data-ingestion/beans-pro/v0.1.0/raw/zebra_descriptions/",
         ),
         # Mean F0 (audio lives under the shared f0-prediction audio root)
         "f0-mean-seen-taxa": (
-            "gs://esp-data-ingestion/beans-next/v0.1.0/raw/f0_mean_seen_taxa/test.jsonl",
+            "gs://esp-data-ingestion/beans-pro/v0.1.0/raw/f0_mean_seen_taxa/test.jsonl",
             "gs://esp-data-ingestion/f0-prediction/audio/",
         ),
         "f0-mean-heldout-taxa": (
-            "gs://esp-data-ingestion/beans-next/v0.1.0/raw/f0_mean_heldout_taxa/test.jsonl",
+            "gs://esp-data-ingestion/beans-pro/v0.1.0/raw/f0_mean_heldout_taxa/test.jsonl",
             "gs://esp-data-ingestion/f0-prediction/audio/",
         ),
-        # Presence / call-type (audio paths typically rooted at esp-ml-datasets)
+        # Presence / call-type — audio paths (audio_32k/...) are relative to the
+        # xeno-canto mirror; do NOT set root to .../raw/audio_32k/ or the
+        # segment would be doubled.
         "bird-presence": (
-            "gs://esp-data-ingestion/beans-next/v0.1.0/raw/bird_presence/test.jsonl",
-            "gs://esp-ml-datasets/",
+            "gs://esp-data-ingestion/beans-pro/v0.1.0/raw/bird_presence/test.jsonl",
+            "gs://esp-data-ingestion/xeno-canto/v0.1.0/raw/",
         ),
         "mammal-presence": (
-            "gs://esp-data-ingestion/beans-next/v0.1.0/raw/mammal_presence/test.jsonl",
-            "gs://esp-ml-datasets/",
+            "gs://esp-data-ingestion/beans-pro/v0.1.0/raw/mammal_presence/test.jsonl",
+            "gs://esp-data-ingestion/xeno-canto/v0.1.0/raw/",
         ),
         "insect-presence": (
-            "gs://esp-data-ingestion/beans-next/v0.1.0/raw/insect_presence/test.jsonl",
-            "gs://esp-ml-datasets/",
+            "gs://esp-data-ingestion/beans-pro/v0.1.0/raw/insect_presence/test.jsonl",
+            "gs://esp-data-ingestion/xeno-canto/v0.1.0/raw/",
         ),
         "amphibian-presence": (
-            "gs://esp-data-ingestion/beans-next/v0.1.0/raw/amphibian_presence/test.jsonl",
-            "gs://esp-ml-datasets/",
+            "gs://esp-data-ingestion/beans-pro/v0.1.0/raw/amphibian_presence/test.jsonl",
+            "gs://esp-data-ingestion/xeno-canto/v0.1.0/raw/",
         ),
-        # Smallest yes/no split (useful for quick repro)
         "alarm-call-presence": (
-            "gs://esp-data-ingestion/beans-next/v0.1.0/raw/alarm_call_presence/test.jsonl",
-            "gs://esp-ml-datasets/",
+            "gs://esp-data-ingestion/beans-pro/v0.1.0/raw/alarm_call_presence/test.jsonl",
+            "gs://esp-data-ingestion/xeno-canto/v0.1.0/raw/",
         ),
         "flight-call-presence": (
-            "gs://esp-data-ingestion/beans-next/v0.1.0/raw/flight_call_presence/test.jsonl",
-            "gs://esp-ml-datasets/",
+            "gs://esp-data-ingestion/beans-pro/v0.1.0/raw/flight_call_presence/test.jsonl",
+            "gs://esp-data-ingestion/xeno-canto/v0.1.0/raw/",
         ),
         "call-type-fixed-vocab": (
-            "gs://esp-data-ingestion/beans-next/v0.1.0/raw/call_type_fixed_vocab/test.jsonl",
-            "gs://esp-ml-datasets/",
+            "gs://esp-data-ingestion/beans-pro/v0.1.0/raw/call_type_fixed_vocab/test.jsonl",
+            "gs://esp-data-ingestion/xeno-canto/v0.1.0/raw/",
         ),
     }
 
@@ -1540,7 +1541,7 @@ def _iter_esp_data_birdset_concurrent(
 # BeansProMultiAudio (esp_data.BeansProMultiAudio) loader
 # ---------------------------------------------------------------------------
 
-_MULTIAUDIO_GCS_BASE = "gs://esp-data-ingestion/beans-next/v0.1.0/raw"
+_MULTIAUDIO_GCS_BASE = "gs://esp-data-ingestion/beans-pro/v0.1.0/raw"
 _MULTIAUDIO_GIBBON_BASE = "gs://esp-ml-datasets/beans-zero/v0.1.0/raw"
 
 _MULTIAUDIO_SPLIT_JSONL_AND_ROOT: dict[str, tuple[str, str]] = {
@@ -1566,15 +1567,17 @@ _MULTIAUDIO_SPLIT_JSONL_AND_ROOT: dict[str, tuple[str, str]] = {
     ),
     "zebra-4way": (
         f"{_MULTIAUDIO_GCS_BASE}/zebra_4way/test.jsonl",
-        f"{_MULTIAUDIO_GCS_BASE}/",
+        f"{_MULTIAUDIO_GCS_BASE}/zebra_descriptions/",
     ),
+    # unseen-species audio paths contain xeno-canto/... or inaturalist/...
+    # relative to the esp-data-ingestion bucket root.
     "unseen-species-4way": (
         f"{_MULTIAUDIO_GCS_BASE}/unseen_species_4way/test.jsonl",
-        f"{_MULTIAUDIO_GIBBON_BASE}/",
+        "gs://esp-data-ingestion/",
     ),
     "unseen-species-4way-hard": (
         f"{_MULTIAUDIO_GCS_BASE}/unseen_species_4way_hard/test.jsonl",
-        f"{_MULTIAUDIO_GIBBON_BASE}/",
+        "gs://esp-data-ingestion/",
     ),
     "unseen-genus-4way": (
         f"{_MULTIAUDIO_GCS_BASE}/unseen_genus_4way/test.jsonl",

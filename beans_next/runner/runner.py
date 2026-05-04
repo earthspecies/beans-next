@@ -1419,6 +1419,34 @@ def _load_examples_for_eval_task(
                 break
         return rows
 
+    if data_source == "huggingface":
+        from beans_next.datasets.beans_next_hub import (
+            BEANS_NEXT_HUB_REPO_ID,
+            iter_hf_beans_next_examples,
+        )
+
+        # Use eval task's explicit hf_path if set; otherwise canonical BEANS-Next repo.
+        # Do NOT fall back to args.hf_path which defaults to EarthSpeciesProject/BEANS-Zero.
+        repo_id = (eval_task.get("hf_path") or "").strip() or BEANS_NEXT_HUB_REPO_ID
+        subset_name = eval_task.get("subset") or split
+        if not isinstance(subset_name, str) or not subset_name.strip():
+            raise SystemExit(
+                "huggingface backend requires a non-empty `subset` in the eval task."
+            )
+        revision = str(eval_task.get("revision") or "main")
+        for ex in iter_hf_beans_next_examples(
+            repo_id,
+            subset=subset_name.strip(),
+            split=str(split),
+            revision=revision,
+            task_id=task_id,
+            limit=limit,
+        ):
+            rows.append(ex)
+            if len(rows) >= limit:
+                break
+        return rows
+
     if not isinstance(hf_path, str) or not hf_path.strip():
         raise SystemExit("Eval task must define `hf_path` (or provide `--hf-path`).")
 

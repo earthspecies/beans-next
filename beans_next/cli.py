@@ -267,6 +267,7 @@ def _load_examples_for_run(args: argparse.Namespace) -> list[DatasetExample]:
     from beans_next.datasets import (
         dataset_name_equals,
         iter_esp_data_beans_zero_examples,
+        iter_hf_beans_next_examples,
         iter_hf_dataset_examples,
     )
 
@@ -282,6 +283,22 @@ def _load_examples_for_run(args: argparse.Namespace) -> list[DatasetExample]:
         # Row filtering is unnecessary because esp_data already yields by subset.
         for ex in iter_esp_data_beans_zero_examples(
             subset=str(args.dataset_name),
+            split=str(args.split),
+            task_id=args.task_id,
+            limit=limit,
+        ):
+            rows.append(ex)
+            if len(rows) >= limit:
+                break
+    elif data_source == "huggingface":
+        from beans_next.datasets.beans_next_hub import BEANS_NEXT_HUB_REPO_ID
+
+        hf_path_arg = (getattr(args, "hf_path", None) or "").strip()
+        repo_id = hf_path_arg or BEANS_NEXT_HUB_REPO_ID
+        subset_name = str(args.dataset_name).strip()
+        for ex in iter_hf_beans_next_examples(
+            repo_id,
+            subset=subset_name,
             split=str(args.split),
             task_id=args.task_id,
             limit=limit,
@@ -642,13 +659,15 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Optional path to a run configuration YAML.",
     )
     p_run.add_argument(
-        "--data-source",
+        "--backend",
+        dest="data_source",
         default=None,
-        choices=("hf", "esp_data"),
+        choices=("esp_data", "huggingface", "hf"),
         help=(
-            "Dataset source backend. When set to esp_data, BEANS-Zero examples are "
-            "loaded via esp_data (must be installed). When unset, defaults to "
-            "esp_data (or BEANS_PRO_DATA_SOURCE when set)."
+            "Dataset backend. `esp_data` (default) loads BEANS-Next audio from GCS "
+            "via the esp_data library. `huggingface` loads from the two-table Parquet "
+            "bundle on the HuggingFace Hub (no private credentials needed). "
+            "`hf` is the legacy streaming backend for other HF datasets."
         ),
     )
     p_run.add_argument(
