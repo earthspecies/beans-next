@@ -1,0 +1,112 @@
+{
+  "@context": {
+    "@language": "en",
+    "@vocab": "https://schema.org/",
+    "cr": "http://mlcommons.org/croissant/"
+  },
+  "@type": "Dataset",
+  "name": "ROOTS: Bioacoustic Audio-Language Training Dataset",
+  "description": "ROOTS is a large-scale bioacoustic audio-language training dataset constructed from curated bioacoustic archives, structured metadata, metadata-grounded text synthesis, and synthetic audio pipelines. It supports a taxonomy of tasks including acoustic perception, semantic recognition, structural and temporal reasoning, and in-context learning.",
+  "url": "https://your-project-page-or-repo",
+  "version": "1.0.0",
+  "license": "Mixed; see source datasets (e.g., Xeno-Canto, WABAD, BirdSet)",
+  "isAccessibleForFree": true,
+  "keywords": [
+    "bioacoustics",
+    "audio-language models",
+    "animal communication",
+    "ethology",
+    "foundation models",
+    "multimodal learning"
+  ],
+  "creator": [
+    {
+      "@type": "Person",
+      "name": "Authors of ROOTS dataset"
+    }
+  ],
+  "distribution": [
+    {
+      "@type": "cr:FileSet",
+      "@id": "audio_files",
+      "name": "Audio files",
+      "description": "Collection of raw and synthetic bioacoustic audio recordings",
+      "encodingFormat": "audio/*",
+      "contentUrl": "https://link-to-audio-or-dataset"
+    },
+    {
+      "@type": "cr:FileObject",
+      "@id": "metadata",
+      "name": "Metadata and prompts",
+      "encodingFormat": "application/json",
+      "contentUrl": "https://link-to-metadata-json"
+    }
+  ],
+  "cr:recordSet": [
+    {
+      "@type": "cr:RecordSet",
+      "@id": "examples",
+      "name": "Audio-language training examples",
+      "description": "Each record consists of audio, prompt, and target output",
+      "field": [
+        {
+          "@type": "cr:Field",
+          "@id": "audio",
+          "description": "Audio file path or reference",
+          "dataType": "sc:URL"
+        },
+        {
+          "@type": "cr:Field",
+          "@id": "prompt",
+          "description": "Instruction or query in natural language",
+          "dataType": "sc:Text"
+        },
+        {
+          "@type": "cr:Field",
+          "@id": "response",
+          "description": "Target output (label, description, or structured answer)",
+          "dataType": "sc:Text"
+        },
+        {
+          "@type": "cr:Field",
+          "@id": "task_type",
+          "description": "Task category (acoustic, semantic, temporal, in-context)",
+          "dataType": "sc:Text"
+        }
+      ]
+    }
+  ],
+  "citation": "To be added (paper citation)",
+  "temporalCoverage": "Varies by source dataset",
+  "spatialCoverage": "Global (depends on source archives)",
+  "ethicsPolicy": "Dataset contains animal audio. Users should avoid misuse related to sensitive ecological data (e.g., endangered species locations).",
+  "measurementTechnique": [
+    "Field recordings",
+    "Autonomous recording units",
+    "Synthetic audio generation",
+    "Metadata-derived labeling"
+  ],
+  "variableMeasured": [
+    "species",
+    "taxonomy",
+    "call_type",
+    "life_stage",
+    "acoustic_features",
+    "temporal_structure"
+  ],
+  "includedInDataCatalog": {
+    "@type": "DataCatalog",
+    "name": "ROOTS dataset collection"
+  },
+  "usageInfo": {
+    "downstreamUse": "The dataset is intended for training audio-language models for bioacoustic analysis across a broad range of tasks, including species recognition, acoustic measurement, temporal reasoning, and in-context learning. It can be used to develop general-purpose bioacoustic models, support ethology research, and be integrated into ecological monitoring systems or fine-tuned for specific taxa or tasks.",
+    "outOfScopeUse": "The dataset is not designed for tasks outside of bioacoustics. Performance may be unreliable for taxa, environments, or task types that are underrepresented in the training data. The dataset is not suitable for applications requiring precise temporal localization (e.g., exact timestamp detection) or high-confidence ecological decision-making without expert validation. Tasks such as individual identification or fine-grained behavioral inference may require additional supervision beyond what is provided.",
+    "biasRisksLimitations": {
+      "bias": "The dataset is biased toward taxa that are well represented in public bioacoustic archives, particularly birds. This may limit performance on underrepresented taxa such as insects, amphibians, or marine mammals. Geographic and recording-condition biases are also present. Additionally, synthetic data pipelines may introduce distributional artifacts that differ from real-world recordings.",
+      "risks": "Models trained on this dataset could be misused to detect or locate endangered species, potentially enabling harmful activities such as poaching or habitat disruption. Errors in model predictions may also lead to incorrect ecological conclusions if used without expert validation. Synthetic data may amplify misleading patterns if over-relied upon.",
+      "limitations": "The dataset includes weakly labeled data with missing or incomplete annotations, as well as synthetic supervision that may not fully capture real-world acoustic complexity. Coverage across tasks is uneven, with some capabilities (e.g., temporal reasoning or in-context learning) relying heavily on synthetic data. Performance may degrade for rare species, unseen acoustic environments, or novel task formulations."
+    },
+    "safetyMitigations": "Users should apply ecological and ethical safeguards when using models trained on this dataset. This includes avoiding disclosure of sensitive species information, validating outputs with domain experts, and combining model predictions with other monitoring tools. Care should be taken when interpreting results for underrepresented taxa or in high-stakes conservation contexts.",
+    "recommendations": "We recommend using the dataset for research and model development, validating performance across taxa and environments, and applying additional fine-tuning or in-context learning for specialized tasks. Users should be aware of dataset biases and limitations when deploying models trained on ROOTS."
+  }
+}
