@@ -1,0 +1,28 @@
+beans_zero_core:
+  description: BEANS-Zero core bioacoustics suite (small-sample friendly).
+  eval_tasks:
+    # classification
+    - beans_zero_esc50
+    - beans_zero_cbi
+    - beans_zero_watkins
+    - beans_zero_humbugdb
+    - beans_zero_lifestage
+    - beans_zero_call_type
+    - beans_zero_unseen_species_cmn
+    - beans_zero_unseen_species_sci
+    - beans_zero_unseen_species_tax
+    - beans_zero_unseen_genus_cmn
+    - beans_zero_unseen_genus_sci
+    - beans_zero_unseen_genus_tax
+    - beans_zero_unseen_family_cmn
+    - beans_zero_unseen_family_sci
+    - beans_zero_unseen_family_tax
+    - beans_zero_zf_indiv
+    # detection
+    - beans_zero_enabirds
+    - beans_zero_hiceas
+    - beans_zero_rfcx
+    - beans_zero_gibbons
+    - beans_zero_dcase
+    # captioning
+    - beans_zero_captioning

@@ -1,0 +1,29 @@
+# Full BEANS-Zero core evaluation (all subsets) — NatureLM-audio v1.1 (esp_data)
+#
+# Uses `esp_data` as the dataset backend, which typically streams from the
+# BEANS-Zero raw JSONLs in GCS (subset-specific `*_test.jsonl`).
+#
+# Prereqs: launcher running on port 8001
+#   cd examples/servers/naturelm-v1.1
+#   HF_HOME=/scratch/shared/hf_cache PORT=8001 ./serve.sh
+#
+# Run:
+#   uv run beans-next run --config configs/benchmarks/beans_zero_core_naturelm_v1_1_esp_data.yaml \
+#     -o results/naturelm_v1_1_esp_data_$(date +%Y%m%d)
+
+models:
+  - inline:
+      name: "naturelm-v1.1"
+      description: "NatureLM-audio v1.1 (local launcher)"
+      predict_url: http://127.0.0.1:8001/predict
+      info_url: http://127.0.0.1:8001/info
+      health_url: http://127.0.0.1:8001/health
+      response_schema: predictions_v1
+      audio_payload: base64_wav
+      retry_policy:
+        max_attempts: 12
+        backoff_initial: 0.5
+        backoff_max: 10.0
+
+suite: beans_zero_core
+data_source: esp_data

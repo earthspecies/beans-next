@@ -1,0 +1,37 @@
+# Zebra finch individual-ID (beans_zero_zf_indiv) — Audio Flamingo Next
+#
+# Slurm (serve on GPU + inference on CPU): prefer esp_data config + submit script:
+#   configs/benchmarks/beans_zero_zf_indiv_af3_esp_data.yaml
+#   bash examples/slurm/submit_beans_zero_zf_indiv_af3.sh
+#
+# Prereqs: AF3 launcher on the same host/port as below.
+#   cd examples/servers/af3
+#   uv sync                    # CPU / stub
+#   uv sync --group gpu        # real weights (GPU)
+#   AF3_STUB=1 PORT=8000 ./serve.sh    # conformance / no GPU
+#   PORT=8000 ./serve.sh               # real inference (GPU)
+#
+# Slurm (writes predict URL for hybrid eval):
+#   sbatch examples/slurm/serve_af3.sh
+#   # then point predict_url / info_url / health_url at that node.
+#
+# License: NVIDIA OneWay Noncommercial License — research use only.
+#
+# Run (example):
+#   uv run beans-next run --config configs/benchmarks/beans_zero_zf_indiv_af3.yaml \
+#     -o results/af3_zf_indiv_$(date +%Y%m%d) --limit 50
+
+models:
+  - inline:
+      name: "af3"
+      description: "Audio Flamingo Next (local launcher)"
+      predict_url: http://127.0.0.1:8000/predict
+      info_url: http://127.0.0.1:8000/info
+      health_url: http://127.0.0.1:8000/health
+      response_schema: predictions_v1
+      audio_payload: base64_wav
+
+tasks:
+  - beans_zero_zf_indiv
+
+data_source: hf

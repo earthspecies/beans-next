@@ -1,0 +1,8 @@
+# BEANS-Next OpenAI-compatible proxy launcher (isolated venv).
+fastapi==0.115.12
+uvicorn[standard]==0.34.2
+pydantic==2.11.7
+httpx==0.28.1
+numpy==2.3.3
+soundfile==0.13.1
+

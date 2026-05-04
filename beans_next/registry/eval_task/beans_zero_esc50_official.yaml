@@ -1,0 +1,10 @@
+beans_zero_esc50_official:
+  task_type: classification
+  hf_path: EarthSpeciesProject/BEANS-Zero
+  subset: esc50
+  split: esc50
+  prompt: classification_beans_zero_official_v1
+  metrics:
+    - name: top1_accuracy
+      scorer_kwargs:
+        label_separator: ","

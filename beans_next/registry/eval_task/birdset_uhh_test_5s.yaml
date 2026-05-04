@@ -1,0 +1,67 @@
+birdset_uhh_test_5s:
+  task_type: open_ended
+  data_source: esp_data
+  dataset: birdset
+  subset: UHH-test_5s
+  split: UHH-test_5s
+  prompt: birdset_species_v1
+  metrics:
+    - name: top1_accuracy
+      scorer_kwargs:
+        label_separator: ','
+  labels:
+    - Apapane
+    - Band-rumped Storm-Petrel
+    - Black Francolin
+    - California Quail
+    - Chinese Hwamei
+    - Chukar
+    - Common Waxbill
+    - Erckel's Spurfowl
+    - Eurasian Skylark
+    - Hawaii Akepa
+    - Hawaii Amakihi
+    - Hawaii Creeper
+    - Hawaii Elepaio
+    - Hawaiian Goose
+    - Hawaiian Hawk
+    - Hawaiian Petrel
+    - House Finch
+    - Iiwi
+    - Japanese Bush Warbler
+    - Kalij Pheasant
+    - Northern Cardinal
+    - Omao
+    - Palila
+    - Red-billed Leiothrix
+    - Warbling White-eye
+    - Wild Turkey
+    - Yellow-fronted Canary
+  scientific_labels:
+    - Alauda arvensis
+    - Alectoris chukar
+    - Branta sandvicensis
+    - Buteo solitarius
+    - Callipepla californica
+    - Cardinalis cardinalis
+    - Chasiempis sandwichensis
+    - Chlorodrepanis virens
+    - Crithagra mozambica
+    - Estrilda astrild
+    - Francolinus francolinus
+    - Garrulax canorus
+    - Haemorhous mexicanus
+    - Himatione sanguinea
+    - Horornis diphone
+    - Leiothrix lutea
+    - Lophura leucomelanos
+    - Loxioides bailleui
+    - Loxops coccineus
+    - Loxops mana
+    - Meleagris gallopavo
+    - Myadestes obscurus
+    - Oceanodroma castro
+    - Pternistis erckelii
+    - Pterodroma sandwichensis
+    - Vestiaria coccinea
+    - Zosterops japonicus

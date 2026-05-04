@@ -1,0 +1,19 @@
+beans_zero_hiceas:
+  task_type: detection
+  hf_path: EarthSpeciesProject/BEANS-Zero
+  subset: hiceas
+  split: test
+  prompt: detection_bioacoustic_v1
+  metrics:
+    - name: average_precision
+      scorer_kwargs:
+        average: macro
+    - name: f1
+      scorer_kwargs:
+        average: macro
+    - name: precision
+      scorer_kwargs:
+        average: macro
+    - name: recall
+      scorer_kwargs:
+        average: macro

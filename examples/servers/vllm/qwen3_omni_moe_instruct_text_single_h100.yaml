@@ -1,0 +1,33 @@
+# Single-H100 text-output config for Qwen3-Omni-MoE-Instruct.
+#
+# vLLM-Omni calls the understanding/generation component "thinker" internally,
+# but this config is intended for the non-Thinking Instruct checkpoint. It keeps
+# only the audio/text understanding stage and omits talker/code2wav audio-output
+# stages for lean BEANS-Next classification runs.
+stage_args:
+  - stage_id: 0
+    runtime:
+      devices: "0"
+    engine_args:
+      model_stage: thinker
+      max_num_seqs: 1
+      model_arch: Qwen3OmniMoeForConditionalGeneration
+      worker_type: ar
+      scheduler_cls: vllm_omni.core.sched.omni_ar_scheduler.OmniARScheduler
+      gpu_memory_utilization: 0.9
+      enforce_eager: true
+      trust_remote_code: true
+      engine_output_type: text
+      distributed_executor_backend: "mp"
+      enable_prefix_caching: false
+      hf_config_name: thinker_config
+    final_output: true
+    final_output_type: text
+    is_comprehension: true
+    default_sampling_params:
+      temperature: 0.0
+      top_p: 1.0
+      top_k: -1
+      max_tokens: 128
+      seed: 42
+      detokenize: true

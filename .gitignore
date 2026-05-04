@@ -6,6 +6,7 @@ __pycache__/
 .Python
 env/
 venv/
+.venv/
 pip-wheel-metadata/
 .pytest_cache/
 .ipynb_checkpoints
@@ -16,15 +17,20 @@ pip-wheel-metadata/
 runs/
 tb_logs/
 lightning_logs/
-checkpoints/
+/checkpoints/
 *.pt
 *.pth
 *.safetensors
 saved_models/
 
 # Logs
-logs/
-*.log
+#logs/
+#*.log
+logs/manager_runs/
+
+# Benchmark artifacts (generated)
+/results/
+beans-next-results/
 
 # OS
 .DS_Store

@@ -1,0 +1,23 @@
+# Increment 13 benchmark: ESC-50 "official" protocol via OpenAI-compatible proxy (stub mode)
+#
+# This is a **run-config** file consumed by:
+#   uv run beans-next run --config <this_file>
+#
+# It is designed to be CPU-only and key-free by running the proxy in stub mode
+# (`OPENAI_PROXY_STUB=1`). Use it as a minimal wiring check before pointing the
+# proxy at real OpenAI/Gemini endpoints.
+
+models:
+  - inline:
+      predict_url: http://127.0.0.1:19085/predict
+      info_url: http://127.0.0.1:19085/info
+      health_url: http://127.0.0.1:19085/health
+      response_schema: predictions_v1
+      audio_payload: base64_wav
+
+tasks:
+  - beans_zero_esc50_official
+
+limit: 1
+data_source: hf
+

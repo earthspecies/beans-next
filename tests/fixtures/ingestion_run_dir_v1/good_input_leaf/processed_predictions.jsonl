@@ -1,0 +1,2 @@
+{"schema_version":"beans_next.scored_prediction.v1","sample_id":"fixture:0001","task_id":"fixture_task","predictions":["sparrow"],"processed_prediction":"sparrow","targets":["sparrow"],"scores":null,"postprocess_version":"fixture","error":null}
+

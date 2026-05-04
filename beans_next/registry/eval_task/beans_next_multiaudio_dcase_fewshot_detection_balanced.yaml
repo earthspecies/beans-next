@@ -1,0 +1,9 @@
+beans_next_multiaudio_dcase_fewshot_detection_balanced:
+  task_type: classification
+  data_source: esp_data
+  dataset: beans_next_multiaudio
+  subset: dcase-fewshot-detection-balanced
+  split: dcase-fewshot-detection-balanced
+  prompt: beans_next_multiaudio_query_only_v1
+  metrics:
+    - name: accuracy

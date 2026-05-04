@@ -1,0 +1,5 @@
+beans_zero_esc50_official:
+  description: ESC-50 official BEANS-Zero prompt + top1_accuracy.
+  eval_tasks:
+    - beans_zero_esc50_official
+

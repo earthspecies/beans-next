@@ -1,0 +1,48 @@
+[project]
+name = "beans-next-naturelm-v1-1-launcher"
+version = "0.0.0"
+description = "BEANS-Next NatureLM-audio v1.1 launcher (launcher-only; not core deps)."
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi==0.115.12",
+  "uvicorn[standard]==0.34.2",
+  # Keep schemas aligned with the esp-research NatureLM-audio-v1.5 stack.
+  "pydantic>=2.12.4",
+  "pydantic-settings>=2.12.0",
+  "typing-extensions>=4.15.0",
+  "requests==2.32.3",
+  "huggingface-hub>=1.3.0",
+  "numpy>=1.26.4",
+  "soundfile>=0.12.0",
+  # Used for explicit resampling when input sr != 16kHz.
+  "resampy>=0.4.0",
+  "pyyaml>=6.0.0",
+  # Used by esp-research + esp-data I/O utilities.
+  "cloudpathlib[gs]>=0.20.0",
+  # NatureLM/esp tooling still imports `pkg_resources` in some places.
+  "setuptools<81",
+]
+
+[project.optional-dependencies]
+# Real inference deps (GPU required; keep launcher-only).
+real = [
+  "transformers>=5.3.0",
+  # Pin to a CUDA-12-compatible PyTorch. Unpinned torch has been observed to
+  # resolve to newer CUDA major versions (e.g. cu13) that fail on cluster drivers.
+  "torch==2.5.1",
+  "torchaudio==2.5.1",
+  "sympy>=1.13.1",
+  "peft>=0.18.1",
+  # Optional perf/quant deps intentionally omitted here: they can pull in CUDA
+  # major-version-specific wheels that are brittle across clusters.
+]
+
+[dependency-groups]
+real = [
+  "transformers>=5.3.0",
+  "torch==2.5.1",
+  "torchaudio==2.5.1",
+  "sympy>=1.13.1",
+  "peft>=0.18.1",
+]
+

@@ -1,0 +1,36 @@
+[project]
+name = "beans-next-naturelm-v1-0-launcher"
+version = "0.0.0"
+description = "BEANS-Next NatureLM-audio v1.0 launcher (launcher-only; not core deps)."
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi==0.115.12",
+  "uvicorn[standard]==0.34.2",
+  "pydantic==2.11.7",
+  "requests==2.32.3",
+  "soundfile>=0.12.0",
+  # Keep compatible with transformers==4.44.2.
+  "huggingface-hub>=0.23.2,<1.0.0",
+  "numpy>=1.26.4",
+  # Some NatureLM-audio deps still expect setuptools/pkg_resources.
+  "setuptools<81",
+]
+
+[project.optional-dependencies]
+# Real inference deps (GPU required; keep launcher-only).
+real = [
+  # Pin to a CUDA-12-compatible PyTorch. Unpinned torch has been observed to
+  # resolve to newer CUDA major versions (e.g. cu13) that fail on cluster drivers.
+  "torch==2.5.1",
+  "torchaudio==2.5.1",
+  # NatureLM-audio v1.0 imports APIs removed in newer transformers.
+  "transformers[sentencepiece]==4.44.2",
+]
+
+[dependency-groups]
+real = [
+  "torch==2.5.1",
+  "torchaudio==2.5.1",
+  "transformers[sentencepiece]==4.44.2",
+]
+

@@ -1,0 +1,31 @@
+beans_next_esp:
+  # BeansPro v0.1.0 (esp_data) split inventory (metadata JSONL paths):
+  # - crow-description: gs://esp-data-ingestion/beans-next/v0.1.0/raw/carrion_crow_descriptions/test.jsonl
+  # - zebra-description: gs://esp-data-ingestion/beans-next/v0.1.0/raw/zebra_descriptions/test.jsonl
+  # - f0-mean-seen-taxa: gs://esp-data-ingestion/beans-next/v0.1.0/raw/f0_mean_seen_taxa/test.jsonl
+  # - f0-mean-heldout-taxa: gs://esp-data-ingestion/beans-next/v0.1.0/raw/f0_mean_heldout_taxa/test.jsonl
+  # - bird-presence: gs://esp-data-ingestion/beans-next/v0.1.0/raw/bird_presence/test.jsonl
+  # - mammal-presence: gs://esp-data-ingestion/beans-next/v0.1.0/raw/mammal_presence/test.jsonl
+  # - insect-presence: gs://esp-data-ingestion/beans-next/v0.1.0/raw/insect_presence/test.jsonl
+  # - amphibian-presence: gs://esp-data-ingestion/beans-next/v0.1.0/raw/amphibian_presence/test.jsonl
+  # - alarm-call-presence: gs://esp-data-ingestion/beans-next/v0.1.0/raw/alarm_call_presence/test.jsonl
+  # - flight-call-presence: gs://esp-data-ingestion/beans-next/v0.1.0/raw/flight_call_presence/test.jsonl
+  # - call-type-fixed-vocab: gs://esp-data-ingestion/beans-next/v0.1.0/raw/call_type_fixed_vocab/test.jsonl
+  #
+  # See `docs/beans_next_data_structures_authoritative.md` for the row contract
+  # used by the custom dataset implementations shipped in this repo.
+  data_source: esp_data
+  dataset: beans_next
+  default_split: crow-description
+  subsets:
+    - crow-description
+    - zebra-description
+    - f0-mean-seen-taxa
+    - f0-mean-heldout-taxa
+    - bird-presence
+    - mammal-presence
+    - insect-presence
+    - amphibian-presence
+    - alarm-call-presence
+    - flight-call-presence
+    - call-type-fixed-vocab

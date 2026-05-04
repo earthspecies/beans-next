@@ -1,0 +1,11 @@
+name: af_next_local_8000
+description: Audio Flamingo Next launcher preset for local development (port 8000).
+
+predict_url: http://localhost:8000/predict
+info_url: http://localhost:8000/info
+health_url: http://localhost:8000/health
+
+response_schema: predictions_v1
+audio_payload: file_path
+
+auth: {}

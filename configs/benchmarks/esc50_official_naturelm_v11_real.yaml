@@ -1,0 +1,17 @@
+models:
+  - inline:
+      name: "naturelm-v1.1"
+      description: "NatureLM-audio v1.1 via esp-research v1.5 runtime"
+      predict_url: "http://127.0.0.1:8001/predict"
+      info_url: "http://127.0.0.1:8001/info"
+      health_url: "http://127.0.0.1:8001/health"
+      response_schema: "predictions_v1"
+      audio_payload: "base64_wav"
+      auth: {}
+
+suite: "beans_zero_esc50_official"
+data_source: "hf"
+limit: 400
+run_id: "esc50_official_v11_full"
+output_dir: "results/esc50_official_v11_full"
+

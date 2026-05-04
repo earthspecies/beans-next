@@ -1,0 +1,9 @@
+beans_next_alarm_call_presence:
+  task_type: detection
+  data_source: esp_data
+  dataset: beans_next
+  subset: alarm-call-presence
+  split: alarm-call-presence
+  prompt: classification_beans_zero_official_v1
+  metrics:
+    - name: accuracy

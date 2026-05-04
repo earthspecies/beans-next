@@ -1,0 +1,5 @@
+beans_zero_esc50_official_hf:
+  description: ESC-50 official BEANS-Zero prompt + top1_accuracy (HF split=test).
+  eval_tasks:
+    - beans_zero_esc50_official_hf
+

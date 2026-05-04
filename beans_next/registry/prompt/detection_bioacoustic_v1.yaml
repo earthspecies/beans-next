@@ -1,0 +1,25 @@
+# Single-audio multi-label detection (comma-separated species / events).
+prompt_id: beans_next.prompt.detection_bioacoustic.v1
+messages:
+  - role: system
+    content: |
+      You are a bioacoustic sound-event detector. Reply with a comma-separated
+      list of labels from the vocabulary with no surrounding whitespace beyond
+      commas. Use the empty string if none apply.
+  - role: user
+    content: |
+      {{ audio_placeholder }}
+
+      Vocabulary (zero or more may apply):
+      {% for label in candidate_labels %}
+      - {{ label }}
+      {% endfor %}
+
+      Comma-separated labels:
+audio_slots:
+  - metadata_key: audio_path
+    payload_type: file_path
+    sample_rate: 16000
+generation_config:
+  max_tokens: 128
+  temperature: 0.0

@@ -1,0 +1,27 @@
+beans_zero:
+  hf_path: EarthSpeciesProject/BEANS-Zero
+  # revision: <optional pinned git sha or HF revision>
+  default_split: test
+  subsets:
+    - esc50
+    - cbi
+    - watkins
+    - humbugdb
+    - lifestage
+    - call-type
+    - unseen-species-cmn
+    - unseen-species-sci
+    - unseen-species-tax
+    - unseen-genus-cmn
+    - unseen-genus-sci
+    - unseen-genus-tax
+    - unseen-family-cmn
+    - unseen-family-sci
+    - unseen-family-tax
+    - zf-indiv
+    - enabirds
+    - hiceas
+    - rfcx
+    - gibbons
+    - dcase
+    - captioning

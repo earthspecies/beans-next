@@ -1,0 +1,7 @@
+beans_zero_smoke:
+  description: Minimal BEANS-Zero smoke suite (classification + detection + captioning).
+  eval_tasks:
+    - beans_zero_esc50
+    - beans_zero_enabirds
+    - beans_zero_captioning
+

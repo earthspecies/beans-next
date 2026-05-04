@@ -1,0 +1,19 @@
+{
+  "esc50": 5,
+  "watkins": 3,
+  "cbi": 10,
+  "humbugdb": 3,
+  "lifestage": 10,
+  "call-type": 10,
+  "unseen-species-cmn": 10,
+  "unseen-species-sci": 10,
+  "unseen-species-tax": 10,
+  "unseen-genus-cmn": 10,
+  "unseen-genus-sci": 10,
+  "unseen-genus-tax": 10,
+  "unseen-family-cmn": 10,
+  "unseen-family-sci": 10,
+  "unseen-family-tax": 10,
+  "captioning": 10,
+  "zf-indv": 10
+}

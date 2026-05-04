@@ -1,0 +1,4 @@
+# Minimal BEANS-Next dummy launcher (isolated venv).
+fastapi==0.115.12
+uvicorn[standard]==0.34.2
+pydantic==2.11.7

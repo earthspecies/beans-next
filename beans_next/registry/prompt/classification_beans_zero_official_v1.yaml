@@ -1,0 +1,12 @@
+prompt_id: beans_next.prompt.classification_beans_zero_official.v1
+messages:
+  - role: user
+    content: |
+      {{ metadata.instruction }}
+audio_slots:
+  - metadata_key: audio_path
+    payload_type: file_path
+    sample_rate: 16000
+generation_config:
+  max_tokens: 64
+  temperature: 0.0

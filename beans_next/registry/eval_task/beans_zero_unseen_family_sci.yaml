@@ -1,0 +1,57 @@
+beans_zero_unseen_family_sci:
+  task_type: classification
+  hf_path: EarthSpeciesProject/BEANS-Zero
+  subset: unseen-family-sci
+  split: test
+  prompt: classification_beans_zero_official_v1
+  metrics:
+    - name: accuracy
+    - name: f1
+      scorer_kwargs:
+        average: macro
+        zero_division: 0
+    - name: recall
+      scorer_kwargs:
+        average: macro
+        zero_division: 0
+    - name: precision
+      scorer_kwargs:
+        average: macro
+        zero_division: 0
+  labels:
+    - Alytes cisternasii
+    - Alytes muletensis
+    - Alytes obstetricans
+    - Babyrousa babyrussa
+    - Calyptophilus frugivorus
+    - Calyptophilus tertius
+    - Castor canadensis
+    - Castor fiber
+    - Cyphoderris buckelli
+    - Cyphoderris monstrosa
+    - Elachura formosa
+    - Euphlyctis cyanophlyctis
+    - Fejervarya cancrivora
+    - Fejervarya limnocharis
+    - Fejervarya multistriata
+    - Hoplobatrachus chinensis
+    - Hoplobatrachus occipitalis
+    - Hylochoerus meinertzhageni
+    - Minervarya agricola
+    - Minervarya nepalensis
+    - Minervarya rufescens
+    - Neophocaena phocaenoides
+    - Occidozyga lima
+    - Occidozyga martensii
+    - Occidozyga sumatrana
+    - Octodon degus
+    - Pelecanoides georgicus
+    - Pelecanoides urinatrix
+    - Phocoena phocoena
+    - Phocoenoides dalli
+    - Potamochoerus porcus
+    - Quasipaa exilispinosa
+    - Spalacopus cyanus
+    - Sphaerotheca rolandae
+    - Sus barbatus
+    - Sus scrofa

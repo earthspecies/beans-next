@@ -1,0 +1,2 @@
+{"schema_version":"beans_next.run_summary.v1","run_id":"fixture","library_version":"0.0.0","code_git_sha":null,"run_config_hash":null,"prompt_version":null,"postprocess_version":null,"scorer_versions":null,"model_identity":{},"seed":null,"n_samples":1,"n_errors":0,"metrics":{"mean":{"accuracy":1.0}},"task_results":null}
+

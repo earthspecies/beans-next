@@ -1,0 +1,29 @@
+# Zebra finch individual-ID (beans_zero_zf_indiv) — AF3 + esp_data (Slurm default)
+#
+# Uses `esp_data` so compute nodes stream BEANS-Zero JSONLs from GCS (no HF hub dependency).
+# Launcher URLs are localhost placeholders; `run_inference.sh` passes `--predict-url`
+# from the Slurm URL file and the runner rewrites info/health to match.
+#
+# Submit chain (serve GPU + CPU inference):
+#   bash examples/slurm/submit_beans_zero_zf_indiv_af3.sh
+#
+# License: NVIDIA OneWay Noncommercial License — research use only.
+
+models:
+  - inline:
+      name: "af3"
+      description: "Audio Flamingo Next (local launcher)"
+      predict_url: http://127.0.0.1:8000/predict
+      info_url: http://127.0.0.1:8000/info
+      health_url: http://127.0.0.1:8000/health
+      response_schema: predictions_v1
+      audio_payload: base64_wav
+      retry_policy:
+        max_attempts: 12
+        backoff_initial: 0.5
+        backoff_max: 10.0
+
+tasks:
+  - beans_zero_zf_indiv
+
+data_source: esp_data

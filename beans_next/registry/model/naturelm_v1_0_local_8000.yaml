@@ -1,0 +1,11 @@
+name: naturelm_v1_0_local_8000
+description: NatureLM v1.0 launcher preset for local development (port 8000).
+
+predict_url: http://localhost:8000/predict
+info_url: http://localhost:8000/info
+health_url: http://localhost:8000/health
+
+response_schema: predictions_v1
+audio_payload: base64_wav
+
+auth: {}

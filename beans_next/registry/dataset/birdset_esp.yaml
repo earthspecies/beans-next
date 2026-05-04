@@ -1,0 +1,16 @@
+birdset_esp:
+  # BirdSet v0.1.0 (esp_data) — 8 evaluation subsets, test_5s splits only.
+  # GCS audio root: gs://esp-ml-datasets/birdset/v0.1.0/raw/
+  # Split paths: gs://esp-ml-datasets/birdset/v0.1.0/raw/{SUBSET}_test_5s.csv
+  data_source: esp_data
+  dataset: birdset
+  default_split: HSN-test_5s
+  subsets:
+    - HSN-test_5s
+    - NBP-test_5s
+    - NES-test_5s
+    - PER-test_5s
+    - POW-test_5s
+    - SSW-test_5s
+    - SNE-test_5s
+    - UHH-test_5s

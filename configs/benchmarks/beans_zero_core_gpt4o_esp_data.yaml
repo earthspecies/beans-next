@@ -1,0 +1,29 @@
+# Full BEANS-Zero core evaluation (all subsets) — GPT-4o audio (OpenAI-compatible) (esp_data)
+#
+# Uses `esp_data` as the dataset backend, which typically streams from the
+# BEANS-Zero raw JSONLs in GCS (subset-specific `*_test.jsonl`).
+#
+# Prereqs: OpenAI-compatible proxy on port 8000 (configured for GPT-4o audio)
+#   cd examples/servers/openai_compatible_proxy
+#   PORT=8000 ./serve.sh
+#
+# Run:
+#   uv run beans-next run --config configs/benchmarks/beans_zero_core_gpt4o_esp_data.yaml \
+#     -o results/gpt4o_esp_data_$(date +%Y%m%d)
+
+models:
+  - inline:
+      name: "gpt4o"
+      description: "GPT-4o audio via OpenAI-compatible proxy (local)"
+      predict_url: http://127.0.0.1:8000/predict
+      info_url: http://127.0.0.1:8000/info
+      health_url: http://127.0.0.1:8000/health
+      response_schema: predictions_v1
+      audio_payload: base64_wav
+      retry_policy:
+        max_attempts: 12
+        backoff_initial: 0.5
+        backoff_max: 10.0
+
+suite: beans_zero_core
+data_source: esp_data

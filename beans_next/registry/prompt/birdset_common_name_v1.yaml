@@ -1,0 +1,13 @@
+prompt_id: beans_next.prompt.birdset_common_name.v1
+messages:
+  - role: user
+    content: |
+      <Audio><AudioHere></Audio>
+      What is the common name of the focal species in the audio?
+audio_slots:
+  - metadata_key: audio_path
+    payload_type: file_path
+    sample_rate: 16000
+generation_config:
+  max_tokens: 64
+  temperature: 0.0

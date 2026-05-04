@@ -1,0 +1,14 @@
+beans_next_multiaudio:
+  data_source: hf
+  dataset: beans_next_multiaudio
+  hf_path: EarthSpeciesProject/BEANS-Next
+  default_split: test
+  tier: tier_4_in_context
+  subsets:
+    - gibbon-fewshot-detection-balanced
+    - giant-otter-4way
+    - dcase-fewshot-detection-balanced
+    - crow-4way
+    - zebra-4way
+    - unseen-species-4way
+

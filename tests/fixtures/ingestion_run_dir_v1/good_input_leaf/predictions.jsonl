@@ -1,0 +1,2 @@
+{"schema_version":"predictions_v1","sample_id":"fixture:0001","predictions":["sparrow"],"error":null,"server_info":{"name":"fixture-launcher","model":"fixture-model","model_revision":"fixture-rev","audio_payload_types":["base64_wav"],"max_batch_size":1,"supports_batching":true,"schema_versions":["predictions_v1"]}}
+

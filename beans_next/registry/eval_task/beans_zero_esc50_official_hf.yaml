@@ -1,0 +1,12 @@
+beans_zero_esc50_official_hf:
+  task_type: classification
+  hf_path: EarthSpeciesProject/BEANS-Zero
+  subset: esc50
+  # HF dataset only exposes "test" (the internal esp_data backend uses "esc50").
+  split: test
+  prompt: classification_beans_zero_official_v1
+  metrics:
+    - name: top1_accuracy
+      scorer_kwargs:
+        label_separator: ","
+

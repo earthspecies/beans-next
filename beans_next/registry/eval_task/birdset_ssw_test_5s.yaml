@@ -1,0 +1,175 @@
+birdset_ssw_test_5s:
+  task_type: open_ended
+  data_source: esp_data
+  dataset: birdset
+  subset: SSW-test_5s
+  split: SSW-test_5s
+  prompt: birdset_species_v1
+  metrics:
+    - name: top1_accuracy
+      scorer_kwargs:
+        label_separator: ','
+  labels:
+    - Alder Flycatcher
+    - American Crow
+    - American Goldfinch
+    - American Redstart
+    - American Robin
+    - American Woodcock
+    - Baltimore Oriole
+    - Barred Owl
+    - Belted Kingfisher
+    - Black-capped Chickadee
+    - Black-crowned Night Heron
+    - Black-throated Green Warbler
+    - Blackburnian Warbler
+    - Blue Jay
+    - Blue-headed Vireo
+    - Blue-winged Warbler
+    - Bobolink
+    - Brown Creeper
+    - Brown-headed Cowbird
+    - Canada Goose
+    - Cedar Waxwing
+    - Chestnut-sided Warbler
+    - Common Grackle
+    - Common Raven
+    - Common Yellowthroat
+    - Cooper's Hawk
+    - Dark-eyed Junco
+    - Downy Woodpecker
+    - Eastern Bluebird
+    - Eastern Kingbird
+    - Eastern Phoebe
+    - Eastern Towhee
+    - Eastern Wood-Pewee
+    - Eastern/Western Warbling Vireo
+    - European Starling
+    - Golden-crowned Kinglet
+    - Gray Catbird
+    - Great Blue Heron
+    - Great Crested Flycatcher
+    - Hairy Woodpecker
+    - Hermit Thrush
+    - Hooded Warbler
+    - House Finch
+    - Killdeer
+    - Mallard
+    - Mourning Dove
+    - Nashville Warbler
+    - Northern Cardinal
+    - Northern Flicker
+    - Northern House Wren
+    - Northern Waterthrush
+    - Northern/Mangrove Yellow Warbler
+    - Ovenbird
+    - Pileated Woodpecker
+    - Pine Siskin
+    - Purple Finch
+    - Red Crossbill
+    - Red-bellied Woodpecker
+    - Red-breasted Nuthatch
+    - Red-eyed Vireo
+    - Red-winged Blackbird
+    - Ring-billed Gull
+    - Rose-breasted Grosbeak
+    - Ruby-crowned Kinglet
+    - Rusty Blackbird
+    - Scarlet Tanager
+    - Snow Goose
+    - Solitary Sandpiper
+    - Song Sparrow
+    - Swamp Sparrow
+    - Tree Swallow
+    - Tufted Titmouse
+    - Tundra Swan
+    - Veery
+    - White-breasted Nuthatch
+    - White-throated Sparrow
+    - Wood Duck
+    - Wood Thrush
+    - Yellow-bellied Sapsucker
+    - Yellow-rumped Warbler
+    - Yellow-throated Vireo
+  scientific_labels:
+    - Accipiter cooperii
+    - Agelaius phoeniceus
+    - Aix sponsa
+    - Anas platyrhynchos
+    - Anser caerulescens
+    - Ardea herodias
+    - Baeolophus bicolor
+    - Bombycilla cedrorum
+    - Branta canadensis
+    - Cardinalis cardinalis
+    - Catharus fuscescens
+    - Catharus guttatus
+    - Certhia americana
+    - Charadrius vociferus
+    - Colaptes auratus
+    - Contopus virens
+    - Corvus brachyrhynchos
+    - Corvus corax
+    - Cyanocitta cristata
+    - Cygnus columbianus
+    - Dolichonyx oryzivorus
+    - Dryobates pubescens
+    - Dryocopus pileatus
+    - Dumetella carolinensis
+    - Empidonax alnorum
+    - Euphagus carolinus
+    - Geothlypis trichas
+    - Haemorhous mexicanus
+    - Haemorhous purpureus
+    - Hylocichla mustelina
+    - Icterus galbula
+    - Junco hyemalis
+    - Larus delawarensis
+    - Leiothlypis ruficapilla
+    - Leuconotopicus villosus
+    - Loxia curvirostra
+    - Megaceryle alcyon
+    - Melanerpes carolinus
+    - Melospiza georgiana
+    - Melospiza melodia
+    - Molothrus ater
+    - Myiarchus crinitus
+    - Nycticorax nycticorax
+    - Parkesia noveboracensis
+    - Pheucticus ludovicianus
+    - Pipilo erythrophthalmus
+    - Piranga olivacea
+    - Poecile atricapillus
+    - Quiscalus quiscula
+    - Regulus calendula
+    - Regulus satrapa
+    - Sayornis phoebe
+    - Scolopax minor
+    - Seiurus aurocapilla
+    - Setophaga citrina
+    - Setophaga coronata
+    - Setophaga fusca
+    - Setophaga pensylvanica
+    - Setophaga petechia
+    - Setophaga ruticilla
+    - Setophaga virens
+    - Sialia sialis
+    - Sitta canadensis
+    - Sitta carolinensis
+    - Sphyrapicus varius
+    - Spinus pinus
+    - Spinus tristis
+    - Strix varia
+    - Sturnus vulgaris
+    - Tachycineta bicolor
+    - Tringa solitaria
+    - Troglodytes aedon
+    - Turdus migratorius
+    - Tyrannus tyrannus
+    - Vermivora cyanoptera
+    - Vireo flavifrons
+    - Vireo gilvus
+    - Vireo olivaceus
+    - Vireo solitarius
+    - Zenaida macroura
+    - Zonotrichia albicollis

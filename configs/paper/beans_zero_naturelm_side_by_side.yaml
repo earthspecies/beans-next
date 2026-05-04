@@ -1,0 +1,43 @@
+# Paper workflow scaffold: NatureLM-audio v1.0 vs v1.1 (side-by-side)
+#
+# This file is intentionally usable as documentation even before `beans-next run --config`
+# is wired (iteration-1 runner reads `--suite` + `--predict-url`).
+#
+# Degraded mode (documented behavior)
+# -------------------------------
+# If only one launcher is running (for example v1.1 is gated and you lack `HF_TOKEN`,
+# or port 8001 is unavailable), `scripts/reproduce_all.sh` will:
+# - run BEANS-Zero against the healthy endpoint(s)
+# - skip the missing endpoint with a clear warning
+#
+# Intended launcher endpoints (HTTP contract: /predict, /info, /health)
+# - v1.0: http://localhost:8000
+# - v1.1: http://localhost:8001
+#
+# Suite
+# - BEANS-Zero: beans_next/registry/suite/beans_zero_core.yaml
+
+paper_id: beans_zero_naturelm_side_by_side
+description: Side-by-side NatureLM-audio v1.0 vs v1.1 on BEANS-Zero.
+
+suite: beans_zero_core
+
+models:
+  naturelm_v1_0:
+    preset: naturelm_v1_0_local_8000
+    launcher:
+      kind: naturelm-v1.0
+      workdir: examples/servers/naturelm-v1.0
+      serve_sh: ./serve.sh
+      port: 8000
+  naturelm_v1_1:
+    preset: naturelm_v1_1_local_8001
+    launcher:
+      kind: naturelm-v1.1
+      workdir: examples/servers/naturelm-v1.1
+      serve_sh: ./serve.sh
+      port: 8001
+      requires:
+        env:
+          - HF_TOKEN
+

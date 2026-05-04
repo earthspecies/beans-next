@@ -1,0 +1,124 @@
+birdset_sne_test_5s:
+  task_type: open_ended
+  data_source: esp_data
+  dataset: birdset
+  subset: SNE-test_5s
+  split: SNE-test_5s
+  prompt: birdset_species_v1
+  metrics:
+    - name: top1_accuracy
+      scorer_kwargs:
+        label_separator: ','
+  labels:
+    - Acorn Woodpecker
+    - American Goldfinch
+    - American Robin
+    - Anna's Hummingbird
+    - Band-tailed Pigeon
+    - Bewick's Wren
+    - Black-headed Grosbeak
+    - Black-throated Gray Warbler
+    - Brown Creeper
+    - Brown-headed Cowbird
+    - Canada Goose
+    - Cassin's Finch
+    - Cassin's Vireo
+    - Chestnut-backed Chickadee
+    - Common Raven
+    - Dark-eyed Junco
+    - Dusky Flycatcher
+    - Eastern/Western Warbling Vireo
+    - Evening Grosbeak
+    - Fox Sparrow
+    - Golden-crowned Kinglet
+    - Green-tailed Towhee
+    - Hammond's Flycatcher
+    - Hermit Thrush
+    - Hermit Warbler
+    - Hutton's Vireo
+    - Lazuli Bunting
+    - Lincoln's Sparrow
+    - MacGillivray's Warbler
+    - Mountain Chickadee
+    - Mountain Quail
+    - Mourning Dove
+    - Nashville Warbler
+    - Northern Flicker
+    - Northern House Wren
+    - Olive-sided Flycatcher
+    - Orange-crowned Warbler
+    - Pine Siskin
+    - Purple Finch
+    - Red Crossbill
+    - Red-breasted Nuthatch
+    - Ruby-crowned Kinglet
+    - Spotted Towhee
+    - Steller's Jay
+    - Swainson's Thrush
+    - Townsend's Solitaire
+    - Townsend's Warbler
+    - Vesper Sparrow
+    - Western Flycatcher (Pacific-slope)
+    - Western Tanager
+    - Western Wood-Pewee
+    - White-crowned Sparrow
+    - White-headed Woodpecker
+    - Williamson's Sapsucker
+    - Wilson's Warbler
+    - Yellow-rumped Warbler
+  scientific_labels:
+    - Branta canadensis
+    - Calypte anna
+    - Cardellina pusilla
+    - Catharus guttatus
+    - Catharus ustulatus
+    - Certhia americana
+    - Colaptes auratus
+    - Contopus cooperi
+    - Contopus sordidulus
+    - Corvus corax
+    - Cyanocitta stelleri
+    - Empidonax hammondii
+    - Empidonax oberholseri
+    - Geothlypis tolmiei
+    - Haemorhous cassinii
+    - Haemorhous purpureus
+    - Hesperiphona vespertina
+    - Junco hyemalis
+    - Leiothlypis celata
+    - Leiothlypis ruficapilla
+    - Leuconotopicus albolarvatus
+    - Loxia curvirostra
+    - Melanerpes formicivorus
+    - Melospiza lincolnii
+    - Molothrus ater
+    - Myadestes townsendi
+    - Oreortyx pictus
+    - Passerella iliaca
+    - Passerina amoena
+    - Patagioenas fasciata
+    - Pheucticus melanocephalus
+    - Pipilo chlorurus
+    - Pipilo maculatus
+    - Piranga ludoviciana
+    - Poecile gambeli
+    - Poecile rufescens
+    - Pooecetes gramineus
+    - Regulus calendula
+    - Regulus satrapa
+    - Setophaga coronata
+    - Setophaga nigrescens
+    - Setophaga occidentalis
+    - Setophaga townsendi
+    - Sitta canadensis
+    - Sphyrapicus thyroideus
+    - Spinus pinus
+    - Spinus tristis
+    - Thryomanes bewickii
+    - Troglodytes aedon
+    - Turdus migratorius
+    - Vireo cassinii
+    - Vireo gilvus
+    - Vireo huttoni
+    - Zenaida macroura
+    - Zonotrichia leucophrys

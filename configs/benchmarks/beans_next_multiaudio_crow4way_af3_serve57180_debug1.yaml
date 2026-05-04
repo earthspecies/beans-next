@@ -1,0 +1,16 @@
+# Debug config: Beans-Pro MultiAudio crow 4-way — AF3 (limit=1)
+models:
+  - inline:
+      name: af3_serve57180
+      predict_url: http://10.128.0.117:8002/predict
+      info_url: http://10.128.0.117:8002/info
+      health_url: http://10.128.0.117:8002/health
+      response_schema: predictions_v1
+      audio_payload: base64_wav
+
+tasks:
+  - beans_next_multiaudio_crow_4way
+
+data_source: esp_data
+limit: 1
+

@@ -1,0 +1,57 @@
+beans_zero_unseen_family_tax:
+  task_type: classification
+  hf_path: EarthSpeciesProject/BEANS-Zero
+  subset: unseen-family-tax
+  split: test
+  prompt: classification_beans_zero_official_v1
+  metrics:
+    - name: accuracy
+    - name: f1
+      scorer_kwargs:
+        average: macro
+        zero_division: 0
+    - name: recall
+      scorer_kwargs:
+        average: macro
+        zero_division: 0
+    - name: precision
+      scorer_kwargs:
+        average: macro
+        zero_division: 0
+  labels:
+    - Arthropoda Insecta Orthoptera Prophalangopsidae Cyphoderris buckelli
+    - Arthropoda Insecta Orthoptera Prophalangopsidae Cyphoderris monstrosa
+    - Chordata Amphibia Anura Alytidae Alytes cisternasii
+    - Chordata Amphibia Anura Alytidae Alytes muletensis
+    - Chordata Amphibia Anura Alytidae Alytes obstetricans
+    - Chordata Amphibia Anura Dicroglossidae Euphlyctis cyanophlyctis
+    - Chordata Amphibia Anura Dicroglossidae Fejervarya cancrivora
+    - Chordata Amphibia Anura Dicroglossidae Fejervarya limnocharis
+    - Chordata Amphibia Anura Dicroglossidae Fejervarya multistriata
+    - Chordata Amphibia Anura Dicroglossidae Hoplobatrachus chinensis
+    - Chordata Amphibia Anura Dicroglossidae Hoplobatrachus occipitalis
+    - Chordata Amphibia Anura Dicroglossidae Minervarya agricola
+    - Chordata Amphibia Anura Dicroglossidae Minervarya nepalensis
+    - Chordata Amphibia Anura Dicroglossidae Minervarya rufescens
+    - Chordata Amphibia Anura Dicroglossidae Occidozyga lima
+    - Chordata Amphibia Anura Dicroglossidae Occidozyga martensii
+    - Chordata Amphibia Anura Dicroglossidae Occidozyga sumatrana
+    - Chordata Amphibia Anura Dicroglossidae Quasipaa exilispinosa
+    - Chordata Amphibia Anura Dicroglossidae Sphaerotheca rolandae
+    - Chordata Aves Passeriformes Calyptophilidae Calyptophilus frugivorus
+    - Chordata Aves Passeriformes Calyptophilidae Calyptophilus tertius
+    - Chordata Aves Passeriformes Elachuridae Elachura formosa
+    - Chordata Aves Procellariiformes Pelecanoididae Pelecanoides georgicus
+    - Chordata Aves Procellariiformes Pelecanoididae Pelecanoides urinatrix
+    - Chordata Mammalia Artiodactyla Suidae Babyrousa babyrussa
+    - Chordata Mammalia Artiodactyla Suidae Hylochoerus meinertzhageni
+    - Chordata Mammalia Artiodactyla Suidae Potamochoerus porcus
+    - Chordata Mammalia Artiodactyla Suidae Sus barbatus
+    - Chordata Mammalia Artiodactyla Suidae Sus scrofa
+    - Chordata Mammalia Cetacea Phocoenidae Neophocaena phocaenoides
+    - Chordata Mammalia Cetacea Phocoenidae Phocoena phocoena
+    - Chordata Mammalia Cetacea Phocoenidae Phocoenoides dalli
+    - Chordata Mammalia Rodentia Castoridae Castor canadensis
+    - Chordata Mammalia Rodentia Castoridae Castor fiber
+    - Chordata Mammalia Rodentia Octodontidae Octodon degus
+    - Chordata Mammalia Rodentia Octodontidae Spalacopus cyanus

@@ -1,0 +1,30 @@
+# Full BEANS-Zero core evaluation — Qwen3-Omni-7B (via vLLM adapter)
+#
+# Prereqs: two processes running
+#   Terminal 1 — vLLM backend:
+#     HF_HOME=/scratch/shared/hf_cache \
+#       vllm serve Qwen/Qwen3-Omni-7B --host 127.0.0.1 --port 8001
+#
+#   Terminal 2 — BEANS-Next adapter (once vLLM is healthy):
+#     cd examples/servers/vllm
+#     VLLM_ADAPTER_STUB=0 \
+#       VLLM_UPSTREAM_BASE_URL=http://127.0.0.1:8001 \
+#       VLLM_MODEL_ID=Qwen/Qwen3-Omni-7B \
+#       PORT=8000 ./serve.sh
+#
+# Run:
+#   uv run beans-next run --config configs/benchmarks/beans_zero_core_qwen3_omni.yaml \
+#     -o results/qwen3_omni_$(date +%Y%m%d)
+
+models:
+  - inline:
+      name: "qwen3-omni"
+      description: "Qwen3-Omni via vLLM adapter (local)"
+      predict_url: http://127.0.0.1:8000/predict
+      info_url: http://127.0.0.1:8000/info
+      health_url: http://127.0.0.1:8000/health
+      response_schema: predictions_v1
+      audio_payload: base64_wav
+
+suite: beans_zero_core
+data_source: hf

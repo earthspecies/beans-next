@@ -1,0 +1,8 @@
+beans_zero_captioning:
+  task_type: captioning
+  hf_path: EarthSpeciesProject/BEANS-Zero
+  subset: captioning
+  split: test
+  prompt: captioning_bioacoustic_v1
+  metrics:
+    - name: cider

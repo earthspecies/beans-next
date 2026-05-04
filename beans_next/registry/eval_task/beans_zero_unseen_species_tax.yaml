@@ -1,0 +1,221 @@
+beans_zero_unseen_species_tax:
+  task_type: classification
+  hf_path: EarthSpeciesProject/BEANS-Zero
+  subset: unseen-species-tax
+  split: test
+  prompt: classification_beans_zero_official_v1
+  metrics:
+    - name: accuracy
+    - name: f1
+      scorer_kwargs:
+        average: macro
+        zero_division: 0
+    - name: recall
+      scorer_kwargs:
+        average: macro
+        zero_division: 0
+    - name: precision
+      scorer_kwargs:
+        average: macro
+        zero_division: 0
+  labels:
+    - Arthropoda Insecta Hemiptera Cicadidae Magicicada tredecassini
+    - Arthropoda Insecta Hemiptera Cicadidae Okanagana occidentalis
+    - Arthropoda Insecta Hemiptera Cicadidae Psaltoda adonis
+    - Arthropoda Insecta Orthoptera Acrididae Chorthippus acroleucus
+    - Arthropoda Insecta Orthoptera Gryllidae Gryllus bermudensis
+    - Arthropoda Insecta Orthoptera Gryllidae Gryllus cohni
+    - Arthropoda Insecta Orthoptera Gryllidae Oecanthus californicus
+    - Arthropoda Insecta Orthoptera Gryllidae Oecanthus celerinictus
+    - Arthropoda Insecta Orthoptera Gryllidae Oecanthus nigricornis
+    - Arthropoda Insecta Orthoptera Tettigoniidae Orchelimum silvaticum
+    - Chordata Amphibia Anura Bufonidae Bufotes boulengeri
+    - Chordata Amphibia Anura Eleutherodactylidae Eleutherodactylus unicolor
+    - Chordata Amphibia Anura Hylidae Dendropsophus joannae
+    - Chordata Amphibia Anura Hylidae Dendropsophus sanborni
+    - Chordata Amphibia Anura Hylidae Hyla andersonii
+    - Chordata Amphibia Anura Hylidae Hyla eximia
+    - Chordata Amphibia Anura Hyperoliidae Hyperolius parallelus
+    - Chordata Amphibia Anura Hyperoliidae Hyperolius pictus
+    - Chordata Amphibia Anura Hyperoliidae Hyperolius stictus
+    - Chordata Amphibia Anura Leptodactylidae Leptodactylus natalensis
+    - Chordata Amphibia Anura Pelodryadidae Litoria latopalmata
+    - Chordata Amphibia Anura Pelodryadidae Litoria tyleri
+    - Chordata Amphibia Anura Pelodryadidae Ranoidea aurea
+    - Chordata Amphibia Anura Pelodryadidae Ranoidea nudidigita
+    - Chordata Amphibia Anura Ranidae Rana dalmatina
+    - Chordata Aves Accipitriformes Accipitridae Accipiter collaris
+    - Chordata Aves Accipitriformes Accipitridae Buteo japonicus
+    - Chordata Aves Accipitriformes Accipitridae Buteo trizonatus
+    - Chordata Aves Accipitriformes Accipitridae Circus buffoni
+    - Chordata Aves Accipitriformes Accipitridae Circus cinereus
+    - Chordata Aves Anseriformes Anatidae Anas capensis
+    - Chordata Aves Anseriformes Anatidae Anas penelope
+    - Chordata Aves Apodiformes Apodidae Apus bradfieldi
+    - Chordata Aves Apodiformes Trochilidae Amazilia luciae
+    - Chordata Aves Apodiformes Trochilidae Heliodoxa branickii
+    - Chordata Aves Apodiformes Trochilidae Heliodoxa gularis
+    - Chordata Aves Apodiformes Trochilidae Metallura aeneocauda
+    - Chordata Aves Apodiformes Trochilidae Phaethornis idaliae
+    - Chordata Aves Apodiformes Trochilidae Saucerottia cyanura
+    - Chordata Aves Bucerotiformes Bucerotidae Rhyticeros subruficollis
+    - Chordata Aves Bucerotiformes Bucerotidae Rhyticeros undulatus
+    - Chordata Aves Caprimulgiformes Caprimulgidae Caprimulgus andamanicus
+    - Chordata Aves Caprimulgiformes Caprimulgidae Caprimulgus pulchellus
+    - Chordata Aves Charadriiformes Charadriidae Charadrius montanus
+    - Chordata Aves Charadriiformes Charadriidae Vanellus tricolor
+    - Chordata Aves Charadriiformes Haematopodidae Haematopus chathamensis
+    - Chordata Aves Charadriiformes Laridae Chlidonias albostriatus
+    - Chordata Aves Charadriiformes Recurvirostridae Recurvirostra novaehollandiae
+    - Chordata Aves Columbiformes Columbidae Columba arquatrix
+    - Chordata Aves Columbiformes Columbidae Columba pollenii
+    - Chordata Aves Columbiformes Columbidae Columba rupestris
+    - Chordata Aves Columbiformes Columbidae Ducula luctuosa
+    - Chordata Aves Columbiformes Columbidae Geotrygon chrysia
+    - Chordata Aves Columbiformes Columbidae Treron affinis
+    - Chordata Aves Coraciiformes Alcedinidae Alcedo semitorquata
+    - Chordata Aves Coraciiformes Meropidae Merops mentalis
+    - Chordata Aves Falconiformes Falconidae Falco cherrug
+    - Chordata Aves Falconiformes Falconidae Falco concolor
+    - Chordata Aves Galliformes Odontophoridae Odontophorus dialeucos
+    - Chordata Aves Galliformes Phasianidae Pternistis harwoodi
+    - Chordata Aves Galliformes Phasianidae Pternistis icterorhynchus
+    - Chordata Aves Gruiformes Rallidae Rallus madagascariensis
+    - Chordata Aves Passeriformes Acanthizidae Gerygone fusca
+    - Chordata Aves Passeriformes Alaudidae Mirafra gilletti
+    - Chordata Aves Passeriformes Artamidae Artamus monachus
+    - Chordata Aves Passeriformes Campephagidae Ceblepyris caesius
+    - Chordata Aves Passeriformes Campephagidae Celebesica abbotti
+    - Chordata Aves Passeriformes Certhiidae Certhia nipalensis
+    - Chordata Aves Passeriformes Chloropseidae Chloropsis flavipennis
+    - Chordata Aves Passeriformes Cisticolidae Apalis chariessa
+    - Chordata Aves Passeriformes Cisticolidae Cisticola brunnescens
+    - Chordata Aves Passeriformes Climacteridae Climacteris melanurus
+    - Chordata Aves Passeriformes Corvidae Pica mauritanica
+    - Chordata Aves Passeriformes Dicaeidae Dicaeum pygmaeum
+    - Chordata Aves Passeriformes Dicruridae Dicrurus lophorinus
+    - Chordata Aves Passeriformes Estrildidae Estrilda ochrogaster
+    - Chordata Aves Passeriformes Estrildidae Lonchura flaviprymna
+    - Chordata Aves Passeriformes Fringillidae Carpodacus rodopeplus
+    - Chordata Aves Passeriformes Fringillidae Carpodacus roseus
+    - Chordata Aves Passeriformes Fringillidae Carpodacus trifasciatus
+    - Chordata Aves Passeriformes Furnariidae Asthenes arequipae
+    - Chordata Aves Passeriformes Furnariidae Thripophaga amacurensis
+    - Chordata Aves Passeriformes Furnariidae Xiphocolaptes falcirostris
+    - Chordata Aves Passeriformes Grallariidae Myrmothera fulviventris
+    - Chordata Aves Passeriformes Hirundinidae Hirundo domicola
+    - Chordata Aves Passeriformes Hirundinidae Petrochelidon rufocollaris
+    - Chordata Aves Passeriformes Hirundinidae Progne dominicensis
+    - Chordata Aves Passeriformes Icteridae Psarocolius cassini
+    - Chordata Aves Passeriformes Icteridae Quiscalus nicaraguensis
+    - Chordata Aves Passeriformes Laniidae Lanius newtoni
+    - Chordata Aves Passeriformes Meliphagidae Manorina melanotis
+    - Chordata Aves Passeriformes Meliphagidae Myzomela cineracea
+    - Chordata Aves Passeriformes Meliphagidae Myzomela nigrita
+    - Chordata Aves Passeriformes Meliphagidae Philemon meyeri
+    - Chordata Aves Passeriformes Monarchidae Monarcha frater
+    - Chordata Aves Passeriformes Monarchidae Symposiachrus infelix
+    - Chordata Aves Passeriformes Monarchidae Symposiachrus vidua
+    - Chordata Aves Passeriformes Motacillidae Anthus brachyurus
+    - Chordata Aves Passeriformes Motacillidae Anthus sokokensis
+    - Chordata Aves Passeriformes Muscicapidae Brachypteryx sinensis
+    - Chordata Aves Passeriformes Muscicapidae Ficedula disposita
+    - Chordata Aves Passeriformes Muscicapidae Ficedula nigrorufa
+    - Chordata Aves Passeriformes Muscicapidae Muscicapa segregata
+    - Chordata Aves Passeriformes Muscicapidae Oenanthe dubia
+    - Chordata Aves Passeriformes Muscicapidae Oenanthe lugens
+    - Chordata Aves Passeriformes Muscicapidae Oenanthe xanthoprymna
+    - Chordata Aves Passeriformes Muscicapidae Sholicola major
+    - Chordata Aves Passeriformes Nectariniidae Aethopyga ignicauda
+    - Chordata Aves Passeriformes Nectariniidae Aethopyga shelleyi
+    - Chordata Aves Passeriformes Nectariniidae Anthreptes reichenowi
+    - Chordata Aves Passeriformes Nectariniidae Arachnothera dilutior
+    - Chordata Aves Passeriformes Nectariniidae Chalcomitra balfouri
+    - Chordata Aves Passeriformes Nectariniidae Cinnyris johannae
+    - Chordata Aves Passeriformes Nectariniidae Cinnyris tsavoensis
+    - Chordata Aves Passeriformes Nectariniidae Cyanomitra bannermani
+    - Chordata Aves Passeriformes Pachycephalidae Colluricincla obscura
+    - Chordata Aves Passeriformes Pachycephalidae Pachycephala feminina
+    - Chordata Aves Passeriformes Pachycephalidae Pachycephala lanioides
+    - Chordata Aves Passeriformes Pachycephalidae Pachycephala lorentzi
+    - Chordata Aves Passeriformes Pachycephalidae Pachycephala modesta
+    - Chordata Aves Passeriformes Pachycephalidae Pachycephala soror
+    - Chordata Aves Passeriformes Paridae Machlolophus aplonotus
+    - Chordata Aves Passeriformes Paridae Melaniparus fasciiventer
+    - Chordata Aves Passeriformes Paridae Melaniparus fringillinus
+    - Chordata Aves Passeriformes Paridae Poecile hypermelaenus
+    - Chordata Aves Passeriformes Parulidae Myiothlypis chrysogaster
+    - Chordata Aves Passeriformes Passerellidae Arremonops tocuyensis
+    - Chordata Aves Passeriformes Passerellidae Atlapetes meridae
+    - Chordata Aves Passeriformes Passeridae Passer gongonensis
+    - Chordata Aves Passeriformes Passeridae Passer insularis
+    - Chordata Aves Passeriformes Petroicidae Petroica polymorpha
+    - Chordata Aves Passeriformes Petroicidae Petroica pusilla
+    - Chordata Aves Passeriformes Phylloscopidae Phylloscopus misoriensis
+    - Chordata Aves Passeriformes Platysteiridae Platysteira albifrons
+    - Chordata Aves Passeriformes Ploceidae Ploceus alienus
+    - Chordata Aves Passeriformes Ploceidae Ploceus heuglini
+    - Chordata Aves Passeriformes Ploceidae Ploceus katangae
+    - Chordata Aves Passeriformes Ploceidae Ploceus pelzelni
+    - Chordata Aves Passeriformes Polioptilidae Polioptila facilis
+    - Chordata Aves Passeriformes Psophodidae Cinclosoma marginatum
+    - Chordata Aves Passeriformes Pycnonotidae Pycnonotus blanfordi
+    - Chordata Aves Passeriformes Pycnonotidae Pycnonotus penicillatus
+    - Chordata Aves Passeriformes Rhipiduridae Rhipidura kubaryi
+    - Chordata Aves Passeriformes Rhipiduridae Rhipidura semirubra
+    - Chordata Aves Passeriformes Sittidae Sitta castanea
+    - Chordata Aves Passeriformes Sittidae Sitta leucopsis
+    - Chordata Aves Passeriformes Sturnidae Aplonis magna
+    - Chordata Aves Passeriformes Thamnophilidae Herpsilochmus motacilloides
+    - Chordata Aves Passeriformes Thamnophilidae Herpsilochmus roraimae
+    - Chordata Aves Passeriformes Thamnophilidae Myrmelastes caurensis
+    - Chordata Aves Passeriformes Thamnophilidae Thamnophilus insignis
+    - Chordata Aves Passeriformes Thraupidae Kleinothraupis reyi
+    - Chordata Aves Passeriformes Thraupidae Microspingus trifasciatus
+    - Chordata Aves Passeriformes Thraupidae Saltator cinctus
+    - Chordata Aves Passeriformes Thraupidae Saltator maxillosus
+    - Chordata Aves Passeriformes Thraupidae Sporophila nigrorufa
+    - Chordata Aves Passeriformes Thraupidae Thlypopsis fulviceps
+    - Chordata Aves Passeriformes Thraupidae Thlypopsis inornata
+    - Chordata Aves Passeriformes Timaliidae Mixornis kelleyi
+    - Chordata Aves Passeriformes Turdidae Geokichla wardii
+    - Chordata Aves Passeriformes Turdidae Zoothera mollissima
+    - Chordata Aves Passeriformes Tyrannidae Empidonomus aurantioatrocristatus
+    - Chordata Aves Passeriformes Tyrannidae Inezia subflava
+    - Chordata Aves Passeriformes Tyrannidae Knipolegus cyanirostris
+    - Chordata Aves Passeriformes Tyrannidae Knipolegus lophotes
+    - Chordata Aves Passeriformes Tyrannidae Sirystes subcanescens
+    - Chordata Aves Passeriformes Vireonidae Vireo osburni
+    - Chordata Aves Passeriformes Zosteropidae Zosterops chloronothos
+    - Chordata Aves Passeriformes Zosteropidae Zosterops cinereus
+    - Chordata Aves Passeriformes Zosteropidae Zosterops mysorensis
+    - Chordata Aves Passeriformes Zosteropidae Zosterops vellalavella
+    - Chordata Aves Pelecaniformes Ardeidae Egretta picata
+    - Chordata Aves Pelecaniformes Ardeidae Ixobrychus sturmii
+    - Chordata Aves Pelecaniformes Threskiornithidae Bostrychia olivacea
+    - Chordata Aves Piciformes Bucconidae Bucco noanamae
+    - Chordata Aves Piciformes Lybiidae Lybius rubrifacies
+    - Chordata Aves Piciformes Lybiidae Trachyphonus margaritatus
+    - Chordata Aves Piciformes Picidae Campethera bennettii
+    - Chordata Aves Piciformes Picidae Dryocopus schulzii
+    - Chordata Aves Piciformes Picidae Melanerpes herminieri
+    - Chordata Aves Piciformes Picidae Picumnus spilogaster
+    - Chordata Aves Piciformes Picidae Picus dedemi
+    - Chordata Aves Piciformes Ramphastidae Aulacorhynchus whitelianus
+    - Chordata Aves Procellariiformes Procellariidae Ardenna carneipes
+    - Chordata Aves Procellariiformes Procellariidae Ardenna grisea
+    - Chordata Aves Procellariiformes Procellariidae Puffinus assimilis
+    - Chordata Aves Procellariiformes Procellariidae Puffinus opisthomelas
+    - Chordata Aves Psittaciformes Psittacidae Agapornis pullarius
+    - Chordata Aves Psittaciformes Psittacidae Amazona dufresniana
+    - Chordata Aves Psittaciformes Psittacidae Amazona versicolor
+    - Chordata Aves Psittaciformes Psittacidae Pyrrhura griseipectus
+    - Chordata Aves Psittaciformes Psittacidae Touit batavicus
+    - Chordata Aves Pteroclidiformes Pteroclididae Pterocles personatus
+    - Chordata Aves Strigiformes Strigidae Ninox natalis
+    - Chordata Aves Strigiformes Strigidae Otus mayottensis
+    - Chordata Aves Strigiformes Strigidae Otus thilohoffmanni
+    - Chordata Aves Suliformes Phalacrocoracidae Phalacrocorax varius
+    - Chordata Aves Tinamiformes Tinamidae Nothoprocta taczanowskii
+    - Chordata Mammalia Carnivora Canidae Canis lupaster
+    - Chordata Mammalia Cetacea Physeteridae Physeter macrocephalus

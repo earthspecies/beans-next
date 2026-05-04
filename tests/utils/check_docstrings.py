@@ -6,9 +6,10 @@ Header info specific to ESP
 
 import os
 import re
+from typing import Sequence
 
 
-def extractName(s: str, search_class: bool = False) -> str:
+def extract_name(s: str, *, search_class: bool = False) -> str:
     """Extracts the names of the function or classes in the input string.
 
     Parameters
@@ -23,17 +24,21 @@ def extractName(s: str, search_class: bool = False) -> str:
     string: str
         Name of the function or class detected.
     """
-    string = ""
+    extracted = ""
     if search_class:
         regexp = re.compile(r"(class)\s(.*)\:")
     else:
         regexp = re.compile(r"(def)\s(.*)\(.*\)\:")
     for m in regexp.finditer(s):
-        string += m.group(2)
-    return string
+        extracted += m.group(2)
+    return extracted
 
 
-def check_docstrings(base_folder: str = ".", check_folders: list = None, skip_files_list: list = None) -> bool:
+def check_docstrings(
+    base_folder: str = ".",
+    check_folders: Sequence[str] | None = None,
+    skip_files_list: Sequence[str] | None = None,
+) -> bool:
     """Checks if all the functions or classes have a docstring.
 
     Parameters
@@ -48,6 +53,8 @@ def check_docstrings(base_folder: str = ".", check_folders: list = None, skip_fi
     check: bool
         True if all the functions/classes have a docstring, False otherwise.
     """
+    if skip_files_list is None:
+        skip_files_list = ()
     # Search all python libraries in the folder of interest
     lib_lst = get_all_files(
         base_folder,
@@ -93,11 +100,14 @@ def check_docstrings(base_folder: str = ".", check_folders: list = None, skip_fi
                         check = False
                         if first_line:
                             print(
-                                "\tERROR: The library %s must start with a docstring. " % (libpath) + "Please write it."
+                                "\tERROR: The library %s must start with a docstring. "
+                                % (libpath)
+                                + "Please write it."
                             )
                         else:
                             print(
-                                "\tERROR: The function %s in %s has no docstring. " % (fun_name, libpath)
+                                "\tERROR: The function %s in %s has no docstring. "
+                                % (fun_name, libpath)
                                 + "Please write it."
                             )
                     if line[0] != '"' and is_class:
@@ -107,7 +117,8 @@ def check_docstrings(base_folder: str = ".", check_folders: list = None, skip_fi
 
                         check = False
                         print(
-                            "\tERROR: The class %s in %s has no docstring. " % (class_name, libpath)
+                            "\tERROR: The class %s in %s has no docstring. "
+                            % (class_name, libpath)
                             + "Please write it."
                         )
 
@@ -118,14 +129,14 @@ def check_docstrings(base_folder: str = ".", check_folders: list = None, skip_fi
                     continue
 
                 # Extract function name (if any)
-                fun_name = extractName(line)
+                fun_name = extract_name(line)
                 if len(fun_name) > 0 and line[0:3] == "def":
                     if fun_name[0] == "_":
                         continue
                     check_line = True
 
                 # Extract class name (if any)
-                class_name = extractName(line, search_class=True)
+                class_name = extract_name(line, search_class=True)
                 if len(class_name) > 0 and line[0:5] == "class":
                     check_line = True
                     is_class = True
@@ -133,12 +144,12 @@ def check_docstrings(base_folder: str = ".", check_folders: list = None, skip_fi
 
 
 def get_all_files(
-    dirName: str,
-    match_and: list = None,
-    match_or: list = None,
-    exclude_and: list = None,
-    exclude_or: list = None,
-) -> list:
+    dir_name: str,
+    match_and: Sequence[str] | None = None,
+    match_or: Sequence[str] | None = None,
+    exclude_and: Sequence[str] | None = None,
+    exclude_or: Sequence[str] | None = None,
+) -> list[str]:
     """Returns a list of files found within a folder.
 
     Different options can be used to restrict the search to some specific
@@ -178,18 +189,18 @@ def get_all_files(
     exclude_and_entry = False
 
     # Create a list of file and sub directories
-    listOfFile = os.listdir(dirName)
-    allFiles = list()
+    list_of_files = os.listdir(dir_name)
+    all_files: list[str] = []
 
     # Iterate over all the entries
-    for entry in listOfFile:
+    for entry in list_of_files:
         # Create full path
-        fullPath = os.path.join(dirName, entry)
+        full_path = os.path.join(dir_name, entry)
 
         # If entry is a directory then get the list of files in this directory
-        if os.path.isdir(fullPath):
-            allFiles = allFiles + get_all_files(
-                fullPath,
+        if os.path.isdir(full_path):
+            all_files = all_files + get_all_files(
+                full_path,
                 match_and=match_and,
                 match_or=match_or,
                 exclude_and=exclude_and,
@@ -202,7 +213,7 @@ def get_all_files(
                 match_found = 0
 
                 for ele in match_and:
-                    if ele in fullPath:
+                    if ele in full_path:
                         match_found = match_found + 1
                 if match_found == len(match_and):
                     match_and_entry = True
@@ -211,7 +222,7 @@ def get_all_files(
             if match_or is not None:
                 match_or_entry = False
                 for ele in match_or:
-                    if ele in fullPath:
+                    if ele in full_path:
                         match_or_entry = True
                         break
 
@@ -220,7 +231,7 @@ def get_all_files(
                 match_found = 0
 
                 for ele in exclude_and:
-                    if ele in fullPath:
+                    if ele in full_path:
                         match_found = match_found + 1
                 if match_found == len(exclude_and):
                     exclude_and_entry = True
@@ -229,12 +240,17 @@ def get_all_files(
             if exclude_or is not None:
                 exclude_or_entry = False
                 for ele in exclude_or:
-                    if ele in fullPath:
+                    if ele in full_path:
                         exclude_or_entry = True
                         break
 
             # If needed, append the current file to the output list
-            if match_and_entry and match_or_entry and not (exclude_and_entry) and not (exclude_or_entry):
-                allFiles.append(fullPath)
+            if (
+                match_and_entry
+                and match_or_entry
+                and not (exclude_and_entry)
+                and not (exclude_or_entry)
+            ):
+                all_files.append(full_path)
 
-    return allFiles
+    return all_files

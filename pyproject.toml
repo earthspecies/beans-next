@@ -1,41 +1,85 @@
-# TODO (OSS): change [project]`, `[dependency-groups]`,
-# `[project.urls]`, and `[tool.hatch.build.targets.wheel]
-# According to your needs.
-
 [project]
-name = "PyStarterPack"
-version = "1.0.0"
-description = "A simple boiler plate for continuous integration and good practices of ESP projects."
+name = "beans-next"
+version = "0.1.0"
+description = "BEANS-Next: HTTP-first bioacoustics audio-LM benchmark library."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
 
 dependencies = [
-  "torch==2.2.0",
+  # Pin datasets: newer versions trigger a reproducible interpreter-finalization crash
+  # (PyGILState_Release) on this repo + the Slurm cluster when using streaming parquet.
+  # Note: if BEANS-Zero was previously cached by newer datasets, clear only that dataset's
+  # cache on the node before running (see examples/slurm/test_run_inference_clean_beans_zero_cache.sh).
+  "datasets==3.1.0",
+  # Pin native deps to stable wheels. Unpinned latests caused interpreter-finalization crashes
+  # (PyGILState_Release) when iterating HuggingFace datasets on this environment.
+  "numpy>=1.24,<2.0",
+  "pandas==2.2.3",
+  "pyarrow==16.1.0",
+  # Pin hub client to a widely used stable series (avoid surprising prerelease-like behavior).
+  "huggingface-hub==0.25.2",
+  "pydantic>=2.7",
+  "jinja2>=3.1",
+  "pyyaml>=6.0",
+  "soundfile>=0.12.1",
+  "librosa>=0.10",
 ]
 
 [dependency-groups]
 
 dev = [
+  "build>=1.2.0",
   "pre-commit<=4.2.0",
   "pytest<=7.4.0",
   "ruff<=0.11.2",
   "click<=8.1.7",
   "isort<=5.13.2",
-  "pytest<=7.4.0",
   "yamllint<=1.35.1",
   "deptry<=0.23.0",
+  "fastapi<=0.116.1",
+  "httpx<=0.28.1",
+  "uvicorn<=0.35.0",
+]
+esp = [
+    "esp-data>=1.8.0",
 ]
 
+[project.optional-dependencies]
+polars = ["polars>=1.4.0"]
+gcs = ["google-cloud-storage>=2.0"]
+
 [project.urls]
-Homepage = "https://github.com/earthspecies/PyProjectStarterPack"
-Repository = "https://github.com/earthspecies/PyProjectStarterPack"
+Homepage = "https://github.com/earthspecies/beans-next"
+Repository = "https://github.com/earthspecies/beans-next"
+Issues = "https://github.com/earthspecies/beans-next/issues"
+Changelog = "https://github.com/earthspecies/beans-next/blob/main/CHANGELOG.md"
+
+[project.scripts]
+beans-next = "beans_next.cli:main"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.build.targets.sdist]
+include = ["beans_next/**/*.yaml", "beans_next/**/*.jar", "beans_next/**/*.json"]
+
 [tool.hatch.build.targets.wheel]
-packages = ["my_dummy_library"]
+packages = ["beans_next"]
+include = ["beans_next/**/*.yaml", "beans_next/**/*.jar", "beans_next/**/*.json"]
 
 [tool.pytest.ini_options]
 python_files = [
@@ -44,10 +88,10 @@ python_files = [
 ]
 
 [tool.ruff]
-line-length = 120
+line-length = 88
 indent-width = 4
 
-[tool.ruff.flake8-annotations]
+[tool.ruff.lint.flake8-annotations]
 allow-star-arg-any = true
 
 [tool.ruff.lint]
@@ -83,6 +127,38 @@ skip = "*.csv"
 
 [tool.deptry]
 exclude = ["conftest.py", ".venv", "tests"]
+extend_exclude = [
+  "examples/servers/*",
+  "scripts",
+]
 
 [tool.deptry.per_rule_ignores]
-DEP002 = ["librosa", "soundfile", "ffmpeg"]
+DEP001 = ["google"]
+DEP002 = [
+  "librosa",
+  "soundfile",
+  "ffmpeg",
+  "pyarrow",
+  "huggingface-hub",
+  "google-cloud-storage",
+]
+DEP003 = ["librosa", "fsspec", "google"]
+DEP004 = ["esp_data"]
+
+[tool.deptry.package_module_name_map]
+"google-cloud-storage" = ["google.cloud.storage"]
+"google" = ["google.cloud.storage"]
+"esp-data" = ["esp_data"]
+
+[tool.uv]
+keyring-provider = "subprocess"
+default-groups = []
+
+[[tool.uv.index]]
+name = "esp-pypi"
+url = "https://oauth2accesstoken@us-central1-python.pkg.dev/okapi-274503/esp-pypi/simple/"
+publish-url = "https://oauth2accesstoken@us-central1-python.pkg.dev/okapi-274503/esp-pypi/"
+explicit = true
+
+[tool.uv.sources]
+esp-data = { index = "esp-pypi" }

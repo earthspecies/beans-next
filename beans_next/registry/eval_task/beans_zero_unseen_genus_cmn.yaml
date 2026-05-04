@@ -1,0 +1,126 @@
+beans_zero_unseen_genus_cmn:
+  task_type: classification
+  hf_path: EarthSpeciesProject/BEANS-Zero
+  subset: unseen-genus-cmn
+  split: test
+  prompt: classification_beans_zero_official_v1
+  metrics:
+    - name: accuracy
+    - name: f1
+      scorer_kwargs:
+        average: macro
+        zero_division: 0
+    - name: recall
+      scorer_kwargs:
+        average: macro
+        zero_division: 0
+    - name: precision
+      scorer_kwargs:
+        average: macro
+        zero_division: 0
+  labels:
+    - Akikiki
+    - Antarctic Shag
+    - Arfak Astrapia
+    - Auckland Shag
+    - Band-tailed Cacique
+    - Band-tailed Oropendola
+    - Banded Banana Frog
+    - Banded Whiteface
+    - Bay-vented Cotinga
+    - Beijing Babbler
+    - Belding's Ground Squirrel
+    - Black Giant Cicada
+    - Black-hooded Sunbeam
+    - Black-tailed Trainbearer
+    - Blue Lorikeet
+    - Blue-crowned Lorikeet
+    - Bourke's Parrot
+    - Bow-winged Grasshopper
+    - Brazilian Teal
+    - Broad Green-winged Grasshopper
+    - Bronze-winged Duck
+    - Bush Dog
+    - Cassin's Auklet
+    - Chatham Shag
+    - Chestnut-bellied Cotinga
+    - Chestnut-breasted Whiteface
+    - Columbian Ground Squirrel
+    - Columbian Trig
+    - Crested Gallito
+    - Crimson-collared Grosbeak
+    - Cryptic Warbler
+    - Dark-breasted Rosefinch
+    - De Witte's Spiny Reed Frog
+    - Delicate Spiny Reed Frog
+    - Double-barred Finch
+    - Fiery-browed Starling
+    - Fish Crow
+    - Flame-crested Manakin
+    - Forest Banana Frog
+    - Fornasini's Spiny Reed Frog
+    - Four-lined Spiny Reed Frog
+    - Garnet Robin
+    - Golden Dwarf Reed Frog
+    - Golden-winged Sunbird
+    - Goldenface
+    - Green-tailed Trainbearer
+    - Gundlach's trig
+    - Huon Astrapia
+    - Imperial Shag
+    - Java White-lipped Frog
+    - Kerguelen Shag
+    - Knysna Spiny Reed Frog
+    - Kuhl's Lorikeet
+    - Long-tailed Ground Squirrel
+    - Mallee Emu-wren
+    - Marsh meadow grasshopper
+    - Meadow Grasshopper
+    - Morere's Spiny Reed Frog
+    - Nanday Parakeet
+    - New Zealand King Shag
+    - Oak Bush-cricket
+    - Orange-crested Manakin
+    - Otago Shag
+    - Pale Mountain Pigeon
+    - Palm Cockatoo
+    - Papuan Mountain Pigeon
+    - Papuan Nightjar
+    - Princess Stephanie's Astrapia
+    - Purple-backed Sunbeam
+    - Red-bellied cicada
+    - Ribbon-tailed Astrapia
+    - Richardson's Ground Squirrel
+    - Ross's Gull
+    - Rufous-crowned Emu-wren
+    - Satanic Nightjar
+    - Shining Sunbeam
+    - Short-legged Spiny Reed Frog
+    - Siberian Grouse
+    - Smooth Toadlet
+    - Southern Emu-wren
+    - Southern Emuwren
+    - Southern Oak Bush-Cricket
+    - Southern Whiteface
+    - Spectacled Tyrant
+    - Splendid Astrapia
+    - Spotted Nightjar
+    - Stephen's Lorikeet
+    - Stuhlmann's Spiny Reed Frog
+    - Tarim Babbler
+    - Thick-billed Cuckoo
+    - Three-toed Jacamar
+    - Tylas Vanga
+    - Uinta Ground Squirrel
+    - Ultramarine Lorikeet
+    - Violet-capped Hummingbird
+    - Whistling Warbler
+    - White-crowned Cuckoo
+    - White-throated Nightjar
+    - White-tufted Sunbeam
+    - Wood Cricket
+    - Wrinkled Toadlet
+    - Wyoming Ground Squirrel
+    - Yellow-crested Manakin
+    - Zebra Finch
+    - Zimbabwe Banana Frog

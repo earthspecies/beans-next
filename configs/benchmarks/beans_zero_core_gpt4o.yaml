@@ -1,0 +1,29 @@
+# Full BEANS-Zero core evaluation — GPT-4o-audio-preview (OpenAI API)
+#
+# Cost warning: audio tokens are expensive. Run --limit 5 first to confirm wiring.
+#
+# Prereqs: proxy running on port 8000
+#   cd examples/servers/openai_compatible_proxy
+#   OPENAI_PROXY_STUB=0 \
+#     OPENAI_BASE_URL=https://api.openai.com \
+#     OPENAI_MODEL=gpt-4o-audio-preview \
+#     PORT=8000 ./serve.sh
+#
+# API key: store in ~/.config/openai/cfg (auto-loaded) or set OPENAI_API_KEY.
+#
+# Run:
+#   uv run beans-next run --config configs/benchmarks/beans_zero_core_gpt4o.yaml \
+#     -o results/gpt4o_$(date +%Y%m%d)
+
+models:
+  - inline:
+      name: "gpt4o"
+      description: "GPT-4o audio via OpenAI-compatible proxy (local)"
+      predict_url: http://127.0.0.1:8000/predict
+      info_url: http://127.0.0.1:8000/info
+      health_url: http://127.0.0.1:8000/health
+      response_schema: predictions_v1
+      audio_payload: base64_wav
+
+suite: beans_zero_core
+data_source: hf

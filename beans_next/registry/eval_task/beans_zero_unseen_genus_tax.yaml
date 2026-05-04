@@ -1,0 +1,122 @@
+beans_zero_unseen_genus_tax:
+  task_type: classification
+  hf_path: EarthSpeciesProject/BEANS-Zero
+  subset: unseen-genus-tax
+  split: test
+  prompt: classification_beans_zero_official_v1
+  metrics:
+    - name: accuracy
+    - name: f1
+      scorer_kwargs:
+        average: macro
+        zero_division: 0
+    - name: recall
+      scorer_kwargs:
+        average: macro
+        zero_division: 0
+    - name: precision
+      scorer_kwargs:
+        average: macro
+        zero_division: 0
+  labels:
+    - Arthropoda Insecta Hemiptera Cicadidae Cryptotympana facialis
+    - Arthropoda Insecta Hemiptera Cicadidae Tympanistalna gastrica
+    - Arthropoda Insecta Orthoptera Acrididae Aiolopus strepens
+    - Arthropoda Insecta Orthoptera Acrididae Pseudochorthippus curtipennis
+    - Arthropoda Insecta Orthoptera Acrididae Pseudochorthippus parallelus
+    - Arthropoda Insecta Orthoptera Tettigoniidae Meconema meridionale
+    - Arthropoda Insecta Orthoptera Tettigoniidae Meconema thalassinum
+    - Arthropoda Insecta Orthoptera Trigonidiidae Cyrtoxipha columbiana
+    - Arthropoda Insecta Orthoptera Trigonidiidae Cyrtoxipha gundlachi
+    - Arthropoda Insecta Orthoptera Trigonidiidae Nemobius sylvestris
+    - Chordata Amphibia Anura Hyperoliidae Afrixalus aureus
+    - Chordata Amphibia Anura Hyperoliidae Afrixalus brachycnemis
+    - Chordata Amphibia Anura Hyperoliidae Afrixalus crotalus
+    - Chordata Amphibia Anura Hyperoliidae Afrixalus delicatus
+    - Chordata Amphibia Anura Hyperoliidae Afrixalus fornasini
+    - Chordata Amphibia Anura Hyperoliidae Afrixalus fulvovittatus
+    - Chordata Amphibia Anura Hyperoliidae Afrixalus knysnae
+    - Chordata Amphibia Anura Hyperoliidae Afrixalus morerei
+    - Chordata Amphibia Anura Hyperoliidae Afrixalus quadrivittatus
+    - Chordata Amphibia Anura Hyperoliidae Afrixalus stuhlmanni
+    - Chordata Amphibia Anura Hyperoliidae Afrixalus sylvaticus
+    - Chordata Amphibia Anura Hyperoliidae Afrixalus wittei
+    - Chordata Amphibia Anura Myobatrachidae Uperoleia laevigata
+    - Chordata Amphibia Anura Myobatrachidae Uperoleia rugosa
+    - Chordata Amphibia Anura Ranidae Chalcorana chalconota
+    - Chordata Aves Anseriformes Anatidae Amazonetta brasiliensis
+    - Chordata Aves Anseriformes Anatidae Speculanas specularis
+    - Chordata Aves Apodiformes Trochilidae Aglaeactis aliciae
+    - Chordata Aves Apodiformes Trochilidae Aglaeactis castelnaudii
+    - Chordata Aves Apodiformes Trochilidae Aglaeactis cupripennis
+    - Chordata Aves Apodiformes Trochilidae Aglaeactis pamela
+    - Chordata Aves Apodiformes Trochilidae Goldmania violiceps
+    - Chordata Aves Apodiformes Trochilidae Lesbia nuna
+    - Chordata Aves Apodiformes Trochilidae Lesbia victoriae
+    - Chordata Aves Caprimulgiformes Caprimulgidae Eurostopodus argus
+    - Chordata Aves Caprimulgiformes Caprimulgidae Eurostopodus diabolicus
+    - Chordata Aves Caprimulgiformes Caprimulgidae Eurostopodus mystacalis
+    - Chordata Aves Caprimulgiformes Caprimulgidae Eurostopodus papuensis
+    - Chordata Aves Charadriiformes Alcidae Ptychoramphus aleuticus
+    - Chordata Aves Charadriiformes Laridae Rhodostethia rosea
+    - Chordata Aves Columbiformes Columbidae Gymnophaps albertisii
+    - Chordata Aves Columbiformes Columbidae Gymnophaps solomonensis
+    - Chordata Aves Cuculiformes Cuculidae Cacomantis leucolophus
+    - Chordata Aves Cuculiformes Cuculidae Pachycoccyx audeberti
+    - Chordata Aves Galliformes Phasianidae Falcipennis falcipennis
+    - Chordata Aves Passeriformes Acanthizidae Aphelocephala leucopsis
+    - Chordata Aves Passeriformes Acanthizidae Aphelocephala nigricincta
+    - Chordata Aves Passeriformes Acanthizidae Aphelocephala pectoralis
+    - Chordata Aves Passeriformes Acanthizidae Pachycare flavogriseum
+    - Chordata Aves Passeriformes Bernieridae Cryptosylvicola randrianasoloi
+    - Chordata Aves Passeriformes Cardinalidae Rhodothraupis celaeno
+    - Chordata Aves Passeriformes Cotingidae Doliornis remseni
+    - Chordata Aves Passeriformes Cotingidae Doliornis sclateri
+    - Chordata Aves Passeriformes Estrildidae Stizoptera bichenovii
+    - Chordata Aves Passeriformes Estrildidae Taeniopygia guttata
+    - Chordata Aves Passeriformes Fringillidae Oreomystis bairdi
+    - Chordata Aves Passeriformes Fringillidae Procarduelis nipalensis
+    - Chordata Aves Passeriformes Icteridae Cacicus latirostris
+    - Chordata Aves Passeriformes Maluridae Stipiturus malachurus
+    - Chordata Aves Passeriformes Maluridae Stipiturus mallee
+    - Chordata Aves Passeriformes Maluridae Stipiturus ruficeps
+    - Chordata Aves Passeriformes Nectariniidae Drepanorhynchus reichenowi
+    - Chordata Aves Passeriformes Paradisaeidae Astrapia mayeri
+    - Chordata Aves Passeriformes Paradisaeidae Astrapia nigra
+    - Chordata Aves Passeriformes Paradisaeidae Astrapia rothschildi
+    - Chordata Aves Passeriformes Paradisaeidae Astrapia splendidissima
+    - Chordata Aves Passeriformes Paradisaeidae Astrapia stephaniae
+    - Chordata Aves Passeriformes Parulidae Catharopeza bishopi
+    - Chordata Aves Passeriformes Petroicidae Eugerygone rubra
+    - Chordata Aves Passeriformes Pipridae Heterocercus aurantiivertex
+    - Chordata Aves Passeriformes Pipridae Heterocercus flavivertex
+    - Chordata Aves Passeriformes Pipridae Heterocercus linteatus
+    - Chordata Aves Passeriformes Rhinocryptidae Rhinocrypta lanceolata
+    - Chordata Aves Passeriformes Sturnidae Enodes erythrophris
+    - Chordata Aves Passeriformes Sylviidae Rhopophilus albosuperciliaris
+    - Chordata Aves Passeriformes Sylviidae Rhopophilus pekinensis
+    - Chordata Aves Passeriformes Tyrannidae Hymenops perspicillatus
+    - Chordata Aves Passeriformes Vangidae Tylas eduardi
+    - Chordata Aves Piciformes Galbulidae Jacamaralcyon tridactyla
+    - Chordata Aves Psittaciformes Psittacidae Aratinga nenday
+    - Chordata Aves Psittaciformes Psittacidae Neopsephotus bourkii
+    - Chordata Aves Psittaciformes Psittacidae Probosciger aterrimus
+    - Chordata Aves Psittaciformes Psittacidae Vini australis
+    - Chordata Aves Psittaciformes Psittacidae Vini kuhlii
+    - Chordata Aves Psittaciformes Psittacidae Vini peruviana
+    - Chordata Aves Psittaciformes Psittacidae Vini stepheni
+    - Chordata Aves Psittaciformes Psittacidae Vini ultramarina
+    - Chordata Aves Suliformes Phalacrocoracidae Leucocarbo atriceps
+    - Chordata Aves Suliformes Phalacrocoracidae Leucocarbo bransfieldensis
+    - Chordata Aves Suliformes Phalacrocoracidae Leucocarbo carunculatus
+    - Chordata Aves Suliformes Phalacrocoracidae Leucocarbo chalconotus
+    - Chordata Aves Suliformes Phalacrocoracidae Leucocarbo colensoi
+    - Chordata Aves Suliformes Phalacrocoracidae Leucocarbo onslowi
+    - Chordata Aves Suliformes Phalacrocoracidae Leucocarbo verrucosus
+    - Chordata Mammalia Carnivora Canidae Speothos venaticus
+    - Chordata Mammalia Rodentia Sciuridae Urocitellus armatus
+    - Chordata Mammalia Rodentia Sciuridae Urocitellus beldingi
+    - Chordata Mammalia Rodentia Sciuridae Urocitellus columbianus
+    - Chordata Mammalia Rodentia Sciuridae Urocitellus elegans
+    - Chordata Mammalia Rodentia Sciuridae Urocitellus richardsonii
+    - Chordata Mammalia Rodentia Sciuridae Urocitellus undulatus

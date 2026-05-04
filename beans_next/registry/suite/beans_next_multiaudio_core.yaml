@@ -1,0 +1,14 @@
+beans_next_multiaudio_core:
+  description: >
+    BeansProMultiAudio core suite — query-only single-audio evaluation
+    compatible with NatureLM v1.1.  Covers 4-way MCQ and few-shot detection
+    tasks.  For full multi-audio evaluation (openai_compatible_proxy, af3),
+    set prompt: beans_next_multiaudio_passthrough_v1 per eval-task.
+  eval_tasks:
+    - beans_next_multiaudio_crow_4way
+    - beans_next_multiaudio_giant_otter_4way
+    - beans_next_multiaudio_gibbon_fewshot_detection_balanced
+    - beans_next_multiaudio_dcase_fewshot_detection_balanced
+    - beans_next_multiaudio_unseen_species_4way
+    - beans_next_multiaudio_unseen_genus_4way
+    - beans_next_multiaudio_unseen_family_4way

@@ -1,229 +1,424 @@
-# A Template for Python-Based Projects at Earth Species Project
+# BEANS-Next
 
-For 2025, ESP is focusing on credibility. In terms of code, credibility relies on **trust**, and trust in code comes from structure and correctness.
+Earth Species Project's bioacoustics benchmark library for audio language models.
 
-The main idea behind this repository is to ensure structure, consistency, and correctness for ESP Python projects.
+The core package (`beans_next`) is **dependency-light**: no torch, transformers, or vLLM. Models are always reached over **HTTP** via the `predictions_v1` contract. Heavy inference lives in per-launcher virtual environments under `examples/servers/`.
 
-This repository can be used as a starting point for new projects, and it helps maintain good practices through automatic testing and fixing. It can also be used to improve existing projects.
+## Documentation
 
-This new coding structure is based on three main principles:
+| Document | What it covers |
+|---|---|
+| **[Full evaluation pipeline](docs/full_evaluation_pipeline.md)** | Complete end-to-end pipeline: rsync, key setup, weight download, serving, SLURM submit scripts, results retrieval, rescoring |
+| **[Evaluation guide](docs/evaluation_guide.md)** | Per-model serving reference — hardware, local and SLURM instructions, metrics |
+| **[LLM-as-judge guide](docs/llm_judge.md)** | All three judge modes (rubric, YES/NO, extractor); built-in templates; retroactive vs inline judging |
+| **[Gemma 4 judge serving](docs/judge_model_gemma4.md)** | Serving `cyankiwi/gemma-4-26B-A4B-it-AWQ-4bit` as a `predictions_v1` judge via vLLM |
+| **[Launcher serving kit](examples/servers/README.md)** | All launchers, quick-start per model, conformance checks |
+| **[SLURM scripts](examples/slurm/README.md)** | Two-job pattern (serving + inference), multi-model side-by-side |
+| **[HTTP contract](docs/http_contract.md)** | `predictions_v1` wire schema, batching rules, endpoint spec |
+| **[Paper workflow](docs/paper_workflow_iteration1.md)** | NatureLM side-by-side reproduction workflow |
 
-1. Documentation.
+> **Qwen3-Omni (Slurm) runbook**: The most up-to-date operational notes live in
+> `examples/servers/af3/README.md` under **“Qwen3-Omni serving notes”** (single-stage vLLM-Omni YAML,
+> known-bad nodes, `$USER` path expansion gotcha, `/tmp/voice_samples` workaround, and recommended
+> 10-second audio cap).
 
-2. Consistency.
+---
 
-3. Testing.
+## Installation
 
-All of these are automatically checked and/or updated through a two-step process:
+**Requirements**: Python ≥ 3.11, [uv](https://docs.astral.sh/uv/getting-started/installation/)
 
-1. **Pre-commit tests (using pre-commit hooks):** These tests and fixes happen every time you commit files. These quick tests ensure documentation and consistency. They should be fixed locally before pushing the code and serve as a guide for producing consistent code that follows good practices.
+Install `uv` if you don't have it:
 
-2. **GitHub Continuous Integration (CI) tests:** These tests ensure documentation, consistency, and testing, and are required before merging any Pull Request. They can also be run manually before pushing, using `pytest`.
-
-# Your Feedback 🗣️
-
-This template aims to facilitate the life of ESP projects. If you end up struggling due to something, or if you think that something should be changed or improved, **please open an issue!** This template is meant to evolve.
-
-# How to Use This Template?
-
-There are two main use cases:
-
-1. Starting a new project from scratch.
-
-2. Adapting an existing project.
-
-## Starting a New Project from Scratch
-
-**Files that require editing contain TODO (OSS) hints that you can search for.**
-
-1. **Create from a template:** On the top right of this repository's webpage, click on *Use this template*. Then, select *Create a new repository* and proceed as you normally would. This will create a new repository as a full copy of this one. You should see Continuous Integration start as an orange dot near the last merge in the branch (in the file explorer table header row).
-
-2. **Customize your project information:** Open and edit the `pyproject.toml` file. You'll find fields under `[project]`, `[dependency-groups]`, `[project.urls]`, and `[tool.hatch.build.targets.wheel]` that need to be edited with the correct values. This includes project names, dependencies, descriptions, and links. Feel free to remove any descriptors that don't apply. The `packages` field under `[tool.hatch.build.targets.wheel]` should point to the directory containing your library (or libraries). If you don't need to build your code as a package, you can remove all the building information (leaving it by default won't hurt!).
-
-3. **Explore the structure:** Open `my_dummy_library` and look through the files to see how your code should be structured. Do the same with the `tests` folder.
-
-4. **Verify GitHub CI:** Check that the GitHub Continuous Integration is working. The orange dot from step one should now be a green checkmark, meaning the tests have passed. If it's a red cross, click on it for error details. If this happens, please create an issue in this repository, as it shouldn't occur.
-
-5. **Set up your Python environment:** Install the package and required dependencies. You can use your preferred tool, but we recommend `uv`. Make sure to also install the `requirements-dev` packages. **`Important: Never manually update the requirements files.  Only update the pyproject.toml file, because the pre-commit hook automatically generates them!`**
-
-6. **Install pre-commit:** `pre-commit` will check that you're following the rules (described below) for the files you stage with `git add` before committing. First, run `pre-commit install`. After that, every commit will trigger the consistency tests.
-
-7. **Run the tests:** To see how the tests work, run both the docstring tests and the integration/unit tests. Run the unit tests with `pytest tests --base_folder my_dummy_library` and the docstring tests with `pytest --doctest-modules my_dummy_library`. The docstring test command might create a `.pytest_cache` folder, which you may need to delete before running `pytest tests` (if you ran the docstring tests first). Everything should pass.
-
-8. **Prepare for your project:** You can now delete the `my_dummy_library` folder and replace it with your `your_library` folder.  Remember to update `.github/workflows/pythonapp.yaml` at the line `pytest --doctest-modules my_dummy_library` with your new library name.  You can also delete the example test files `test_VanillaNN.py` in `tests/integration` and `test_linear.py` in `tests/unittests` and replace them with your own test files.  (You can also keep the example files for reference and add your library.)  You can also delete or replace the `README.md` file.
-
-9. **Add, commit, and push!** GitHub CI might complain if there are no tests, but this will change once you add your test files.
-
-## Adapting an Existing Project
-
-This assumes that you haven't set up GitHub continuous integration workflows before. If you have, you'll need to merge your existing workflows with these ones. This process depends heavily on the project, and you might need help from the engineering team. If these simplified steps aren't clear enough for your project, please contact the engineering team.
-
-1. Clone this repository.
-
-2. Create a new branch in your repository.
-
-3. **Migrate to `pyproject.toml:`** If you don't have a `pyproject.toml` file, copy the one from this repository into yours. If you do have one, make sure that **all** the fields from this `pyproject.toml` are copied into yours.  Make sure the fields under `[project]`, `[dependency-groups]`, `[project.urls]`, and `[tool.hatch.build.targets.wheel]` are filled with values that reflect your project.
-
-4. **Copy files and folders:** Copy `.github/workflows`, `.dict-allowed.txt`, `conftest.py`, `tests`, and `.pre-commit-config.yaml` to the root of your GitHub repository.
-
-5. **Set up the tests:** First, initialize pre-commit (after updating your environment with the new `pyproject.toml` and the development tools): `pre-commit install`.  Then, update `.github/workflows/pythonapp.yaml` with your library's name, replacing  `my_dummy_library` at the line `pytest --doctest-modules my_dummy_library`.  Replace the example test files `test_VanillaNN.py` in `tests/integration` and `test_linear.py` in `tests/unittests` with your own test files.  Your test files should be named `test_*` or `check_*`.
-
-6. **Push the copied files:** Use `git add` and `push` to upload the copied files. This will trigger the GitHub CI, but it will likely fail initially because your code isn't properly formatted yet.
-
-7. **Refactor your code:** This is a long process. We recommend fixing your files one by one, following the rules. To see the specific errors, make a change in one of your library files, use `git add`, and try to commit. Pre-commit will show you a list of changes to make.  Look at the example files in `my_dummy_library` to see the correct formatting. After making the changes, add the file again, commit, and move on to the next one.
-
-8. **Open a Pull Request:** Once you've made the changes, open a Pull Request and check for any CI errors (at the bottom of the PR).  You can test the CI tests locally by running  `pytest tests` and `pytest --doctest-modules my_dummy_library`. If these tests pass locally and pre-commit isn't complaining, then the GitHub CI should also pass.
-
-# Explanation of The Tools
-
-This template uses two tools: [ruff](https://github.com/astral-sh/ruff) for code homogeneity and small bugs catching and [pytest](https://docs.pytest.org/en/stable/) for docstring, unitary and integration testing. This section will give a few details about docstrings, ruff linting and unitary/integration tests.
-
-## Documentation of Code Functionality: Docstrings and Doctest
-
-A **docstring** serves as an essential component of code documentation, providing explanatory text that details the purpose and usage of functions, modules, classes, and methods.  Adhering to a standardized format enhances readability and facilitates the use of automated documentation tools. In principel, we want every class and function to have a docstring. These, of course, can be rather short for simple functions. If you really wish to have a few functions without any docstring, the only solution is to put them in a separate file and modify the `.github/workflows/pythonapp.yaml` line corresponding from `pytest tests/consistency/test_docstrings.py --base_folder my_dummy_library` to `pytest tests/consistency/test_docstrings.py --base_folder my_dummy_library --skip_files_list file_to_skip.py` with `file_to_skip.py` being the name of your file.
-
-One widely adopted convention for structuring docstrings is the **NumPy style**. This format promotes clarity and consistency through the use of specific sections.
-
-Consider the following function with a NumPy-style docstring:
-
-```python
-def add_two_numbers(number1 : float, number2 : float):
-  """Computes the sum of two numerical inputs.
-
-  Parameters
-  ----------
-  number1 : int
-      The first addend.
-  number2 : int
-      The second addend.
-
-  Returns
-  -------
-  int
-      The arithmetic sum of the two input numbers.
-
-  Examples
-  --------
-  >>> add_two_numbers(5, 3)
-  8
-  >>> add_two_numbers(-1, 10)
-  9
-  """
-  return number1 + number2
-  ```
-
-Doctest is an integrated Python module that enables the execution of examples embedded within docstrings as automated tests. This functionality ensures the accuracy of the examples and verifies that the code behaves as anticipated.
-
-In the above example, the piece of code run and tested by doctest is below the
-`Examples` tag. If the results are different from 8 or 9, an error will be generated. Importantly, this also give a clear example of how to use your code.
-
-You can run doctest on your files outside of the GitHub CI if you want:
-
-```Bash
-python -m doctest my_module.py
-```
-If all doctests pass successfully, no output will be displayed. This signifies successful verification. If a doctest fails, an error message will be presented, indicating the specific example that failed and the discrepancy between the expected and actual output.
-
-## Homogeneous and Correct Code with Ruff
-
-[Ruff](https://github.com/astral-sh/ruff) functions as an automated code analysis tool, akin to a sophisticated proofreader and style advisor for your Python projects. It systematically examines your codebase, verifying compliance with a multitude of predefined rules to ensure adherence to established conventions and to identify potential sources of errors.
-
-## Scope of Rules Under Consideration
-
-We have pre-selected an ensemble of rules, but this may change in the future. These categories encompass a range of aspects related to code style, potential errors, and documentation standards:
-
-* **E4:** Pertains to the appropriate use of blank lines to enhance code readability.
-* **E7:** Addresses the consistent application of spacing around operators (e.g., +, -, =).
-* **E9:** Identifies issues related to the presence or absence of a newline character at the end of a file.
-* **F:** Flags common programming errors and constructs that may lead to unexpected behavior.
-* **DOC:** Verifies the presence and quality of docstrings, which serve as explanatory documentation for code elements.
-* **B9:** Detects potential bugs, particularly those arising from misunderstandings of how certain code constructs function.
-* **B:** An additional set of rules focused on preventing the introduction of bugs.
-* **E:** A general category encompassing style recommendations from the Pycodestyle tool.
-* **W:** Highlights potential issues that, while not immediate errors, could lead to problems in the future.
-* **ANN:** Encourages the use of type hints to improve code clarity regarding the expected data types of variables and function arguments.
-
-Some of these rules will be blocking, as in you will need to make the changes yourself and re-commit the file, while others will be automatically fixed by ruff. In the latter case, you would still need to re-commit the impacted file.
-
-# Pytest: Unit and Integration Testing
-
-Testing ensures code correctness and reliability.
-
-- **Unit Testing:** Verifies individual components (functions, methods) in isolation.
-- **Integration Testing:** Validates the interaction between different components, like legos.
-
-Pytest simplifies test creation and execution in Python.
-
-## Writing Tests
-
-1. **Test Files:** Create files named test_*.py.
-2. **Test Functions:** Define functions named test_*().
-3. **Assertions:** Use assert to verify expected outcomes.
-
-Let's start with a simple suit of functions:
-
-```python
-# check_higher.py
-
-def add(x : float, y : float):
-  """Adds two numbers together."""
-  return x + y
-
-def check_if_higher(value : float):
-  """Checks if a grade is passing (60 or above)."""
-  return value >= 60
-
-def format_answer(name : str, value : float):
-  """Creates a feedback message based on the value."""
-  if check_if_higher(value):
-    return f"The {name} is higher than 60 {value}."
-  else:
-    return f"The {name} is lower than 60 {value}."
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-Unit tests are all about checking if individual parts (like our add function or check_if_higher function) work correctly on their own. We could create a `test_check_higher.py` file in `tests/unittests`:
+Install the library and dev dependencies:
 
-```python
-# test_check_higher.py
-import pytest
-from check_higher import add, check_if_higher
-
-def test_add_positive_numbers():
-  """Tests adding two positive numbers."""
-  assert add(5, 3) == 8
-
-def test_add_negative_numbers():
-  """Tests adding two negative numbers."""
-  assert add(-2, -4) == -6
-
-def test_add_positive_and_negative():
-  """Tests adding a positive and a negative number."""
-  assert add(10, -5) == 5
-
-def test_check_if_passed_passing_grade():
-  """Tests if higher is correctly identified."""
-  assert check_if_higher(75) is True
-
-def test_check_if_passed_failing_grade():
-  """Tests if lower is correctly identified."""
-  assert check_if_higher(50) is False
-
-def test_check_if_passed_borderline_grade():
-  """Tests if the borderline passing value is correctly identified."""
-  assert check_if_higher(60) is True
+```bash
+git clone <repo>
+cd beans-next
+uv sync
 ```
 
-This can be tested with `pytest test_check_higher.py`.
+This creates `.venv/` and installs `beans_next` plus all dev deps. Use `uv run` to execute anything inside that environment.
 
-Integration tests operate at a higher level. They typically are the example script that you would put on your repository. For instance, let's say that you have a library that helps to train a model for bird song detection. A good integration test would be a minimal example loading mockup data, instantiating the model, training for a few epochs and checking that the loss is actually decreasing. This ensures that when all the blocks of your library are connected together, they behave as expected.
+To use `esp_data` datasets (internal ESP data access), also install the `esp` group:
 
-## :warning: :warning: How to skip doctest and pre-commit tests on a folder
-
-We strongly advise against leaving a folder or files out of the linting and doctests. New ESP code bases should adhere to the standards detailed in this repository. If you were to release some code under the ESP organisation while leaving some parts of the code unchecked, we would most likely need to chat with you to verify that there isn't any other possible solution. If you still want to proceed, you must simply exclude the folder to skip into your `pyproject.toml`:
-
-```
-[tool.ruff]
-exclude = ["my_folder"]
+```bash
+uv sync --group esp
 ```
 
-and then remove it from the call to doctest `pytest tests/consistency --base_folder my_dummy_library # make sure that your folder is not into base_folder` in `.github/workflows/pythonapp.yaml`. If your folder is at the same level than other folders to test, you can just make multiple calls to `pytest tests/consistency --base_folder1`, `pytest tests/consistency --base_folder2`.
+> **Launchers** (model servers under `examples/servers/`) have their own isolated venvs and are set up separately — see the [launcher guide](examples/servers/README.md).
+
+---
+
+## Quick start
+
+### 1. Smoke test — no GPU, no API key
+
+Verify the full pipeline works on CPU using the deterministic `dummy` launcher:
+
+```bash
+uv run bash scripts/smoke_test.sh
+```
+
+This starts the dummy server, checks contract conformance, runs a small capped suite, and writes artifacts under `results/`. Takes ~30 seconds.
+
+### 2. Run against a real model
+
+Pick a model and start its launcher. For full per-model instructions (weights download, SLURM scripts, GPU requirements) see the **[Evaluation guide](docs/evaluation_guide.md)**.
+
+> For **NatureLM-audio v1.1** real inference, see `examples/servers/naturelm-v1.1/README.md`
+> for full setup instructions. Weights are gated — `HF_TOKEN` required.
+
+**GPT-4o-audio-preview** (no GPU, OpenAI API key):
+
+```bash
+cd examples/servers/openai_compatible_proxy
+uv venv && uv pip install -r requirements.txt && . .venv/bin/activate
+
+# Recommended: store your key in a protected file:
+#   mkdir -p ~/.config/openai && chmod 700 ~/.config/openai
+#   printf "sk-...\n" > ~/.config/openai/cfg && chmod 600 ~/.config/openai/cfg
+# For Gemini via the same proxy:
+#   mkdir -p ~/.config/gemini && chmod 700 ~/.config/gemini
+#   printf "AIza...\n" > ~/.config/gemini/cfg && chmod 600 ~/.config/gemini/cfg
+
+OPENAI_PROXY_STUB=0 \
+  OPENAI_BASE_URL=https://api.openai.com \
+  OPENAI_MODEL=gpt-4o-audio-preview \
+  PORT=8000 ./serve.sh
+```
+
+**NatureLM-audio v1.0 / Audio Flamingo Next / Qwen3-Omni** (GPU required):
+
+```bash
+# NatureLM v1.0 — start server
+cd examples/servers/naturelm-v1.0
+uv venv && uv pip install -r requirements.txt && . .venv/bin/activate
+PORT=8000 ./serve.sh
+```
+
+### 3. Run the benchmark
+
+With any launcher running at `http://127.0.0.1:8000`:
+
+```bash
+# Quick smoke check (3 tasks, 5 examples each):
+uv run beans-next run \
+  --predict-url http://127.0.0.1:8000/predict \
+  --suite beans_zero_smoke \
+  --limit 5
+
+# Full evaluation (22 tasks, all examples):
+uv run beans-next run \
+  --predict-url http://127.0.0.1:8000/predict \
+  --suite beans_zero_core \
+  --output-dir results/my_run
+```
+
+Results are written to `--output-dir` (default `results/<run_id>/`):
+
+| File | Content |
+|---|---|
+| `predictions.jsonl` | Raw launcher responses |
+| `processed_predictions.jsonl` | Post-processed predictions with ground truth |
+| `scored_predictions.jsonl` | Post-processed predictions with computed scores |
+
+### 4. Generate prompt/answer pairs (BeansPro)
+
+To collect analysis artifacts (rendered prompts, **raw** model answers, **post-processed**
+answers, and ground truth) for **BeansPro** subsets:
+
+```bash
+uv run beans-next pairs \
+  --predict-url http://127.0.0.1:8000/predict \
+  --model-tag naturelm_v1_0 \
+  --k 100 \
+  --subsets crow-description,alarm-call-presence
+```
+
+Outputs are written under:
+
+- `results/prompt_answer_pairs/beans_next_v0_1_0/<run_id>/pairs.jsonl`
+- `results/prompt_answer_pairs/beans_next_v0_1_0/<run_id>/manifest.json`
+- `results/prompt_answer_pairs/beans_next_v0_1_0/<run_id>/sample_ids/<subset>.jsonl`
+
+For convenience, you can also concatenate multiple model runs into a single analysis file:
+
+- `results/prompt_answer_pairs/beans_next_v0_1_0/beans_next_pairs_ALL6_concat_20260428.jsonl`
+
+### 4. YAML run config (reproducible runs)
+
+```yaml
+# my_run.yaml
+model: gpt4o_audio_openai_api   # registry preset from beans_next/registry/model/
+suite: beans_zero_core
+limit: 50
+out_dir: results/my_run
+```
+
+```bash
+uv run beans-next run --config my_run.yaml
+```
+
+### NatureLM 1.1 checkpoint-specific configs
+
+You can benchmark different NatureLM checkpoints by creating dedicated run config files
+that point to the launcher URL you are serving. We include a ready-to-run example for:
+
+- `gs://foundation-models/naturelm-audio-1.5/all_backup/merged_variations_f0_v5`
+- config file: `configs/benchmarks/beans_zero_core_naturelm_v1_1_ckpt_merged_variations_f0_v5.yaml`
+
+Start the launcher with your target checkpoint URI first:
+
+```bash
+NATURELM_GCS_CHECKPOINT_URI=gs://foundation-models/naturelm-audio-1.5/all_backup/merged_variations_f0_v5 \
+  sbatch examples/slurm/serve_naturelm_v1_1.sh
+```
+
+Then run the matching config:
+
+```bash
+uv run beans-next run --config \
+  configs/benchmarks/beans_zero_core_naturelm_v1_1_ckpt_merged_variations_f0_v5.yaml \
+  -o results/naturelm_v1_1_ckpt_merged_variations_f0_v5_$(date +%Y%m%d)
+```
+
+To test your own checkpoints, duplicate that YAML and update:
+
+- `models[0].inline.name` (unique identifier in outputs)
+- `models[0].inline.description` (human-readable checkpoint note)
+- launcher startup command (`NATURELM_GCS_CHECKPOINT_URI=<your gs://...>`)
+
+You can also start from the generic template:
+
+- `configs/benchmarks/beans_zero_core_naturelm_v1_1_checkpoint_template.yaml`
+
+Available registry model presets:
+
+| Preset | Model |
+|---|---|
+| `dummy_local_8000` | Deterministic stub (CPU) |
+| `naturelm_v1_0_local_8000` | NatureLM-audio v1.0 |
+| `naturelm_v1_1_local_8001` | NatureLM-audio v1.1 |
+| `gpt4o_audio_openai_api` | GPT-4o-audio-preview |
+| `gemini_openai_api` | Gemini (any version) |
+| `qwen3_omni_vllm_local_8000` | Qwen3-Omni-7B via vLLM |
+| `af_next_local_8000` | Audio Flamingo Next |
+
+### 5. Re-score without re-running inference
+
+Every run saves three JSONL files to `--output-dir`:
+
+| File | Content |
+|---|---|
+| `predictions.jsonl` | Raw model responses — unprocessed `predictions[0]` strings |
+| `processed_predictions.jsonl` | After post-processing (fuzzy match, comma split, etc.) |
+| `scored_predictions.jsonl` | After scoring (accuracy, F1, mAP, CIDEr, …) |
+
+Use `predictions.jsonl` as input to `score-from-file` — it contains the original raw text so all three rescoring paths (normal pipeline, YES/NO judge, extractor judge) can be applied retroactively without re-running inference.
+
+```bash
+# Normal pipeline (post-process + metrics)
+uv run beans-next score-from-file results/my_run/predictions.jsonl \
+  -o results/my_run_rescored
+
+# Add YES/NO judge pass
+uv run beans-next score-from-file results/my_run/predictions.jsonl \
+  --judge-url http://127.0.0.1:8010/predict \
+  -o results/my_run_rescored
+
+# Add extractor judge pass (judge converts raw output → clean label → full metrics)
+uv run beans-next score-from-file results/my_run/predictions.jsonl \
+  --judge-extract-url http://127.0.0.1:8010/predict \
+  --task-type classification \
+  -o results/my_run_rescored
+
+# All three at once — output files never overlap (judge_* and judge_extracted_* prefixes)
+uv run beans-next score-from-file results/my_run/predictions.jsonl \
+  --judge-url http://127.0.0.1:8010/predict \
+  --judge-extract-url http://127.0.0.1:8010/predict \
+  --task-type classification \
+  -o results/my_run_rescored
+```
+
+---
+
+## Running on a SLURM cluster
+
+See **[examples/slurm/README.md](examples/slurm/README.md)** for the two-job pattern (GPU serving job + CPU inference job) and per-model SLURM scripts.
+
+Quick example:
+
+```bash
+# Submit serving job (GPU node), then inference job (CPU node)
+SERVE_JOB=$(sbatch --parsable examples/slurm/serve_af3.sh)
+
+BEANS_PRO_URL_FILE=$HOME/beans-next-launchers/$SERVE_JOB.url \
+BEANS_PRO_SUITE=beans_zero_core \
+sbatch --dependency=after:$SERVE_JOB examples/slurm/run_inference.sh
+```
+
+---
+
+## Metrics
+
+BEANS-Next applies deterministic scorers automatically based on task type. All scorers are in `beans_next.metrics`.
+
+### Scoring by task type
+
+| Task type | Post-processing | Scored by |
+|---|---|---|
+| `classification` | comma-split + Levenshtein fuzzy match to label vocab | `top1_accuracy`, `accuracy`, `precision`, `recall`, `f1` |
+| `detection` | comma-split + fuzzy match | `average_precision`, `precision`, `recall`, `f1` |
+| `captioning` | whitespace normalise | corpus **`cider`** in `summary.json` (per-sample scores empty); optional **`spider`** (CIDEr + SPICE) needs Java |
+| `open_ended`, `counting`, `qa` | whitespace normalise | LLM judge (see below) |
+
+### Classification
+
+| Scorer | Description |
+|---|---|
+| `top1_accuracy` | Correct if prediction matches any option in a comma-separated target string (`"cat, feline"` → both `"cat"` and `"feline"` are correct) |
+| `accuracy` | Exact-string match or multilabel exact-row match |
+| `precision`, `recall`, `f1` | Support `average=` in `{"macro", "micro", "weighted", "binary"}` |
+
+Label matching uses **Levenshtein fuzzy matching** (`max_distance=5`): a predicted string within 5 edit operations of a known label is snapped to that label before scoring.
+
+Per-dataset fixed label vocabularies are loaded from `beans_next/registry/beans_zero_labels.json` (21 datasets, e.g. ESC-50 → 50 labels, `unseen-species-cmn` → 202). Inline `labels` in an eval-task YAML takes priority over the registry.
+
+### Detection / multi-label
+
+| Scorer | Description |
+|---|---|
+| `average_precision` | Per-label PR-curve integral, averaged across labels (macro) or pooled (micro) |
+| `precision`, `recall`, `f1` | Multi-label, all `average=` modes supported |
+
+### Captioning — CIDEr (default)
+
+**CIDEr** — TF-IDF n-gram (1–4) cosine similarity with Gaussian length penalty, computed once over the full test split (corpus IDF). Pure Python / NumPy. Reported as `metrics.mean.cider` in `summary.json` (normalized to `[0, 1]` from the internal ×10 scale).
+
+### Captioning — SPIDEr (optional, Java)
+
+```
+SPIDEr = (CIDEr / 10 + SPICE) / 2
+```
+
+**SPICE** — scene-graph F1 via Java subprocess. Requires Java ≥ 8 and Stanford CoreNLP 3.6.0 JARs. Download once:
+
+```bash
+uv run beans-next setup-spice
+```
+
+JARs are cached to `~/.cache/beans-next/spice/lib/`. The registered `spider()` scorer uses SPICE when available; otherwise SPICE is treated as `0.0` and a warning is logged.
+
+### LLM-as-judge
+
+For open-ended tasks (descriptions, counting, QA), deterministic metrics are insufficient because the same correct answer can be phrased many different ways — and models may refuse, hedge, or give structured vs. prose responses unpredictably.
+
+beans-next supports three judge modes. Pick based on your task:
+
+| Mode | Class | Flag | Output |
+|---|---|---|---|
+| **1 — Rubric judge** | `JudgeScorer` | `--judge-url` | Structured score (0–1) via `judge_scores_v1` endpoint |
+| **2 — YES/NO judge** | `PredictV1Judge` | `--judge-url` | Binary `judge_accuracy` via `predictions_v1` endpoint |
+| **3 — Extractor judge** | `PredictV1Extractor` | `--judge-extract-url` | Structured prediction → full metrics via `predictions_v1` endpoint |
+
+**Mode 1** — dedicated `judge_scores_v1` endpoint (existing rubric-based judge):
+
+```bash
+uv run beans-next run \
+  --predict-url http://127.0.0.1:8000/predict \
+  --judge-url   http://127.0.0.1:8010/judge \
+  --suite beans_zero_core
+```
+
+Built-in rubric templates:
+
+| Template id | Best for |
+|---|---|
+| `bioacoustic_open_qa_v1` | Soundscape descriptions, call-type explanations (default) |
+| `bioacoustic_counting_v1` | "Count vocalizations per species" tasks; handles refusals, common names, flexible formatting |
+
+Per-task template override: add `judge: bioacoustic_counting_v1` to the eval-task YAML.
+
+**Mode 2** — YES/NO binary scoring via any `predictions_v1` model (e.g. Gemma 4):
+
+```bash
+# Run inline — judge fires after inference completes
+uv run beans-next run \
+  --predict-url http://127.0.0.1:8000/predict \
+  --judge-url   http://127.0.0.1:8010/predict \
+  --suite beans_zero_core
+
+# Or retroactively on saved predictions
+uv run beans-next score-from-file results/my_run/processed_predictions.jsonl \
+  --judge-url http://127.0.0.1:8010/predict \
+  -o results/my_run_judge
+```
+
+Output artifacts: `judge_outputs.jsonl`, `judge_scored_predictions.jsonl`, `judge_summary.json`.
+
+**Mode 3** — structured extraction: judge converts verbose model output to a clean label/description, then full metrics run:
+
+```bash
+uv run beans-next score-from-file results/my_run/processed_predictions.jsonl \
+  --judge-extract-url http://127.0.0.1:8010/predict \
+  --task-type classification \
+  -o results/my_run_extracted
+```
+
+`--task-type` selects the extraction template (`classification`, `detection`, `captioning`). Output: `judge_extracted_scored_predictions.jsonl`, `judge_extracted_summary.json`.
+
+Full details: **[docs/llm_judge.md](docs/llm_judge.md)** · Gemma 4 serving guide: **[docs/judge_model_gemma4.md](docs/judge_model_gemma4.md)**
+
+---
+
+## Adding a new launcher
+
+A launcher is a self-contained FastAPI server. Minimal contract:
+
+```
+POST /predict  — accepts predictions_v1 request, returns predictions_v1 response
+GET  /info     — capability document (name, model, audio_payload_types, …)
+GET  /health   — readiness probe
+```
+
+Start from `examples/servers/hf_transformers/` (generic Tier-2 template).
+Full contract spec: **[docs/http_contract.md](docs/http_contract.md)**.
+
+Key rules:
+- One response item per request `sample_id`; match by id, not array position
+- HTTP 413 when `len(requests) > max_batch_size`
+- Per-item errors go in `responses[i].error`; HTTP status stays 200
+- Isolated venv — do **not** import `beans_next`
+
+---
+
+## Launcher conformance check
+
+```bash
+uv run bash scripts/check_launcher.sh http://127.0.0.1:<port>
+```
+
+---
+
+## Development
+
+```bash
+uv run ruff check --fix .
+uv run python -c "import beans_next"
+uv run pytest -q
+```
+
+---
+
+## Architecture
+
+- **HTTP-only inference** — no in-process model execution in core.
+- **Wire schema** — `predictions_v1` only.
+- **No heavy deps in core** — `beans_next` does not depend on torch, transformers, or vLLM.
+
+Full spec: `DESIGN.md`, `AGENT_SPEC.md`, `INCREMENTS.md`.

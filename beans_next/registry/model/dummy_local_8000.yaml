@@ -1,0 +1,23 @@
+name: dummy_local_8000
+description: Dummy launcher preset for local development (port 8000).
+
+predict_url: http://localhost:8000/predict
+info_url: http://localhost:8000/info
+health_url: http://localhost:8000/health
+
+response_schema: predictions_v1
+audio_payload: base64_wav
+
+auth: {}
+
+# Optional: retry policy overrides for this endpoint preset.
+# Defaults shown here match `HttpClient`'s current behavior.
+retry_policy:
+  max_attempts: 3
+  backoff_initial: 1.0
+  backoff_max: 30.0
+  jitter_fraction: 0.25
+  retry_on_5xx: true
+  retry_http_statuses: [408, 429]
+  retry_on_network_errors: true
+  retryable_os_errnos: [104, 111, 32, 101, 113]

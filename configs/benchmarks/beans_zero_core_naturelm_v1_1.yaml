@@ -1,0 +1,22 @@
+# Full BEANS-Zero core evaluation — NatureLM-audio v1.1
+#
+# Prereqs: launcher running on port 8001 (gated weights, requires HF_TOKEN)
+#   cd examples/servers/naturelm-v1.1
+#   HF_TOKEN=hf_... HF_HOME=/scratch/shared/hf_cache PORT=8001 ./serve.sh
+#
+# Run:
+#   uv run beans-next run --config configs/benchmarks/beans_zero_core_naturelm_v1_1.yaml \
+#     -o results/naturelm_v1_1_$(date +%Y%m%d)
+
+models:
+  - inline:
+      name: "naturelm-v1.1"
+      description: "NatureLM-audio v1.1 (local launcher)"
+      predict_url: http://127.0.0.1:8001/predict
+      info_url: http://127.0.0.1:8001/info
+      health_url: http://127.0.0.1:8001/health
+      response_schema: predictions_v1
+      audio_payload: base64_wav
+
+suite: beans_zero_core
+data_source: hf

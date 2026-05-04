@@ -1,0 +1,7 @@
+beans_zero_watkins_lifestage_calltype:
+  description: Targeted BEANS-Zero classification suite (Watkins, Lifestage, Calltype).
+  eval_tasks:
+    - beans_zero_watkins
+    - beans_zero_lifestage
+    - beans_zero_call_type
+

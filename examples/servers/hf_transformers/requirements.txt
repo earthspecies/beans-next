@@ -1,0 +1,6 @@
+# Tier-2 reference launcher deps (pinned).
+# Note: this starter defaults to stub mode; add ML deps as needed for real inference.
+fastapi==0.115.12
+uvicorn[standard]==0.34.2
+pydantic==2.11.7
+

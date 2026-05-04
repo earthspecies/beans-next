@@ -1,0 +1,13 @@
+name: vllm_local_8000
+description: vLLM adapter sidecar preset for local development (port 8000).
+
+adapter: http
+
+predict_url: http://127.0.0.1:8000/predict
+info_url: http://127.0.0.1:8000/info
+health_url: http://127.0.0.1:8000/health
+
+response_schema: predictions_v1
+audio_payload: base64_wav
+
+auth: {}

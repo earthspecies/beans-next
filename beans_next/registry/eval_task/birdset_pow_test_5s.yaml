@@ -1,0 +1,109 @@
+birdset_pow_test_5s:
+  task_type: open_ended
+  data_source: esp_data
+  dataset: birdset
+  subset: POW-test_5s
+  split: POW-test_5s
+  prompt: birdset_species_v1
+  metrics:
+    - name: top1_accuracy
+      scorer_kwargs:
+        label_separator: ','
+  labels:
+    - American Crow
+    - American Golden-Plover
+    - American Redstart
+    - American Robin
+    - Baltimore Oriole
+    - Bay-breasted Warbler
+    - Black-and-white Warbler
+    - Black-capped Chickadee
+    - Black-throated Green Warbler
+    - Blue Jay
+    - Blue-gray Gnatcatcher
+    - Blue-headed Vireo
+    - Blue-winged Warbler
+    - Brown Creeper
+    - Brown-headed Cowbird
+    - Canada Goose
+    - Carolina Wren
+    - Cedar Waxwing
+    - Chestnut-sided Warbler
+    - Common Raven
+    - Common Yellowthroat
+    - Downy Woodpecker
+    - Eastern Towhee
+    - Eastern Wood-Pewee
+    - Hairy Woodpecker
+    - Hermit Thrush
+    - Hooded Warbler
+    - Kentucky Warbler
+    - Louisiana Waterthrush
+    - Nashville Warbler
+    - Northern Cardinal
+    - Northern Flicker
+    - Ovenbird
+    - Pileated Woodpecker
+    - Red-bellied Woodpecker
+    - Red-eyed Vireo
+    - Red-shouldered Hawk
+    - Red-winged Blackbird
+    - Rose-breasted Grosbeak
+    - Ruby-crowned Kinglet
+    - Scarlet Tanager
+    - Swainson's Thrush
+    - Tufted Titmouse
+    - Veery
+    - White-breasted Nuthatch
+    - Wild Turkey
+    - Wood Thrush
+    - Yellow-billed Cuckoo
+  scientific_labels:
+    - Agelaius phoeniceus
+    - Baeolophus bicolor
+    - Bombycilla cedrorum
+    - Branta canadensis
+    - Buteo lineatus
+    - Cardinalis cardinalis
+    - Catharus fuscescens
+    - Catharus guttatus
+    - Catharus ustulatus
+    - Certhia americana
+    - Coccyzus americanus
+    - Colaptes auratus
+    - Contopus virens
+    - Corvus brachyrhynchos
+    - Corvus corax
+    - Cyanocitta cristata
+    - Dryobates pubescens
+    - Dryocopus pileatus
+    - Geothlypis formosa
+    - Geothlypis trichas
+    - Hylocichla mustelina
+    - Icterus galbula
+    - Leiothlypis ruficapilla
+    - Leuconotopicus villosus
+    - Melanerpes carolinus
+    - Meleagris gallopavo
+    - Mniotilta varia
+    - Molothrus ater
+    - Parkesia motacilla
+    - Pheucticus ludovicianus
+    - Pipilo erythrophthalmus
+    - Piranga olivacea
+    - Pluvialis dominica
+    - Poecile atricapillus
+    - Polioptila caerulea
+    - Regulus calendula
+    - Seiurus aurocapilla
+    - Setophaga castanea
+    - Setophaga citrina
+    - Setophaga pensylvanica
+    - Setophaga ruticilla
+    - Setophaga virens
+    - Sitta carolinensis
+    - Thryothorus ludovicianus
+    - Turdus migratorius
+    - Vermivora cyanoptera
+    - Vireo olivaceus
+    - Vireo solitarius

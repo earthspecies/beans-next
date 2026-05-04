@@ -1,0 +1,223 @@
+beans_zero_unseen_species_cmn:
+  task_type: classification
+  hf_path: EarthSpeciesProject/BEANS-Zero
+  subset: unseen-species-cmn
+  split: test
+  prompt: classification_beans_zero_official_v1
+  metrics:
+    - name: accuracy
+    - name: f1
+      scorer_kwargs:
+        average: macro
+        zero_division: 0
+    - name: recall
+      scorer_kwargs:
+        average: macro
+        zero_division: 0
+    - name: precision
+      scorer_kwargs:
+        average: macro
+        zero_division: 0
+  labels:
+    - Abyssinian Waxbill
+    - African Green Toad
+    - African Olive Pigeon
+    - African Wolf
+    - Agile Frog
+    - Alpine Thrush
+    - Amazonian Inezia
+    - Andaman Nightjar
+    - Angolan Reed Frog
+    - Ashy Myzomela
+    - Australian Pied Cormorant
+    - Ayeyarwady Bulbul
+    - Banded Lapwing
+    - Bannerman's Sunbird
+    - Baudo Oropendola
+    - Bennett's Woodpecker
+    - Bermuda beach cricket
+    - Biak Leaf Warbler
+    - Biak White-eye
+    - Black-and-orange Flycatcher
+    - Black-and-tawny Seedeater
+    - Black-bibbed Tit
+    - Black-bodied Woodpecker
+    - Black-eared Miner
+    - Black-fronted Tern
+    - Black-horned Tree Cricket
+    - Black-tailed Treecreeper
+    - Black-vented Shearwater
+    - Black-winged Monarch
+    - Blue Mountain Vireo
+    - Blue-billed Black Tyrant
+    - Blue-cheeked Amazon
+    - Blue-moustached Bee-eater
+    - Blue-tailed Hummingbird
+    - Bradfield's Swift
+    - Broad-palmed Frog
+    - Brown-backed Whistler
+    - Buff-bellied Tanager
+    - Burrowing Coqui
+    - Cape Teal
+    - Caribbean Martin
+    - Cassin's 13-Year Cicada
+    - Caura Antbird
+    - Chatham Oystercatcher
+    - Chestnut-collared Swallow
+    - Chinese Shortwing
+    - Christmas Boobook
+    - Cinereous Harrier
+    - Cobija Tree Frog
+    - Comoros Olive Pigeon
+    - Creamy-bellied Antwren
+    - Crested Black Tyrant
+    - Crowned Slaty Flycatcher
+    - Cuzco Warbler
+    - Dark-winged Canastero
+    - Delta Amacuro Softtail
+    - Dwarf Bittern
+    - Eastern Buzzard
+    - Eurasian Wigeon
+    - Fast-calling tree cricket
+    - Fire-tailed Sunbird
+    - Flesh-footed Shearwater
+    - Forest Buzzard
+    - Forest Demon
+    - Fulvous-headed Tanager
+    - Furtive Flycatcher
+    - Gillett's Lark
+    - Green and Golden Bell Frog
+    - Grey Cuckooshrike
+    - Grey-breasted Parakeet
+    - Grey-capped Hemispingus
+    - Grey-faced Tit-Babbler
+    - Grey-fronted Green Pigeon
+    - Guadeloupe Woodpecker
+    - Half-collared Kingfisher
+    - Harwood's Spurfowl
+    - Hauraki Little Shearwater
+    - Heuglin's Masked Weaver
+    - Heuglin's Spurfowl
+    - Hill Pigeon
+    - Hill Swallow
+    - Honduran Emerald
+    - Indian Black-lored Tit
+    - Indian Nuthatch
+    - Irregular-trilling field cricket
+    - Ivory-backed Woodswallow
+    - Johanna's Sunbird
+    - Katanga Masked Weaver
+    - Key West Quail-Dove
+    - Kosrae White-eye
+    - Kurdish Wheatear
+    - Lilac-tailed Parrotlet
+    - Little Shearwater
+    - Long-spurred Meadow Katydid
+    - Long-tailed Starling
+    - Long-winged Harrier
+    - Lorentz's Whistler
+    - Lovely Sunbird
+    - Madagascar Rail
+    - Madagascar Sandgrouse
+    - Maghreb Magpie
+    - Mamberamo Shrikethrush
+    - Manus Fantail
+    - Manus Monarch
+    - Masked Saltator
+    - Mauritius Olive White-eye
+    - Mayotte Scops Owl
+    - Merida Brushfinch
+    - Meyer's Friarbird
+    - Minute Hermit
+    - Mountain Plover
+    - Mountain Tree Frog
+    - Mourning Wheatear
+    - Moustached Woodcreeper
+    - Nicaraguan Grackle
+    - Nilgiri Blue Robin
+    - Olive Ibis
+    - Pacific Robin
+    - Pale Spiderhunter
+    - Pallas's Rosefinch
+    - Papuan Black Myzomela
+    - Parrot-billed Sparrow
+    - Pectoral-patch Cisticola
+    - Philippine Leafbird
+    - Pied Heron
+    - Pied Thrush
+    - Pine Barrens Treefrog
+    - Pink-throated Brilliant
+    - Plain-backed Sunbird
+    - Plain-pouched Hornbill
+    - Pohnpei Fantail
+    - Pygmy Cuckooshrike
+    - Pygmy Flowerpecker
+    - Red-faced Barbet
+    - Red-headed Lovebird
+    - Red-necked Avocet
+    - Red-throated Tit
+    - Rennell Whistler
+    - Rio Bahu White-lipped Frog
+    - Rio Negro Gnatcatcher
+    - Rocky Mountain Cicada
+    - Roraiman Antwren
+    - Rufous-webbed Brilliant
+    - Rusty-flanked Treecreeper
+    - Saker Falcon
+    - Salvadori's Nightjar
+    - Sanborn's Tree Frog
+    - Sao Tome Fiscal
+    - Scaled Metaltail
+    - Sclater's Whistler
+    - Semicollared Hawk
+    - Serendib Scops Owl
+    - Short-tailed Pipit
+    - Silver-tipped Imperial Pigeon
+    - Slender-billed Weaver
+    - Socotra Sparrow
+    - Socotra Sunbird
+    - Sokoke Pipit
+    - Solomons Robin
+    - Sombre Rock Chat
+    - Sooty Falcon
+    - Sooty Shearwater
+    - Sooty-capped Puffbird
+    - Southern Leaf Green Tree Frog
+    - Sperm Whale
+    - Spot-winged Rosefinch
+    - Sri Lanka Drongo
+    - St. Lucia Amazon
+    - St. Lucia Parrot
+    - Strange Weaver
+    - Streak-backed Antshrike
+    - Stripe-breasted Tit
+    - Sumatran Woodpecker
+    - Sumba Brown Flycatcher
+    - Tacarcuna Wood Quail
+    - Taczanowski's Tinamou
+    - Tepui Toucanet
+    - Thick-billed Saltator
+    - Three-banded Rosefinch
+    - Three-striped Hemispingus
+    - Tocuyo Sparrow
+    - Todd's Sirystes
+    - Tsavo Sunbird
+    - Tyler's Tree Frog
+    - Variable Reed Frog
+    - Vella Lavella White-eye
+    - Western Gerygone
+    - Western Quail-thrush
+    - Western Tree Cricket
+    - White-bellied Piculet
+    - White-breasted Whistler
+    - White-cheeked Nuthatch
+    - White-collared Monarch
+    - White-fronted Wattle-eye
+    - White-lored Antpitta
+    - White-tipped Grasshopper
+    - White-winged Apalis
+    - Wreathed Hornbill
+    - Yellow-breasted Barbet
+    - Yellow-eared Bulbul
+    - Yellow-rumped Mannikin
+    - Yellow-spotted Reed Frog

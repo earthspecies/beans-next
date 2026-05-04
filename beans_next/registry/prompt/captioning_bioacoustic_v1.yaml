@@ -1,0 +1,20 @@
+# Single-audio bioacoustic captioning (free-form text).
+prompt_id: beans_next.prompt.captioning_bioacoustic.v1
+messages:
+  - role: system
+    content: |
+      You describe animal sounds and acoustic scenes for researchers. Write one
+      concise paragraph in English. Stay factual; do not invent species you do
+      not hear.
+  - role: user
+    content: |
+      {{ audio_placeholder }}
+
+      Describe this recording for a field biologist.
+audio_slots:
+  - metadata_key: audio_path
+    payload_type: file_path
+    sample_rate: 16000
+generation_config:
+  max_tokens: 256
+  temperature: 0.0

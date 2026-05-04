@@ -1,0 +1,21 @@
+# Multi-audio passthrough prompt for BeansProMultiAudio.
+#
+# The user message is read verbatim from metadata["conversation"], which
+# already contains the full prompt text with N <Audio><AudioHere></Audio>
+# placeholders.  The single list-type audio slot expands to N AudioInput
+# objects at render time, one per entry in metadata["audio_paths"].
+#
+# Compatible launchers: openai_compatible_proxy, af3, vllm (multi-audio).
+# Not compatible with single-audio launchers (e.g. NatureLM v1.1).
+# For NatureLM v1.1, use beans_next_multiaudio_query_only_v1.yaml instead.
+prompt_id: beans_next.prompt.multiaudio_passthrough.v1
+messages:
+  - role: user
+    content: "{{ metadata.conversation }}"
+audio_slots:
+  - list_metadata_key: audio_paths
+    payload_type: file_path
+    sample_rate: 16000
+generation_config:
+  max_tokens: 32
+  temperature: 0.0

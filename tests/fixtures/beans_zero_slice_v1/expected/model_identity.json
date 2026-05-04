@@ -1,0 +1,1 @@
+{"audio_payload_types":["base64_wav","file_path","file_url"],"max_batch_size":8,"model":"EarthSpeciesProject/NatureLM-audio","model_revision":"stub","name":"beans-next-naturelm-v1.0","schema_versions":["predictions_v1"],"supports_batching":true}

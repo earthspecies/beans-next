@@ -1,0 +1,31 @@
+# Full BEANS-Zero core evaluation — Gemini (Google AI Studio)
+#
+# Cost warning: start with --limit 5 to confirm wiring before full suite.
+# Rate limits: 429s are expected; proxy auto-retries up to OPENAI_PROXY_RETRIES times.
+#
+# Prereqs: proxy running on port 8000
+#   cd examples/servers/openai_compatible_proxy
+#   OPENAI_PROXY_STUB=0 \
+#     OPENAI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai \
+#     OPENAI_MODEL=gemini-2.5-flash \
+#     PORT=8000 ./serve.sh
+#
+# API key: store in ~/.config/gemini/cfg (auto-loaded) or set OPENAI_API_KEY.
+# Change OPENAI_MODEL to gemini-2.5-pro, gemini-2.5-flash-lite, etc. as needed.
+#
+# Run:
+#   uv run beans-next run --config configs/benchmarks/beans_zero_core_gemini.yaml \
+#     -o results/gemini_$(date +%Y%m%d)
+
+models:
+  - inline:
+      name: "gemini"
+      description: "Gemini via OpenAI-compatible proxy (local)"
+      predict_url: http://127.0.0.1:8000/predict
+      info_url: http://127.0.0.1:8000/info
+      health_url: http://127.0.0.1:8000/health
+      response_schema: predictions_v1
+      audio_payload: base64_wav
+
+suite: beans_zero_core
+data_source: hf

@@ -1,0 +1,33 @@
+birdset_hsn_test_5s:
+  task_type: open_ended
+  data_source: esp_data
+  dataset: birdset
+  subset: HSN-test_5s
+  split: HSN-test_5s
+  prompt: birdset_species_v1
+  metrics:
+    - name: top1_accuracy
+      scorer_kwargs:
+        label_separator: ','
+  scientific_labels:
+    - Actitis macularius
+    - Anas platyrhynchos
+    - Anthus rubescens
+    - Catharus guttatus
+    - Colaptes auratus
+    - Empidonax oberholseri
+    - Euphagus cyanocephalus
+    - Haemorhous cassinii
+    - Junco hyemalis
+    - Leiothlypis celata
+    - Leucosticte tephrocotis
+    - Nucifraga columbiana
+    - Passerella iliaca
+    - Poecile gambeli
+    - Salpinctes obsoletus
+    - Setophaga coronata
+    - Setophaga petechia
+    - Sialia currucoides
+    - Turdus migratorius
+    - Vireo gilvus
+    - Zonotrichia leucophrys

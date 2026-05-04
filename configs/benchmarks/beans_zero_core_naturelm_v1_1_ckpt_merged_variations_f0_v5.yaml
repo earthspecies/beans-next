@@ -1,0 +1,26 @@
+# Full BEANS-Zero core evaluation — NatureLM-audio v1.1 from a specific GCS checkpoint
+#
+# Checkpoint under test:
+#   gs://foundation-models/naturelm-audio-1.5/all_backup/merged_variations_f0_v5
+#
+# Start the launcher with the same checkpoint URI before running this config:
+#   NATURELM_GCS_CHECKPOINT_URI=gs://foundation-models/naturelm-audio-1.5/all_backup/merged_variations_f0_v5 \
+#     sbatch examples/slurm/serve_naturelm_v1_1.sh
+#
+# Then run:
+#   uv run beans-next run --config \
+#     configs/benchmarks/beans_zero_core_naturelm_v1_1_ckpt_merged_variations_f0_v5.yaml \
+#     -o results/naturelm_v1_1_ckpt_merged_variations_f0_v5_$(date +%Y%m%d)
+
+models:
+  - inline:
+      name: naturelm_v1_1_ckpt_merged_variations_f0_v5
+      description: NatureLM v1.1 served from GCS checkpoint merged_variations_f0_v5
+      predict_url: http://127.0.0.1:8001/predict
+      info_url: http://127.0.0.1:8001/info
+      health_url: http://127.0.0.1:8001/health
+      response_schema: predictions_v1
+      audio_payload: base64_wav
+
+suite: beans_zero_core
+data_source: hf

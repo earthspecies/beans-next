@@ -1,0 +1,122 @@
+beans_zero_unseen_genus_sci:
+  task_type: classification
+  hf_path: EarthSpeciesProject/BEANS-Zero
+  subset: unseen-genus-sci
+  split: test
+  prompt: classification_beans_zero_official_v1
+  metrics:
+    - name: accuracy
+    - name: f1
+      scorer_kwargs:
+        average: macro
+        zero_division: 0
+    - name: recall
+      scorer_kwargs:
+        average: macro
+        zero_division: 0
+    - name: precision
+      scorer_kwargs:
+        average: macro
+        zero_division: 0
+  labels:
+    - Afrixalus aureus
+    - Afrixalus brachycnemis
+    - Afrixalus crotalus
+    - Afrixalus delicatus
+    - Afrixalus fornasini
+    - Afrixalus fulvovittatus
+    - Afrixalus knysnae
+    - Afrixalus morerei
+    - Afrixalus quadrivittatus
+    - Afrixalus stuhlmanni
+    - Afrixalus sylvaticus
+    - Afrixalus wittei
+    - Aglaeactis aliciae
+    - Aglaeactis castelnaudii
+    - Aglaeactis cupripennis
+    - Aglaeactis pamela
+    - Aiolopus strepens
+    - Amazonetta brasiliensis
+    - Aphelocephala leucopsis
+    - Aphelocephala nigricincta
+    - Aphelocephala pectoralis
+    - Aratinga nenday
+    - Astrapia mayeri
+    - Astrapia nigra
+    - Astrapia rothschildi
+    - Astrapia splendidissima
+    - Astrapia stephaniae
+    - Cacicus latirostris
+    - Cacomantis leucolophus
+    - Catharopeza bishopi
+    - Chalcorana chalconota
+    - Cryptosylvicola randrianasoloi
+    - Cryptotympana facialis
+    - Cyrtoxipha columbiana
+    - Cyrtoxipha gundlachi
+    - Doliornis remseni
+    - Doliornis sclateri
+    - Drepanorhynchus reichenowi
+    - Enodes erythrophris
+    - Eugerygone rubra
+    - Eurostopodus argus
+    - Eurostopodus diabolicus
+    - Eurostopodus mystacalis
+    - Eurostopodus papuensis
+    - Falcipennis falcipennis
+    - Goldmania violiceps
+    - Gymnophaps albertisii
+    - Gymnophaps solomonensis
+    - Heterocercus aurantiivertex
+    - Heterocercus flavivertex
+    - Heterocercus linteatus
+    - Hymenops perspicillatus
+    - Jacamaralcyon tridactyla
+    - Lesbia nuna
+    - Lesbia victoriae
+    - Leucocarbo atriceps
+    - Leucocarbo bransfieldensis
+    - Leucocarbo carunculatus
+    - Leucocarbo chalconotus
+    - Leucocarbo colensoi
+    - Leucocarbo onslowi
+    - Leucocarbo verrucosus
+    - Meconema meridionale
+    - Meconema thalassinum
+    - Nemobius sylvestris
+    - Neopsephotus bourkii
+    - Oreomystis bairdi
+    - Pachycare flavogriseum
+    - Pachycoccyx audeberti
+    - Probosciger aterrimus
+    - Procarduelis nipalensis
+    - Pseudochorthippus curtipennis
+    - Pseudochorthippus parallelus
+    - Ptychoramphus aleuticus
+    - Rhinocrypta lanceolata
+    - Rhodostethia rosea
+    - Rhodothraupis celaeno
+    - Rhopophilus albosuperciliaris
+    - Rhopophilus pekinensis
+    - Speculanas specularis
+    - Speothos venaticus
+    - Stipiturus malachurus
+    - Stipiturus mallee
+    - Stipiturus ruficeps
+    - Stizoptera bichenovii
+    - Taeniopygia guttata
+    - Tylas eduardi
+    - Tympanistalna gastrica
+    - Uperoleia laevigata
+    - Uperoleia rugosa
+    - Urocitellus armatus
+    - Urocitellus beldingi
+    - Urocitellus columbianus
+    - Urocitellus elegans
+    - Urocitellus richardsonii
+    - Urocitellus undulatus
+    - Vini australis
+    - Vini kuhlii
+    - Vini peruviana
+    - Vini stepheni
+    - Vini ultramarina

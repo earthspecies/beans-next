@@ -1,0 +1,20 @@
+beans_zero_cbi:
+  task_type: classification
+  hf_path: EarthSpeciesProject/BEANS-Zero
+  subset: cbi
+  split: test
+  prompt: classification_beans_zero_official_v1
+  metrics:
+    - name: accuracy
+    - name: f1
+      scorer_kwargs:
+        average: macro
+        zero_division: 0
+    - name: recall
+      scorer_kwargs:
+        average: macro
+        zero_division: 0
+    - name: precision
+      scorer_kwargs:
+        average: macro
+        zero_division: 0

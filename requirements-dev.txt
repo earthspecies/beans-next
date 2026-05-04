@@ -5,7 +5,6 @@ click==8.1.7
 colorama==0.4.6 ; sys_platform == 'win32'
 deptry==0.23.0
 distlib==0.3.9
-exceptiongroup==1.2.2 ; python_full_version < '3.11'
 filelock==3.18.0
 identify==2.6.9
 iniconfig==2.1.0
@@ -21,7 +20,6 @@ pyyaml==6.0.2
 requirements-parser==0.11.0
 ruff==0.11.2
 setuptools==79.0.0
-tomli==2.2.1 ; python_full_version < '3.11'
 types-setuptools==79.0.0.20250422
 virtualenv==20.29.3
 yamllint==1.35.1

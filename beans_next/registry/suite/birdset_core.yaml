@@ -1,0 +1,11 @@
+birdset_core:
+  description: BirdSet core suite — all 8 evaluation subsets, test_5s splits, esp_data.
+  eval_tasks:
+    - birdset_hsn_test_5s
+    - birdset_nbp_test_5s
+    - birdset_nes_test_5s
+    - birdset_per_test_5s
+    - birdset_pow_test_5s
+    - birdset_ssw_test_5s
+    - birdset_sne_test_5s
+    - birdset_uhh_test_5s

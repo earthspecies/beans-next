@@ -1,0 +1,22 @@
+# BEANS-Next NatureLM-audio v1.0 — GPU inference dependencies
+# Install alongside requirements.txt:
+#   pip install -r requirements.txt -r requirements-gpu.txt
+#
+# Then install the NatureLM-audio package (not on PyPI):
+#   pip install git+https://github.com/earthspeciesproject/NatureLM-audio.git
+#
+# For a specific pinned commit (recommended for reproducibility):
+#   pip install git+https://github.com/earthspeciesproject/NatureLM-audio.git@<SHA>
+#
+# GPU note: torch below is CPU-only. On a CUDA cluster install the matching
+# torch+cu* build first (before this file), e.g.:
+#   pip install torch==2.3.1 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+# Then run this file (torch will not be downgraded because the version matches).
+
+torch>=2.1.0
+torchaudio>=2.1.0
+soundfile>=0.12.1
+numpy>=1.24.0
+transformers>=4.40.0
+accelerate>=0.28.0
+huggingface_hub>=0.22.0

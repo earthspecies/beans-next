@@ -1,0 +1,19 @@
+name: qwen3_omni_vllm_local_8000
+description: Qwen3-Omni-7B via vLLM adapter sidecar (port 8000), upstream vllm serve at port 8001.
+
+predict_url: http://localhost:8000/predict
+info_url: http://localhost:8000/info
+health_url: http://localhost:8000/health
+
+response_schema: predictions_v1
+audio_payload: base64_wav
+
+auth: {}
+
+# Launch with (two terminals):
+#   vllm serve Qwen/Qwen3-Omni-7B --host 127.0.0.1 --port 8001
+#
+#   VLLM_ADAPTER_STUB=0 \
+#   VLLM_UPSTREAM_BASE_URL=http://127.0.0.1:8001 \
+#   VLLM_MODEL_ID=Qwen/Qwen3-Omni-7B \
+#   PORT=8000 examples/servers/vllm/serve.sh

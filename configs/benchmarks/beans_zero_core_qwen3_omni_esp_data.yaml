@@ -1,0 +1,29 @@
+# Full BEANS-Zero core evaluation (all subsets) — Qwen3-Omni via vLLM adapter (esp_data)
+#
+# Uses `esp_data` as the dataset backend, which typically streams from the
+# BEANS-Zero raw JSONLs in GCS (subset-specific `*_test.jsonl`).
+#
+# Prereqs: vLLM adapter running on port 8000
+#   cd examples/servers/vllm
+#   PORT=8000 ./serve.sh
+#
+# Run:
+#   uv run beans-next run --config configs/benchmarks/beans_zero_core_qwen3_omni_esp_data.yaml \
+#     -o results/qwen3_omni_esp_data_$(date +%Y%m%d)
+
+models:
+  - inline:
+      name: "qwen3-omni"
+      description: "Qwen3-Omni via vLLM adapter (local)"
+      predict_url: http://127.0.0.1:8000/predict
+      info_url: http://127.0.0.1:8000/info
+      health_url: http://127.0.0.1:8000/health
+      response_schema: predictions_v1
+      audio_payload: base64_wav
+      retry_policy:
+        max_attempts: 12
+        backoff_initial: 0.5
+        backoff_max: 10.0
+
+suite: beans_zero_core
+data_source: esp_data

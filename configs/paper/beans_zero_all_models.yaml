@@ -1,0 +1,98 @@
+# Paper workflow scaffold: all-model comparison run on BEANS-Zero
+#
+# This file mirrors the "launcher-aware" paper scaffold style used by:
+#   configs/paper/beans_zero_naturelm_side_by_side.yaml
+#
+# It is intended to document a reproducible set of *launchers* to run (potentially
+# across multiple hosts / SLURM jobs), and the matching registry presets used by
+# `beans-next run` once endpoints are available.
+#
+# HTTP contract (all launchers): /predict, /info, /health  (predictions_v1)
+
+paper_id: beans_zero_all_models
+description: All available BEANS-Next models side-by-side on BEANS-Zero.
+
+suite: beans_zero_core
+
+models:
+  # CPU-only deterministic baseline.
+  dummy:
+    preset: dummy_local_8000
+    launcher:
+      kind: dummy
+      workdir: examples/servers/dummy
+      serve_sh: ./serve.sh
+      port: 8000
+
+  # NatureLM launchers (stub capable; real mode requires weights/deps).
+  naturelm_v1_0:
+    preset: naturelm_v1_0_local_8000
+    launcher:
+      kind: naturelm-v1.0
+      workdir: examples/servers/naturelm-v1.0
+      serve_sh: ./serve.sh
+      port: 8000
+
+  naturelm_v1_1:
+    preset: naturelm_v1_1_local_8001
+    launcher:
+      kind: naturelm-v1.1
+      workdir: examples/servers/naturelm-v1.1
+      serve_sh: ./serve.sh
+      port: 8001
+      requires:
+        env:
+          - HF_TOKEN
+
+  # vLLM adapter sidecar (stub capable; real mode requires vLLM upstream server).
+  qwen3_omni_vllm:
+    preset: qwen3_omni_vllm_local_8000
+    launcher:
+      kind: vllm-adapter
+      workdir: examples/servers/vllm
+      serve_sh: ./serve.sh
+      port: 8000
+      requires:
+        notes:
+          - "Start upstream in parallel: `vllm serve Qwen/Qwen3-Omni-7B --host 127.0.0.1 --port 8001`"
+
+  # OpenAI-compatible proxy (stub capable; real mode requires API key).
+  openai_proxy_local:
+    preset: openai_proxy_local_8000
+    launcher:
+      kind: openai-compatible-proxy
+      workdir: examples/servers/openai_compatible_proxy
+      serve_sh: ./serve.sh
+      port: 8000
+
+  gpt4o_audio_openai_api:
+    preset: gpt4o_audio_openai_api
+    launcher:
+      kind: openai-compatible-proxy
+      workdir: examples/servers/openai_compatible_proxy
+      serve_sh: ./serve.sh
+      port: 8000
+      requires:
+        env:
+          - OPENAI_API_KEY
+
+  gemini_openai_api:
+    preset: gemini_openai_api
+    launcher:
+      kind: openai-compatible-proxy
+      workdir: examples/servers/openai_compatible_proxy
+      serve_sh: ./serve.sh
+      port: 8000
+      requires:
+        env:
+          - OPENAI_API_KEY
+
+  # Audio Flamingo Next (stub capable; real mode requires GPU + transformers).
+  af_next:
+    preset: af_next_local_8000
+    launcher:
+      kind: af3
+      workdir: examples/servers/af3
+      serve_sh: ./serve.sh
+      port: 8000
+

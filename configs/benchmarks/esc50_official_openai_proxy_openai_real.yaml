@@ -1,0 +1,35 @@
+# Increment 13 benchmark: ESC-50 "official" protocol via OpenAI-compatible proxy (real OpenAI)
+#
+# This is a **run-config** file consumed by:
+#   uv run beans-next run --config <this_file>
+#
+# It is intended to be used with the local `openai_compatible_proxy` launcher running on:
+#   http://127.0.0.1:19085
+#
+# Notes
+# -----
+# - This config does **not** embed secrets. Provide OpenAI credentials to the launcher via env vars.
+# - Default scope is minimal (`limit: 1`). For a slightly larger smoke test, change to `limit: 5`.
+#
+# Launcher env vars (real mode; not consumed by beans-next)
+# -------------------------------------------------------
+# - OPENAI_PROXY_STUB=0
+# - OPENAI_BASE_URL=https://api.openai.com
+# - OPENAI_API_KEY=sk-...
+# - OPENAI_MODEL=gpt-4o-audio-preview   (or another audio-capable model id)
+# - Optional: OPENAI_MODEL_REVISION, OPENAI_AUTH_HEADER, OPENAI_PROXY_TIMEOUT_SEC, OPENAI_PROXY_RETRIES
+
+models:
+  - inline:
+      predict_url: http://127.0.0.1:19085/predict
+      info_url: http://127.0.0.1:19085/info
+      health_url: http://127.0.0.1:19085/health
+      response_schema: predictions_v1
+      audio_payload: base64_wav
+
+tasks:
+  - beans_zero_esc50_official
+
+limit: 1
+data_source: hf
+

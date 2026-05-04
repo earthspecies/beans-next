@@ -1,0 +1,63 @@
+birdset_nbp_test_5s:
+  task_type: open_ended
+  data_source: esp_data
+  dataset: birdset
+  subset: NBP-test_5s
+  split: NBP-test_5s
+  prompt: birdset_species_v1
+  metrics:
+    - name: top1_accuracy
+      scorer_kwargs:
+        label_separator: ','
+  scientific_labels:
+    - Aegithalos caudatus
+    - Alauda arvensis
+    - Anthus trivialis
+    - Buteo buteo
+    - Carduelis carduelis
+    - Certhia brachydactyla
+    - Cettia cetti
+    - Chloris chloris
+    - Cisticola juncidis
+    - Columba palumbus
+    - Corvus corone
+    - Curruca cantillans
+    - Curruca melanocephala
+    - Cyanistes caeruleus
+    - Dendrocopos major
+    - Emberiza cirlus
+    - Erithacus rubecula
+    - Fringilla coelebs
+    - Galerida cristata
+    - Galerida theklae
+    - Garrulus glandarius
+    - Hirundo rustica
+    - Jynx torquilla
+    - Linaria cannabina
+    - Lophophanes cristatus
+    - Loxia curvirostra
+    - Lullula arborea
+    - Luscinia megarhynchos
+    - Motacilla cinerea
+    - Muscicapa striata
+    - Oriolus oriolus
+    - Parus major
+    - Passer domesticus
+    - Periparus ater
+    - Petronia petronia
+    - Phylloscopus collybita
+    - Pica pica
+    - Poecile palustris
+    - Prunella modularis
+    - Pyrrhula pyrrhula
+    - Regulus ignicapilla
+    - Serinus serinus
+    - Sitta europaea
+    - Streptopelia decaocto
+    - Streptopelia turtur
+    - Sturnus vulgaris
+    - Sylvia atricapilla
+    - Sylvia undata
+    - Troglodytes troglodytes
+    - Turdus merula
+    - Turdus philomelos

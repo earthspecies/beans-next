@@ -1,0 +1,46 @@
+{
+  "audio_strategy": {
+    "type": "vendored_base64_wav"
+  },
+  "dataset_id": "beans_zero",
+  "samples": [
+    {
+      "labels": "chainsaw",
+      "sample_id": "fixture:beans_zero_slice_v1:esc50:0000",
+      "source": {
+        "synthetic": true,
+        "task_id": "beans_zero_esc50"
+      },
+      "task": {
+        "eval_task_id": "beans_zero_esc50"
+      }
+    },
+    {
+      "labels": [
+        "sparrow",
+        "wind"
+      ],
+      "sample_id": "fixture:beans_zero_slice_v1:dcase:0000",
+      "source": {
+        "synthetic": true,
+        "task_id": "beans_zero_dcase"
+      },
+      "task": {
+        "eval_task_id": "beans_zero_dcase"
+      }
+    },
+    {
+      "labels": "A short description of the recording.",
+      "sample_id": "fixture:beans_zero_slice_v1:captioning:0000",
+      "source": {
+        "synthetic": true,
+        "task_id": "beans_zero_captioning"
+      },
+      "task": {
+        "eval_task_id": "beans_zero_captioning"
+      }
+    }
+  ],
+  "selection_method": "explicit_sample_ids",
+  "split": "test"
+}

@@ -1,0 +1,9 @@
+{
+  "beans_next": {
+    "git_sha": null,
+    "package_version": null
+  },
+  "schemas": {
+    "predictions_wire_schema": "predictions_v1"
+  }
+}

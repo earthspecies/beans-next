@@ -1,0 +1,29 @@
+# BEANS-Next multiaudio eval — NatureLM-audio v1.1 from GCS checkpoint
+#
+# This is a small 5-example config for validating prompt rendering + HTTP
+# contract wiring.
+#
+# Prereq: start the local launcher (in this repo) on port 8001:
+#   cd examples/servers/naturelm-v1.1
+#   PORT=8001 \
+#     NATURELM_GCS_CHECKPOINT_URI=gs://foundation-models/naturelm-audio-1.1/base_model/1290000 \
+#     NATURELM_STUB_MODE=1 \
+#     ./serve.sh
+
+models:
+  - inline:
+      name: naturelm_v1_1_ckpt_1290000
+      description: NatureLM v1.1 served from gs://foundation-models/naturelm-audio-1.1/base_model/1290000
+      predict_url: http://127.0.0.1:8001/predict
+      info_url: http://127.0.0.1:8001/info
+      health_url: http://127.0.0.1:8001/health
+      response_schema: predictions_v1
+      audio_payload: base64_wav
+
+tasks:
+  - beans_next_multiaudio_unseen_species_4way
+
+limit: 5
+
+data_source: esp_data
+

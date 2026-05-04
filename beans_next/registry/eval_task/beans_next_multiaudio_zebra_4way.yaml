@@ -1,0 +1,9 @@
+beans_next_multiaudio_zebra_4way:
+  task_type: classification
+  data_source: esp_data
+  dataset: beans_next_multiaudio
+  subset: zebra-4way
+  split: zebra-4way
+  prompt: beans_next_multiaudio_query_only_v1
+  metrics:
+    - name: accuracy

@@ -1,0 +1,17 @@
+fastapi==0.115.12
+uvicorn[standard]==0.34.2
+pydantic==2.11.7
+
+# NOTE: This `requirements.txt` is intentionally **stub-mode only** so the repo's
+# default CPU environment stays lightweight.
+#
+# Real (non-stub) inference requires installing additional launcher-local deps
+# (not in BEANS-Next core), including at minimum:
+# - torch (CPU or CUDA build; heavy)
+# - numpy
+# - soundfile
+# - huggingface_hub
+# - NatureLM-audio (GitHub: `earthspeciesproject/NatureLM-audio`)
+# - transformers (optional best-effort fallback when GitHub install is unavailable)
+#
+# See `README.md` for the exact real-mode install commands and CPU/GPU notes.

@@ -1,0 +1,8 @@
+# BEANS-Next vLLM adapter sidecar (isolated venv; GPU-free stub mode supported).
+fastapi==0.115.12
+uvicorn[standard]==0.34.2
+pydantic==2.11.7
+httpx==0.28.1
+vllm
+transformers==4.57.6
+

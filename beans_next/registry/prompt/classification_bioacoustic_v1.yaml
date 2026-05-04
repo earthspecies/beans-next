@@ -1,0 +1,24 @@
+# Single-audio species / event classification (bioacoustics).
+prompt_id: beans_next.prompt.classification_bioacoustic.v1
+messages:
+  - role: system
+    content: |
+      You are a bioacoustic audio classifier. Answer with exactly one label
+      from the candidate list. Do not explain your reasoning.
+  - role: user
+    content: |
+      {{ audio_placeholder }}
+
+      Candidate labels (choose one):
+      {% for label in candidate_labels %}
+      - {{ label }}
+      {% endfor %}
+
+      Answer with a single label only.
+audio_slots:
+  - metadata_key: audio_path
+    payload_type: file_path
+    sample_rate: 16000
+generation_config:
+  max_tokens: 64
+  temperature: 0.0

@@ -1,0 +1,27 @@
+# Template: BEANS-Zero core evaluation — NatureLM-audio v1.1 from a custom checkpoint
+#
+# 1) Copy this file and rename it (example):
+#      cp configs/benchmarks/beans_zero_core_naturelm_v1_1_checkpoint_template.yaml \
+#         configs/benchmarks/beans_zero_core_naturelm_v1_1_ckpt_my_checkpoint.yaml
+#
+# 2) Start the launcher with your checkpoint URI:
+#      NATURELM_GCS_CHECKPOINT_URI=gs://foundation-models/naturelm-audio-1.5/all_backup/<your_checkpoint_dir> \
+#        sbatch examples/slurm/serve_naturelm_v1_1.sh
+#
+# 3) Edit `name` and `description` below to match your checkpoint.
+# 4) Run:
+#      uv run beans-next run --config configs/benchmarks/beans_zero_core_naturelm_v1_1_ckpt_my_checkpoint.yaml \
+#        -o results/naturelm_v1_1_ckpt_my_checkpoint_$(date +%Y%m%d)
+
+models:
+  - inline:
+      name: naturelm_v1_1_ckpt_replace_me
+      description: NatureLM v1.1 served from GCS checkpoint replace_me
+      predict_url: http://127.0.0.1:8001/predict
+      info_url: http://127.0.0.1:8001/info
+      health_url: http://127.0.0.1:8001/health
+      response_schema: predictions_v1
+      audio_payload: base64_wav
+
+suite: beans_zero_core
+data_source: hf

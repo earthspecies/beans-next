@@ -1,0 +1,26 @@
+# Single-audio query-only prompt for BeansProMultiAudio — NatureLM v1.1.
+#
+# The user message is read from metadata["conversation_query_only"], which is
+# the full prompt text with all <Audio><AudioHere></Audio> placeholders EXCEPT
+# the last one (the query audio) replaced by "[audio]".  Only the query audio
+# is sent (metadata["audio_path"]).
+#
+# This is a single-audio reformulation of the multi-audio task: the model
+# receives the query audio and the task description / answer choices in text,
+# but NOT the support/choice audios.  Results are degraded compared to the
+# full multi-audio evaluation but allow NatureLM v1.1 (single-audio only) to
+# run on BeansProMultiAudio splits.
+#
+# Compatible launchers: naturelm-v1.1, naturelm-v1.0, any single-audio server.
+# For full multi-audio evaluation, use beans_next_multiaudio_passthrough_v1.yaml.
+prompt_id: beans_next.prompt.multiaudio_query_only.v1
+messages:
+  - role: user
+    content: "{{ metadata.conversation_query_only }}"
+audio_slots:
+  - metadata_key: audio_path
+    payload_type: file_path
+    sample_rate: 16000
+generation_config:
+  max_tokens: 32
+  temperature: 0.0

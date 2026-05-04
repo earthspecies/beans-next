@@ -1,0 +1,4 @@
+bioacoustic_counting_v1:
+  template_id: bioacoustic_counting_v1
+  description: Bioacoustic species->vocalization counting rubric (scientific names).
+

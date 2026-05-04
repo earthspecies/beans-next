@@ -1,0 +1,34 @@
+fixture_format_version: '1'
+bundle_id: beans_zero_slice_v1
+created_at_utc: '1970-01-01T00:00:00Z'
+description: Tiny synthetic BEANS-Zero-like slice for regression fixtures (CPU-only
+  inputs).
+phase: phase_b_golden_captured
+model_identity:
+  source: info_endpoint
+  info:
+    name: beans-next-naturelm-v1.0
+    model: EarthSpeciesProject/NatureLM-audio
+    model_revision: stub
+  info_captured_at_utc: '2026-04-20T14:40:10Z'
+inputs:
+  slice_path: inputs/slice.json
+  requests_path: inputs/requests.jsonl
+  audio:
+    payload_type: base64_wav
+    storage: none
+expected:
+  variant_id: naturelm_audio_v1_0
+  predictions_path: expected/predictions.jsonl
+  processed_predictions_path: expected/processed_predictions.jsonl
+  scored_predictions_path: expected/scored_predictions.jsonl
+  summary_path: expected/summary.json
+  model_identity_path: expected/model_identity.json
+regenerate:
+  command: 'uv run python scripts/fixtures/generate_beans_zero_slice.py --out tests/fixtures/beans_zero_slice_v1
+    --force
+
+    '
+  notes: Phase B (GPU) will populate expected/* after capturing goldens from a real
+    launcher.
+

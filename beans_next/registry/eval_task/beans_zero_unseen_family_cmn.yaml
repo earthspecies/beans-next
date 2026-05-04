@@ -1,0 +1,61 @@
+beans_zero_unseen_family_cmn:
+  task_type: classification
+  hf_path: EarthSpeciesProject/BEANS-Zero
+  subset: unseen-family-cmn
+  split: test
+  prompt: classification_beans_zero_official_v1
+  metrics:
+    - name: accuracy
+    - name: f1
+      scorer_kwargs:
+        average: macro
+        zero_division: 0
+    - name: recall
+      scorer_kwargs:
+        average: macro
+        zero_division: 0
+    - name: precision
+      scorer_kwargs:
+        average: macro
+        zero_division: 0
+  labels:
+    - American Beaver
+    - Babiroussa des Moluques
+    - Bartschwein
+    - Buckell's Grig
+    - Catalonian Midwife Toad
+    - Common Degu
+    - Common Diving Petrel
+    - Common Indian Cricket Frog
+    - Common Midwife Toad
+    - Common skittering frog
+    - Coruro
+    - Crab-eating Frog
+    - Crowned bullfrog
+    - Dall's Porpoise
+    - East Asian Bullfrog
+    - Eastern Chat-Tanager
+    - Eurasian Beaver
+    - Eurasian Wild Pig
+    - Finless Porpoise
+    - Forest Hog
+    - Great Grig
+    - Green Puddle Frog
+    - Harbor Porpoise
+    - Hong Kong Rice-paddy Frog
+    - Iberian Midwife Toad
+    - Lesser Spiny Frog
+    - Malabar Wart Frog
+    - Mallorcan Midwife Toad
+    - Marbled Sand Frog
+    - Midwife toad
+    - Nepal Wart Frog
+    - Paddy Field Frog
+    - Pinselohrschwein
+    - Round-tongued Floating Frog
+    - South Georgia Diving Petrel
+    - Spotted Elachura
+    - Sumatran Puddle Frog
+    - Tasman Common Diving-Petrel
+    - Western Chat-Tanager
+    - Wild Boar
