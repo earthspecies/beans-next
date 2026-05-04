@@ -120,6 +120,17 @@
     "safetyMitigations": "Users should apply ecological and ethical safeguards when using models trained on this dataset. This includes avoiding disclosure of sensitive species information, validating outputs with domain experts, and combining model predictions with other monitoring tools. Care should be taken when interpreting results for underrepresented taxa or in high-stakes conservation contexts.",
     "recommendations": "We recommend using the dataset for research and model development, validating performance across taxa and environments, and applying additional fine-tuning or in-context learning for specialized tasks. Users should be aware of dataset biases and limitations when deploying models trained on ROOTS."
   },
+  "rai:considerations": {
+    "@type": "rai:Considerations",
+    "rai:downstreamUse": "The dataset is intended for training audio-language models for bioacoustic analysis across a broad range of tasks, including species recognition, acoustic measurement, temporal reasoning, and in-context learning. It can be used to develop general-purpose bioacoustic models, support ethology research, and be integrated into ecological monitoring systems or fine-tuned for specific taxa or tasks.",
+    "rai:outOfScopeUse": "The dataset is not designed for tasks outside of bioacoustics. It should not be used as the sole basis for high-confidence ecological decision-making, precise temporal localization, or deployment without expert validation, especially where taxa or environments are underrepresented.",
+    "rai:knownBiases": "The dataset is biased toward taxa well represented in public bioacoustic archives (especially birds), with geographic and recording-condition imbalance and synthetic-data artifacts that may differ from real-world recordings.",
+    "rai:potentialRisks": "Models trained on this data could be misused to detect or locate sensitive species; predictions may be wrong in the field without validation. Synthetic and weak labels may amplify misleading patterns if over-relied upon.",
+    "rai:limitations": "Weak labels, missing annotations, uneven task coverage, and reliance on synthetic supervision for some capabilities mean the data does not capture all real-world bioacoustic complexity or monitoring scenarios.",
+    "rai:mitigationStrategies": "Apply ecological and ethical safeguards: avoid disclosing sensitive species information, validate outputs with domain experts, combine model predictions with other monitoring tools, and test across taxa and environments before deployment.",
+    "rai:audience": "Researchers in machine learning, bioacoustics, and ecology",
+    "rai:usageGuidelines": "Training and deployment decisions should not rely on this dataset alone; validate in target environments and consult experts for conservation or policy use"
+  },
   "conformsTo": "http://mlcommons.org/croissant/1.0",
   "isLiveDataset": true
 }

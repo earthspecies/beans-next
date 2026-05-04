@@ -106,6 +106,17 @@
     "safetyMitigations": "Users should interpret benchmark results cautiously and validate model performance in real-world conditions before deployment. Benchmark evaluation should be complemented with domain-specific testing and expert analysis, especially for high-stakes ecological applications.",
     "recommendations": "We recommend using BEANS-Next as a research tool for comparing models and diagnosing strengths and weaknesses across task types. It should be used in conjunction with additional datasets and evaluation protocols to assess real-world performance and generalization."
   },
+  "rai:considerations": {
+    "@type": "rai:Considerations",
+    "rai:downstreamUse": "The benchmark is intended for evaluating audio-language models on a broad range of bioacoustic tasks, including acoustic perception, semantic recognition, structural and temporal reasoning, and in-context learning. It supports research in general-purpose audio-language modeling and enables systematic comparison of models across biologically relevant capabilities.",
+    "rai:outOfScopeUse": "The benchmark is not designed as a comprehensive measure of real-world ecological performance. It should not be used as the sole basis for model deployment in conservation, biodiversity monitoring, or policy decisions.",
+    "rai:knownBiases": "The benchmark inherits biases from its source datasets, including overrepresentation of birds, geographic imbalance, and variation in recording conditions.",
+    "rai:potentialRisks": "Models evaluated on this benchmark may be misinterpreted as general-purpose ecological tools, leading to incorrect deployment decisions. Performance may not generalize to rare species or unseen environments.",
+    "rai:limitations": "The benchmark evaluates a defined taxonomy of tasks and does not capture all aspects of bioacoustic analysis or real-world ecological complexity.",
+    "rai:mitigationStrategies": "Users should validate model performance in real-world conditions, complement benchmark evaluation with domain-specific datasets, and consult domain experts for high-stakes applications.",
+    "rai:audience": "Researchers in machine learning, bioacoustics, and ecology",
+    "rai:usageGuidelines": "Benchmark results should not be used as sole evidence for ecological decision-making"
+  },
   "conformsTo": "http://mlcommons.org/croissant/1.0",
   "isLiveDataset": true
 }
