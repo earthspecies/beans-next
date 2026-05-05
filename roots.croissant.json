@@ -52,7 +52,7 @@
   "description": "ROOTS is a large-scale bioacoustic audio-language training dataset constructed from curated bioacoustic archives, structured metadata, metadata-grounded text synthesis, and synthetic audio pipelines. It supports a taxonomy of tasks including acoustic perception, semantic recognition, structural and temporal reasoning, and in-context learning.",
   "url": "https://your-project-page-or-repo",
   "version": "1.0.0",
-  "datePublished": "2026",
+  "datePublished": "2026-01-01",
   "citeAs": "To be added (ROOTS paper citation).",
   "license": "Mixed; see source datasets (e.g., Xeno-Canto, WABAD, BirdSet)",
   "isAccessibleForFree": true,
@@ -131,6 +131,6 @@
     "rai:audience": "Researchers in machine learning, bioacoustics, and ecology",
     "rai:usageGuidelines": "Training and deployment decisions should not rely on this dataset alone; validate in target environments and consult experts for conservation or policy use"
   },
-  "conformsTo": "http://mlcommons.org/croissant/1.0",
+  "http://purl.org/dc/terms/conformsTo": "http://mlcommons.org/croissant/1.0",
   "isLiveDataset": true
 }

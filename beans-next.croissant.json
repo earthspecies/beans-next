@@ -52,7 +52,7 @@
   "description": "BEANS-Next is a benchmark for evaluating bioacoustic audio-language models across a taxonomy of tasks including acoustic perception, semantic recognition, structural and temporal reasoning, and in-context learning. It extends BEANS-Zero and BirdSet with new task families aligned with ethological workflows.",
   "url": "https://your-benchmark-page",
   "version": "1.0.0",
-  "datePublished": "2026",
+  "datePublished": "2026-01-01",
   "citeAs": "To be added (BEANS-Next paper citation).",
   "license": "Mixed; inherits licenses from source datasets",
   "isAccessibleForFree": true,
@@ -117,6 +117,6 @@
     "rai:audience": "Researchers in machine learning, bioacoustics, and ecology",
     "rai:usageGuidelines": "Benchmark results should not be used as sole evidence for ecological decision-making"
   },
-  "conformsTo": "http://mlcommons.org/croissant/1.0",
+  "http://purl.org/dc/terms/conformsTo": "http://mlcommons.org/croissant/1.0",
   "isLiveDataset": true
 }
