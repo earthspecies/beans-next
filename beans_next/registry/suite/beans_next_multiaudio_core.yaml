@@ -10,5 +10,3 @@ beans_next_multiaudio_core:
     - beans_next_multiaudio_gibbon_fewshot_detection_balanced
     - beans_next_multiaudio_dcase_fewshot_detection_balanced
     - beans_next_multiaudio_unseen_species_4way
-    - beans_next_multiaudio_unseen_genus_4way
-    - beans_next_multiaudio_unseen_family_4way

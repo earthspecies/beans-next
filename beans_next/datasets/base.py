@@ -39,8 +39,10 @@ from typing import Any
 from beans_next.api.types import DatasetExample
 
 _SAMPLE_ID_PREFIX = "beanspro:hf:"
-_AUDIO_CACHE_ENV = "BEANS_PRO_HF_AUDIO_CACHE_DIR"
-_DEFAULT_HF_AUDIO_SAMPLE_RATE_ENV = "BEANS_PRO_HF_DEFAULT_SAMPLE_RATE_HZ"
+_AUDIO_CACHE_ENV = "BEANS_NEXT_HF_AUDIO_CACHE_DIR"
+_AUDIO_CACHE_ENV_COMPAT = "BEANS_PRO_HF_AUDIO_CACHE_DIR"
+_DEFAULT_HF_AUDIO_SAMPLE_RATE_ENV = "BEANS_NEXT_HF_DEFAULT_SAMPLE_RATE_HZ"
+_DEFAULT_HF_AUDIO_SAMPLE_RATE_ENV_COMPAT = "BEANS_PRO_HF_DEFAULT_SAMPLE_RATE_HZ"
 _DEFAULT_HF_AUDIO_SAMPLE_RATE_HZ = 32000
 
 
@@ -53,7 +55,7 @@ def _audio_cache_dir() -> str:
     str
         Absolute path to the cache directory.
     """
-    root = os.environ.get(_AUDIO_CACHE_ENV)
+    root = os.environ.get(_AUDIO_CACHE_ENV) or os.environ.get(_AUDIO_CACHE_ENV_COMPAT)
     if root is None or not root.strip():
         root = tempfile.mkdtemp(prefix="beans-next-hf-audio-")
     os.makedirs(root, exist_ok=True)
@@ -254,7 +256,8 @@ def _ensure_audio_path_from_array(
     sample_rate
         Explicit sample rate in Hz to use when ``audio_val`` is a bare array
         (``list`` or ``numpy.ndarray``) that carries no embedded rate.
-        Falls back to the ``BEANS_PRO_HF_DEFAULT_SAMPLE_RATE_HZ`` env var and
+        Falls back to the ``BEANS_NEXT_HF_DEFAULT_SAMPLE_RATE_HZ`` env var (compat:
+        ``BEANS_PRO_HF_DEFAULT_SAMPLE_RATE_HZ``) and
         then to the built-in default (32 kHz).
 
     Returns
@@ -286,7 +289,9 @@ def _ensure_audio_path_from_array(
         if sample_rate is not None:
             sr = sample_rate
         else:
-            sr_raw = os.environ.get(_DEFAULT_HF_AUDIO_SAMPLE_RATE_ENV)
+            sr_raw = os.environ.get(
+                _DEFAULT_HF_AUDIO_SAMPLE_RATE_ENV
+            ) or os.environ.get(_DEFAULT_HF_AUDIO_SAMPLE_RATE_ENV_COMPAT)
             if sr_raw is not None and sr_raw.strip():
                 try:
                     sr = int(sr_raw)
@@ -304,7 +309,9 @@ def _ensure_audio_path_from_array(
                 if sample_rate is not None:
                     sr = sample_rate
                 else:
-                    sr_raw = os.environ.get(_DEFAULT_HF_AUDIO_SAMPLE_RATE_ENV)
+                    sr_raw = os.environ.get(
+                        _DEFAULT_HF_AUDIO_SAMPLE_RATE_ENV
+                    ) or os.environ.get(_DEFAULT_HF_AUDIO_SAMPLE_RATE_ENV_COMPAT)
                     if sr_raw is not None and sr_raw.strip():
                         try:
                             sr = int(sr_raw)

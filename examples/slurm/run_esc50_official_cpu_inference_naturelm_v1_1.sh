@@ -58,13 +58,13 @@ mkdir -p "$OUT"
 
 uv run beans-next run \
   --predict-url "$PREDICT_URL" \
-  --data-source esp_data \
+  --backend "${BEANS_PRO_DATA_SOURCE:-esp_data}" \
   --split esc50 \
   --dataset-name esc50 \
   --task-id beans_zero_esc50_official \
   --prompt-yaml beans_next/registry/prompt/classification_beans_zero_official_v1.yaml \
   --limit 400 \
-  --run-id "esc50_official_v11_full_cpu_${SLURM_JOB_ID}_esp_data" \
+  --run-id "esc50_official_v11_full_cpu_${SLURM_JOB_ID}_${BEANS_PRO_DATA_SOURCE:-esp_data}" \
   -o "$OUT"
 
 echo "DONE. Output dir: $OUT"

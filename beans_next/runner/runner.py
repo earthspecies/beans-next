@@ -1312,13 +1312,16 @@ def _load_examples_for_eval_task(
     from beans_next.datasets.hf_streaming import iter_hf_streaming_examples
 
     # Configurable dataset backend switch:
-    # - explicit CLI `--data-source` wins
+    # - explicit CLI `--backend` wins
     # - then YAML `data_source` (if present in run-config or eval-task body)
-    # - then env var `BEANS_PRO_DATA_SOURCE`
+    # - then env var `BEANS_NEXT_DATA_SOURCE` (compat: `BEANS_PRO_DATA_SOURCE`)
     # - else default esp_data
     data_source = getattr(args, "data_source", None) or eval_task.get("data_source")
     if not isinstance(data_source, str) or not data_source.strip():
-        data_source = os.environ.get("BEANS_PRO_DATA_SOURCE", "esp_data")
+        data_source = os.environ.get(
+            "BEANS_NEXT_DATA_SOURCE",
+            os.environ.get("BEANS_PRO_DATA_SOURCE", "esp_data"),
+        )
     data_source = str(data_source).strip()
 
     hf_path = cast(

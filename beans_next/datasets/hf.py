@@ -33,7 +33,8 @@ from beans_next.datasets.base import (
 
 _LOG = logging.getLogger(__name__)
 # Env var controlling parallel WAV materialization workers (soundfile releases GIL).
-_WORKERS_ENV = "BEANS_PRO_HF_WORKERS"
+_WORKERS_ENV = "BEANS_NEXT_HF_WORKERS"
+_WORKERS_ENV_COMPAT = "BEANS_PRO_HF_WORKERS"
 
 
 def _heavy_columns(features: Mapping[str, Any]) -> list[str]:
@@ -203,7 +204,14 @@ def iter_hf_dataset_examples(
     # soundfile.write releases the GIL, so ThreadPoolExecutor gives real speedup
     # for the WAV-materialization step inside hf_row_to_dataset_example.
     try:
-        _workers = max(1, int(os.environ.get(_WORKERS_ENV, "1")))
+        _workers = max(
+            1,
+            int(
+                os.environ.get(_WORKERS_ENV)
+                or os.environ.get(_WORKERS_ENV_COMPAT)
+                or "1"
+            ),
+        )
     except ValueError:
         _workers = 1
 

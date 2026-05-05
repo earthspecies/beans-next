@@ -16,10 +16,11 @@ single-audio or multi-audio loader transparently.
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import tempfile
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from types import ModuleType
 from typing import Any, Final
@@ -115,6 +116,42 @@ def _to_plain(value: object) -> object:
         except Exception:  # noqa: BLE001
             pass
     return value
+
+
+def _coerce_str_sequence(value: object) -> list[str] | None:
+    """Coerce a Parquet-decoded value into a list of non-empty strings.
+
+    HuggingFace-hosted Parquet sometimes encodes list columns as JSON strings
+    (e.g. ``'["a", "b"]'``). Additionally, Arrow decoding can yield tuples or
+    other ``Sequence`` implementations. This helper normalizes those variants.
+    """
+    if isinstance(value, list):
+        items = value
+    elif isinstance(value, str):
+        s = value.strip()
+        if not s:
+            return None
+        try:
+            parsed = json.loads(s)
+        except json.JSONDecodeError:
+            return None
+        if not isinstance(parsed, list):
+            return None
+        items = parsed
+    elif isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        items = list(value)
+    else:
+        return None
+
+    out: list[str] = []
+    for x in items:
+        if not isinstance(x, str):
+            return None
+        sx = x.strip()
+        if not sx:
+            return None
+        out.append(sx)
+    return out
 
 
 def iter_parquet_row_dicts(url: str) -> Iterator[dict[str, Any]]:
@@ -355,11 +392,9 @@ def _iter_multiaudio_examples(
 
     needed: set[str] = set()
     for row in meta_rows:
-        ids_raw = row.get("audio_ids")
-        if isinstance(ids_raw, list):
-            for x in ids_raw:
-                if isinstance(x, str) and x.strip():
-                    needed.add(x.strip())
+        ids = _coerce_str_sequence(row.get("audio_ids"))
+        if ids is not None:
+            needed.update(ids)
         qid = row.get("query_audio_id")
         if isinstance(qid, str) and qid.strip():
             needed.add(qid.strip())
@@ -378,16 +413,18 @@ def _iter_multiaudio_examples(
                 ordinal=ordinal,
             )
         )
-        ids_raw = row.get("audio_ids")
-        if not isinstance(ids_raw, list):
-            raise RuntimeError(f"multiaudio row missing audio_ids subset={subset!r}")
+        ids = _coerce_str_sequence(row.get("audio_ids"))
+        if ids is None:
+            keys = ", ".join(sorted(row.keys()))
+            raise RuntimeError(
+                "multiaudio row missing/invalid audio_ids "
+                f"subset={subset!r} keys=[{keys}]"
+            )
         paths: list[str] = []
-        for j, x in enumerate(ids_raw):
-            if not isinstance(x, str) or not x.strip():
-                raise RuntimeError(f"invalid audio_ids[{j}] subset={subset!r}")
+        for j, x in enumerate(ids):
             paths.append(
                 _materialize_wav_bytes(
-                    audio_map[x.strip()], stem=f"{sample_id}__ctx{j}"
+                    audio_map[x], stem=f"{sample_id}__ctx{j}"
                 )
             )
         qid = row.get("query_audio_id")

@@ -170,7 +170,7 @@ new serve scripts (AF3, vLLM/Qwen, NatureLM v1.1, API-backed models).
 ### `esp_data` backend (cluster-first)
 
 - Symptom: `ModuleNotFoundError: esp_data` or failures loading BEANS-Zero without HF access.
-- Fix pattern: use `BEANS_PRO_DATA_SOURCE=esp_data` and ensure jobs run `uv sync --group esp`
+- Fix pattern: use `BEANS_NEXT_DATA_SOURCE=esp_data` and ensure jobs run `uv sync --group esp`
   (requires `pyproject.toml` `tool.uv.index` + `tool.uv.sources` for `esp-pypi`).
 
 ### “Official” ESC-50 vs closed-set prompt
@@ -246,9 +246,9 @@ Operational policy:
 - If still insufficient, exit with a clear error marker so the manager/agent can resubmit elsewhere.
 
 Serve scripts in this repo implement this via `examples/slurm/scratch_guard.sh` and exit with
-`BEANS_PRO_DISK_SPACE_BLOCKER` (exit code 86) when they cannot recover enough disk.
+`BEANS_NEXT_DISK_SPACE_BLOCKER` (exit code 86) when they cannot recover enough disk.
 
-Default scratch headroom thresholds (override per job with `BEANS_PRO_SCRATCH_MIN_FREE_GB`):
+Default scratch headroom thresholds (override per job with `BEANS_NEXT_SCRATCH_MIN_FREE_GB`):
 
 - Qwen/vLLM: **100 GB**
 - NatureLM: **50 GB**
@@ -273,7 +273,7 @@ For the full recovery ladder with exact commands, see
 | Failure | Action |
 |---|---|
 | Exit 86 (scratch full, node 1) | `scontrol show job <id>` → get node name → `sbatch --exclude=<node> <script>` |
-| Exit 86 (weights likely cached) | Add `BEANS_PRO_SCRATCH_MIN_FREE_GB=20` to the sbatch env |
+| Exit 86 (weights likely cached) | Add `BEANS_NEXT_SCRATCH_MIN_FREE_GB=20` to the sbatch env |
 | Exit 86 (two nodes failed) | Write BLOCKED with both node names + `free_gb` evidence |
 | Job stuck PD > 10 min | Check reason with `scontrol show job`; try `--partition=h100-80` |
 | URL file missing after job is R | `tail -f /mnt/home/.../logs/<job_id>.log` for startup errors |

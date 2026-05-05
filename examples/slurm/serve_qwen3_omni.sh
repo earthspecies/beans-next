@@ -9,7 +9,7 @@
 #
 # Optional overrides:
 #   VLLM_TENSOR_PARALLEL_SIZE=2 sbatch --gpus=2 examples/slurm/serve_qwen3_omni.sh
-#   BEANS_PRO_PORT=8003 VLLM_PORT=8103 sbatch examples/slurm/serve_qwen3_omni.sh
+#   BEANS_NEXT_PORT=8003 VLLM_PORT=8103 sbatch examples/slurm/serve_qwen3_omni.sh
 
 set -euo pipefail
 

@@ -14,7 +14,7 @@
 #
 # Usage:
 #   SERVE_JOB_ID=12345
-#   BEANS_PRO_URL_FILE=$HOME/beans-next-launchers/$SERVE_JOB_ID.url \
+#   BEANS_NEXT_URL_FILE=$HOME/beans-next-launchers/$SERVE_JOB_ID.url \
 #   sbatch --dependency=after:$SERVE_JOB_ID examples/slurm/test_run_inference_clean_beans_zero_cache.sh
 #
 # Optional override (rare):
@@ -34,7 +34,12 @@ if [[ -z "${SLURM_SUBMIT_DIR:-}" ]]; then
 fi
 
 # Must be set: path to the URL file written by the serving job.
-export BEANS_PRO_URL_FILE="${BEANS_PRO_URL_FILE:?BEANS_PRO_URL_FILE must be set}"
+export BEANS_NEXT_URL_FILE="${BEANS_NEXT_URL_FILE:-${BEANS_PRO_URL_FILE:-}}"
+if [[ -z "${BEANS_NEXT_URL_FILE:-}" ]]; then
+  echo "ERROR: BEANS_NEXT_URL_FILE must be set." >&2
+  echo "Compat: BEANS_PRO_URL_FILE is also supported." >&2
+  exit 1
+fi
 
 # Choose the datasets cache location (prefer explicit override).
 HF_DATASETS_CACHE="${HF_DATASETS_CACHE:-$HOME/.cache/huggingface/datasets}"

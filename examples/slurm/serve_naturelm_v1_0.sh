@@ -4,9 +4,9 @@
 # Submit:
 #   sbatch examples/slurm/serve_naturelm_v1_0.sh
 #
-# The launcher writes its predict URL to $BEANS_PRO_URL_DIR/<job_id>.url
+# The launcher writes its predict URL to $BEANS_NEXT_URL_DIR/<job_id>.url
 # once /health passes. Point an inference job at that file with:
-#   BEANS_PRO_URL_FILE=$HOME/beans-next-launchers/<job_id>.url sbatch examples/slurm/run_inference.sh
+#   BEANS_NEXT_URL_FILE=$HOME/beans-next-launchers/<job_id>.url sbatch examples/slurm/run_inference.sh
 
 # Partition preference: a100-40 first, h100-80 fallback.
 # Check availability before submitting: sinfo; squeue --me
@@ -21,9 +21,9 @@
 set -euo pipefail
 
 # Optional debug mode.
-# Enable with: BEANS_PRO_DEBUG=1 (or true/yes).
+# Enable with: BEANS_NEXT_DEBUG=1 (or true/yes).
 _debug_enabled() {
-  case "${BEANS_PRO_DEBUG:-0}" in
+  case "${BEANS_NEXT_DEBUG:-${BEANS_PRO_DEBUG:-0}}" in
     1|true|TRUE|yes|YES) return 0 ;;
     *) return 1 ;;
   esac
@@ -45,21 +45,22 @@ if [[ -z "$REPO" ]]; then
   exit 1
 fi
 
-# Fixed port by default (override via BEANS_PRO_PORT).
-PORT="${BEANS_PRO_PORT:-8000}"
+# Fixed port by default (override via BEANS_NEXT_PORT; compat: BEANS_PRO_PORT).
+PORT="${BEANS_NEXT_PORT:-${BEANS_PRO_PORT:-8000}}"
 
 # Ensure all `uv` operations use a job-scoped environment on node-local scratch.
 # This avoids relying on a potentially stale/broken repo-local `.venv/` on the shared filesystem.
 # Ensure all `uv` operations use a job-scoped environment on node-local scratch.
-# Allow override via BEANS_PRO_UV_PROJECT_ENVIRONMENT, but do not inherit random ambient values.
-export UV_PROJECT_ENVIRONMENT="${BEANS_PRO_UV_PROJECT_ENVIRONMENT:-/scratch/$USER/venvs/beans-next-serve-${SLURM_JOB_ID}}"
+# Allow override via BEANS_NEXT_UV_PROJECT_ENVIRONMENT (compat: BEANS_PRO_UV_PROJECT_ENVIRONMENT),
+# but do not inherit random ambient values.
+export UV_PROJECT_ENVIRONMENT="${BEANS_NEXT_UV_PROJECT_ENVIRONMENT:-${BEANS_PRO_UV_PROJECT_ENVIRONMENT:-/scratch/$USER/venvs/beans-next-serve-${SLURM_JOB_ID}}}"
 
 # Keep TMPDIR job-scoped to avoid collisions; uv cache remains shared.
 export TMPDIR="${TMPDIR:-/scratch/$USER/.cache/tmp/beans-next-serve-${SLURM_JOB_ID}}"
 mkdir -p "$TMPDIR" 2>/dev/null || true
 
 # URL file written once the server is healthy.
-URL_DIR="${BEANS_PRO_URL_DIR:-$HOME/beans-next-launchers}"
+URL_DIR="${BEANS_NEXT_URL_DIR:-${BEANS_PRO_URL_DIR:-$HOME/beans-next-launchers}}"
 mkdir -p "$URL_DIR"
 URL_FILE="$URL_DIR/${SLURM_JOB_ID}.url"
 rm -f "$URL_FILE"
@@ -91,7 +92,7 @@ export NATURELM_V1_0_LOAD_MODE="${NATURELM_V1_0_LOAD_MODE:-pipeline}"
 # Prefer Python 3.11+ for this project. Some compute nodes may not have a compatible system
 # interpreter, so allow uv to download a managed Python when needed.
 export UV_PYTHON_DOWNLOADS="${UV_PYTHON_DOWNLOADS:-auto}"
-export UV_PYTHON="${BEANS_PRO_UV_PYTHON:-3.11}"
+export UV_PYTHON="${BEANS_NEXT_UV_PYTHON:-${BEANS_PRO_UV_PYTHON:-3.11}}"
 
 # ---------------------------------------------------------------------------
 # Scratch disk guard (check → prune safe caches → fail loudly if still low).
@@ -103,7 +104,7 @@ beans_next_scratch_guard "naturelm" "naturelm-v1.0" "$HF_HOME"
 if _debug_enabled; then
   export PS4='+[$(_ts)] ${BASH_SOURCE##*/}:${LINENO}: '
   set -x
-  _step "DEBUG enabled (BEANS_PRO_DEBUG=1)"
+  _step "DEBUG enabled (BEANS_NEXT_DEBUG=1)"
   _step "UV_PROJECT_ENVIRONMENT: $UV_PROJECT_ENVIRONMENT"
   _step "URL_FILE: $URL_FILE"
   _step "PORT: $PORT"

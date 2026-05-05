@@ -36,11 +36,11 @@ fi
 #
 # D3 requirement: fixed port ONLY at 19082.
 ADAPTER_PORT="19082"
-if [[ -n "${BEANS_PRO_PORT:-}" && "${BEANS_PRO_PORT}" != "${ADAPTER_PORT}" ]]; then
-  echo "ERROR: BEANS_PRO_PORT must be ${ADAPTER_PORT} (got: ${BEANS_PRO_PORT})." >&2
+if [[ -n "${BEANS_NEXT_PORT:-${BEANS_PRO_PORT:-}}" && "${BEANS_NEXT_PORT:-${BEANS_PRO_PORT}}" != "${ADAPTER_PORT}" ]]; then
+  echo "ERROR: BEANS_NEXT_PORT must be ${ADAPTER_PORT} (got: ${BEANS_NEXT_PORT:-${BEANS_PRO_PORT}})." >&2
   exit 2
 fi
-export BEANS_PRO_PORT="${ADAPTER_PORT}"
+export BEANS_NEXT_PORT="${ADAPTER_PORT}"
 VLLM_PORT="${VLLM_PORT:-19083}"
 
 # Ensure all `uv` operations use a job-scoped environment on node-local scratch.
@@ -48,20 +48,20 @@ VLLM_PORT="${VLLM_PORT:-19083}"
 # via `uv pip` into this environment, which does not require `pip` to be present.
 export UV_PROJECT_ENVIRONMENT="${UV_PROJECT_ENVIRONMENT:-/scratch/$USER/venvs/${SLURM_JOB_ID}}"
 
-URL_DIR="${BEANS_PRO_URL_DIR:-$HOME/beans-next-launchers}"
+URL_DIR="${BEANS_NEXT_URL_DIR:-${BEANS_PRO_URL_DIR:-$HOME/beans-next-launchers}}"
 mkdir -p "$URL_DIR"
 URL_FILE="$URL_DIR/${SLURM_JOB_ID}.url"
 rm -f "$URL_FILE"
 
-# NOTE: Use BEANS_PRO_* overrides so callers can safely force caches away from
+# NOTE: Use BEANS_NEXT_* overrides (compat: BEANS_PRO_*) so callers can safely force caches away from
 # `/scratch/.cache` (which is often full on shared nodes) without having to
 # stomp cluster-wide HF_* environment variables.
-export HF_HOME="${BEANS_PRO_HF_HOME:-/scratch/shared/hf_cache}"
-export HF_HUB_CACHE="${BEANS_PRO_HF_HUB_CACHE:-$HF_HOME/hub}"
-export HUGGINGFACE_HUB_CACHE="${BEANS_PRO_HUGGINGFACE_HUB_CACHE:-$HF_HUB_CACHE}"
-export TRANSFORMERS_CACHE="${BEANS_PRO_TRANSFORMERS_CACHE:-$HF_HOME/transformers}"
-export HF_XET_CACHE="${BEANS_PRO_HF_XET_CACHE:-$HF_HOME/xet}"
-export XDG_CACHE_HOME="${BEANS_PRO_XDG_CACHE_HOME:-$HF_HOME/xdg}"
+export HF_HOME="${BEANS_NEXT_HF_HOME:-${BEANS_PRO_HF_HOME:-/scratch/shared/hf_cache}}"
+export HF_HUB_CACHE="${BEANS_NEXT_HF_HUB_CACHE:-${BEANS_PRO_HF_HUB_CACHE:-$HF_HOME/hub}}"
+export HUGGINGFACE_HUB_CACHE="${BEANS_NEXT_HUGGINGFACE_HUB_CACHE:-${BEANS_PRO_HUGGINGFACE_HUB_CACHE:-$HF_HUB_CACHE}}"
+export TRANSFORMERS_CACHE="${BEANS_NEXT_TRANSFORMERS_CACHE:-${BEANS_PRO_TRANSFORMERS_CACHE:-$HF_HOME/transformers}}"
+export HF_XET_CACHE="${BEANS_NEXT_HF_XET_CACHE:-${BEANS_PRO_HF_XET_CACHE:-$HF_HOME/xet}}"
+export XDG_CACHE_HOME="${BEANS_NEXT_XDG_CACHE_HOME:-${BEANS_PRO_XDG_CACHE_HOME:-$HF_HOME/xdg}}"
 mkdir -p "$HF_HUB_CACHE" "$TRANSFORMERS_CACHE" "$HF_XET_CACHE" "$XDG_CACHE_HOME"
 
 # Some downstream libraries (notably huggingface_hub) may see unexpanded `$USER`

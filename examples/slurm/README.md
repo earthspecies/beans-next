@@ -78,34 +78,34 @@ files written by cluster jobs are readable on this local host without any rsync 
 
 These scripts default to **fixed ports** (many clusters require this for firewalling / security policy):
 
-- `serve_naturelm_v1_0.sh`: `BEANS_PRO_PORT=8000`
-- `serve_naturelm_v1_1.sh`: `BEANS_PRO_PORT=8001`
-- `serve_af3.sh`: `BEANS_PRO_PORT=8002`
+- `serve_naturelm_v1_0.sh`: `BEANS_NEXT_PORT=8000`
+- `serve_naturelm_v1_1.sh`: `BEANS_NEXT_PORT=8001`
+- `serve_af3.sh`: `BEANS_NEXT_PORT=8002`
 - `serve_vllm.sh`:
-  - adapter sidecar: `BEANS_PRO_PORT=8003`
+  - adapter sidecar: `BEANS_NEXT_PORT=8003`
   - upstream vLLM: `VLLM_PORT=8103` (bound to `127.0.0.1`)
 
 If your cluster allows it and you need multiple servers on the same node, override ports when submitting:
 
 ```bash
-BEANS_PRO_PORT=8200 sbatch examples/slurm/serve_naturelm_v1_0.sh
+BEANS_NEXT_PORT=8200 sbatch examples/slurm/serve_naturelm_v1_0.sh
 ```
 
 ### 3. Submit the inference job (two-job pattern only)
 
 **Hybrid pattern**: skip this — run `beans-next run` locally instead (see `CLUSTER_MIN_REPRO.md`).
 
-**Two-job pattern**: start with the **minimal reproducer** (`BEANS_PRO_LIMIT=1`) to validate
+**Two-job pattern**: start with the **minimal reproducer** (`BEANS_NEXT_LIMIT=1`) to validate
 end-to-end wiring before any larger run.
 
 ```bash
 SERVE_JOB_ID=12345
 
 BEANS_PRO_URL_FILE=$HOME/beans-next-launchers/$SERVE_JOB_ID.url \
-BEANS_PRO_SUITE=beans_zero_core \
-BEANS_PRO_LIMIT=1 \
-BEANS_PRO_OUT_DIR=/scratch/$USER/results/af3_run_$SERVE_JOB_ID \
-BEANS_PRO_COPY_RESULTS_TO_HOME=1 \
+BEANS_NEXT_SUITE=beans_zero_core \
+BEANS_NEXT_LIMIT=1 \
+BEANS_NEXT_OUT_DIR=/scratch/$USER/results/af3_run_$SERVE_JOB_ID \
+BEANS_NEXT_COPY_RESULTS_TO_HOME=1 \
 sbatch --dependency=after:$SERVE_JOB_ID examples/slurm/run_inference.sh
 ```
 
@@ -113,16 +113,16 @@ Convenience tiny run (defaults to `beans_zero_core`, `--limit 3`, and copy-to-ho
 
 ```bash
 SERVE_JOB_ID=12345
-BEANS_PRO_URL_FILE=$HOME/beans-next-launchers/$SERVE_JOB_ID.url \
+BEANS_NEXT_URL_FILE=$HOME/beans-next-launchers/$SERVE_JOB_ID.url \
 sbatch --dependency=after:$SERVE_JOB_ID examples/slurm/test_run_inference.sh
 ```
 
 Copy-back note:
 
-- If you set `BEANS_PRO_COPY_RESULTS_TO_HOME=1`, the inference job will copy artifacts into
+- If you set `BEANS_NEXT_COPY_RESULTS_TO_HOME=1`, the inference job will copy artifacts into
   `$HOME/beans-next-results/ingested/<run_id>/` at the end. If `/home` is NFS-shared to your
   local machine, they will be visible locally without rsync.
-- If you do not set it and you write `BEANS_PRO_OUT_DIR` under `$SCRATCH`, you must manually rsync
+- If you do not set it and you write `BEANS_NEXT_OUT_DIR` under `$SCRATCH`, you must manually rsync
   the results back for local inspection (see “Results inspection” below).
 
 `--dependency=after:$SERVE_JOB_ID` starts the inference job as soon as the serving job begins running (not after it ends). The inference script then polls for the URL file and polls `/health`, so it waits for the model to finish loading without any fixed “sleep N minutes then hope” delay.
@@ -138,15 +138,15 @@ for real readiness, so no fixed sleeps are required either way.
 Before attempting any large run, validate the end-to-end wiring with the smallest possible scope.
 
 1. Submit a serving job (one of `serve_*.sh`) and capture the job id.
-2. Submit an inference job with **`BEANS_PRO_LIMIT=1`** and a dedicated output directory:
+2. Submit an inference job with **`BEANS_NEXT_LIMIT=1`** and a dedicated output directory:
 
 ```bash
 SERVE_JOB_ID=12345
 
-BEANS_PRO_URL_FILE=$HOME/beans-next-launchers/$SERVE_JOB_ID.url \
-BEANS_PRO_SUITE=beans_zero_core \
-BEANS_PRO_LIMIT=1 \
-BEANS_PRO_OUT_DIR=$SCRATCH/beans-next-results/validate_limit1_$SERVE_JOB_ID \
+BEANS_NEXT_URL_FILE=$HOME/beans-next-launchers/$SERVE_JOB_ID.url \
+BEANS_NEXT_SUITE=beans_zero_core \
+BEANS_NEXT_LIMIT=1 \
+BEANS_NEXT_OUT_DIR=$SCRATCH/beans-next-results/validate_limit1_$SERVE_JOB_ID \
 sbatch --dependency=after:$SERVE_JOB_ID examples/slurm/run_inference.sh
 ```
 
@@ -161,7 +161,7 @@ These scripts run `uv sync` inside the Slurm job by default. On clusters where c
 
 All `examples/slurm/*.sh` scripts support:
 
-- `BEANS_PRO_SKIP_UV_SYNC=1` to skip `uv sync` inside the Slurm job
+- `BEANS_NEXT_SKIP_UV_SYNC=1` to skip `uv sync` inside the Slurm job
 
 ### 4. Multiple inference runs against the same server
 
@@ -171,15 +171,15 @@ Submit the serving job once and reuse it for multiple inference jobs — each po
 SERVE_JOB_ID=12345
 
 # Run 1 — minimal cap (recommended while validating / debugging)
-BEANS_PRO_URL_FILE=$HOME/beans-next-launchers/$SERVE_JOB_ID.url \
-BEANS_PRO_SUITE=beans_zero_core \
-BEANS_PRO_LIMIT=1 \
+BEANS_NEXT_URL_FILE=$HOME/beans-next-launchers/$SERVE_JOB_ID.url \
+BEANS_NEXT_SUITE=beans_zero_core \
+BEANS_NEXT_LIMIT=1 \
 sbatch --dependency=after:$SERVE_JOB_ID examples/slurm/run_inference.sh
 
 # Run 2 — different suite (scale only after the minimal run is green)
-BEANS_PRO_URL_FILE=$HOME/beans-next-launchers/$SERVE_JOB_ID.url \
-BEANS_PRO_SUITE=beans_zero_smoke \
-BEANS_PRO_LIMIT=50 \
+BEANS_NEXT_URL_FILE=$HOME/beans-next-launchers/$SERVE_JOB_ID.url \
+BEANS_NEXT_SUITE=beans_zero_smoke \
+BEANS_NEXT_LIMIT=50 \
 sbatch --dependency=after:$SERVE_JOB_ID examples/slurm/run_inference.sh
 ```
 
@@ -189,9 +189,9 @@ sbatch --dependency=after:$SERVE_JOB_ID examples/slurm/run_inference.sh
 
 | Variable | Default | Description |
 |---|---|---|
-| `BEANS_PRO_URL_DIR` | `$HOME/beans-next-launchers` | Directory for URL files |
-| `BEANS_PRO_PORT` | (see above) | Fixed port the launcher listens on |
-| `BEANS_PRO_HOSTNAME` | (auto) | Optional hostname to write into the URL file (use if `socket.gethostname()` is not routable from the inference job) |
+| `BEANS_NEXT_URL_DIR` | `$HOME/beans-next-launchers` | Directory for URL files |
+| `BEANS_NEXT_PORT` | (see above) | Fixed port the launcher listens on |
+| `BEANS_NEXT_HOSTNAME` | (auto) | Optional hostname to write into the URL file (use if `socket.gethostname()` is not routable from the inference job) |
 | `HF_HOME` | `$SCRATCH/hf_cache` | HuggingFace model cache — update to your cluster's shared cache path |
 
 ### `serve_naturelm_v1_1.sh`
@@ -218,12 +218,12 @@ sbatch --dependency=after:$SERVE_JOB_ID examples/slurm/run_inference.sh
 
 | Variable | Required | Description |
 |---|---|---|
-| `BEANS_PRO_URL_FILE` | Yes | Path to URL file from serving job |
-| `BEANS_PRO_SUITE` | No (default `beans_zero_core`) | Suite id |
-| `BEANS_PRO_LIMIT` | No | Cap on examples per task |
-| `BEANS_PRO_OUT_DIR` | No (default `$HOME/beans-next-results/run_<job_id>`) | Artifact output directory |
-| `BEANS_PRO_CONFIG` | No | Path to a run config YAML (overrides `--suite`) |
-| `BEANS_PRO_RUN_ID` | No (default `slurm_<job_id>`) | Run id label in artifacts |
+| `BEANS_NEXT_URL_FILE` | Yes | Path to URL file from serving job |
+| `BEANS_NEXT_SUITE` | No (default `beans_zero_core`) | Suite id |
+| `BEANS_NEXT_LIMIT` | No | Cap on examples per task |
+| `BEANS_NEXT_OUT_DIR` | No (default `$HOME/beans-next-results/run_<job_id>`) | Artifact output directory |
+| `BEANS_NEXT_CONFIG` | No | Path to a run config YAML (overrides `--suite`) |
+| `BEANS_NEXT_RUN_ID` | No (default `slurm_<job_id>`) | Run id label in artifacts |
 
 ## ESC-50 official (single-task) — Slurm inference entrypoint
 
@@ -242,11 +242,11 @@ Minimal reproducible Slurm submission (two-job pattern):
 ```bash
 SERVE_JOB_ID=12345
 
-BEANS_PRO_URL_FILE="$HOME/beans-next-launchers/${SERVE_JOB_ID}.url" \
-BEANS_PRO_LIMIT=1 \
-BEANS_PRO_OUT_DIR="/scratch/$USER/beans-next-results/esc50_official_limit1_${SERVE_JOB_ID}" \
-BEANS_PRO_RUN_ID="esc50_official_${SERVE_JOB_ID}" \
-BEANS_PRO_COPY_RESULTS_TO_HOME=1 \
+BEANS_NEXT_URL_FILE="$HOME/beans-next-launchers/${SERVE_JOB_ID}.url" \
+BEANS_NEXT_LIMIT=1 \
+BEANS_NEXT_OUT_DIR="/scratch/$USER/beans-next-results/esc50_official_limit1_${SERVE_JOB_ID}" \
+BEANS_NEXT_RUN_ID="esc50_official_${SERVE_JOB_ID}" \
+BEANS_NEXT_COPY_RESULTS_TO_HOME=1 \
 sbatch --dependency=after:${SERVE_JOB_ID} examples/slurm/run_esc50_official_inference.sh
 ```
 
@@ -267,13 +267,13 @@ For the hybrid pattern (serve on cluster, infer locally), see `examples/slurm/CL
 
 ## URL file protocol
 
-The serve scripts write a single line to `$BEANS_PRO_URL_DIR/<job_id>.url` (this is what `examples/slurm/run_inference.sh` reads via `BEANS_PRO_URL_FILE`):
+The serve scripts write a single line to `$BEANS_NEXT_URL_DIR/<job_id>.url` (this is what `examples/slurm/run_inference.sh` reads via `BEANS_NEXT_URL_FILE`):
 
 ```
 http://<hostname>:<port>/predict
 ```
 
-If your cluster’s node hostnames are not directly routable between partitions (common with split CPU/GPU fabrics), set `BEANS_PRO_HOSTNAME` when submitting the serve job to force a reachable name (e.g. an FQDN or an IP your site permits).
+If your cluster’s node hostnames are not directly routable between partitions (common with split CPU/GPU fabrics), set `BEANS_NEXT_HOSTNAME` when submitting the serve job to force a reachable name (e.g. an FQDN or an IP your site permits).
 
 The serve scripts write this file **atomically** (write to `*.tmp` then rename), so the inference job never reads a partially-written URL.
 
@@ -281,15 +281,15 @@ The inference script polls for this file (default timeout: 30 minutes), normaliz
 
 You can override URL-file polling via:
 
-- `BEANS_PRO_URL_WAIT_TIMEOUT_SEC` (default `1800`)
-- `BEANS_PRO_URL_WAIT_INTERVAL_SEC` (default `5`)
+- `BEANS_NEXT_URL_WAIT_TIMEOUT_SEC` (default `1800`)
+- `BEANS_NEXT_URL_WAIT_INTERVAL_SEC` (default `5`)
 
 You can override health polling via:
 
-- `BEANS_PRO_HEALTH_TIMEOUT_SEC` (default `900`)
-- `BEANS_PRO_HEALTH_INTERVAL_SEC` (default `5`)
-- `BEANS_PRO_HEALTH_CONNECT_TIMEOUT_SEC` (default `2`)
-- `BEANS_PRO_HEALTH_MAX_TIME_SEC` (default `5`)
+- `BEANS_NEXT_HEALTH_TIMEOUT_SEC` (default `900`)
+- `BEANS_NEXT_HEALTH_INTERVAL_SEC` (default `5`)
+- `BEANS_NEXT_HEALTH_CONNECT_TIMEOUT_SEC` (default `2`)
+- `BEANS_NEXT_HEALTH_MAX_TIME_SEC` (default `5`)
 
 You can also pass the URL directly to `beans-next run` via `--predict-url`, or pass a **path to a URL file**
 via `--predict-url-file` (a local text file containing a single `http(s)://...` URL).

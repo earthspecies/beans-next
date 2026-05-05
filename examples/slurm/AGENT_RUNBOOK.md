@@ -44,7 +44,7 @@ Prefer `a100-40` → `h100-80`. Avoid `t4` unless explicitly requested.
 
 ```bash
 ssh slurm "cd /home/marius_miron_earthspecies_org/code/beans-next && \
-  BEANS_PRO_PORT=<PORT> BEANS_PRO_DEBUG=1 \
+  BEANS_NEXT_PORT=<PORT> BEANS_NEXT_DEBUG=1 \
   sbatch examples/slurm/serve_<model>.sh"
 # → record <job_id>
 ```
@@ -118,7 +118,7 @@ Unrecoverable failures may be reported immediately.
 
 ---
 
-### Exit 86 — scratch disk full (`BEANS_PRO_DISK_SPACE_BLOCKER`)
+### Exit 86 — scratch disk full (`BEANS_NEXT_DISK_SPACE_BLOCKER`)
 
 **RECOVERABLE. Must retry on a different node before writing BLOCKED.**
 
@@ -129,7 +129,7 @@ ssh slurm "scontrol show job <job_id> | tr ' ' '\n' | grep '^BatchHost='"
 
 # 2. Resubmit excluding that node
 ssh slurm "cd /home/marius_miron_earthspecies_org/code/beans-next && \
-  BEANS_PRO_PORT=<PORT> BEANS_PRO_DEBUG=1 \
+  BEANS_NEXT_PORT=<PORT> BEANS_NEXT_DEBUG=1 \
   sbatch --exclude=slurm-8x-a100-1 examples/slurm/serve_<model>.sh"
 ```
 
@@ -140,8 +140,8 @@ you can force it:
 
 ```bash
 ssh slurm "cd /home/marius_miron_earthspecies_org/code/beans-next && \
-  BEANS_PRO_PORT=<PORT> BEANS_PRO_DEBUG=1 \
-  BEANS_PRO_SCRATCH_MIN_FREE_GB=20 \
+  BEANS_NEXT_PORT=<PORT> BEANS_NEXT_DEBUG=1 \
+  BEANS_NEXT_SCRATCH_MIN_FREE_GB=20 \
   sbatch --exclude=slurm-8x-a100-1 examples/slurm/serve_<model>.sh"
 ```
 
@@ -161,7 +161,7 @@ ssh slurm "scontrol show job <job_id>" | grep -E "Reason|NodeList|Partition"
 # If partition is overloaded, cancel and resubmit to the other GPU partition
 ssh slurm "scancel <job_id>"
 ssh slurm "cd /home/marius_miron_earthspecies_org/code/beans-next && \
-  BEANS_PRO_PORT=<PORT> BEANS_PRO_DEBUG=1 \
+  BEANS_NEXT_PORT=<PORT> BEANS_NEXT_DEBUG=1 \
   sbatch --partition=h100-80 examples/slurm/serve_<model>.sh"
 ```
 
@@ -268,7 +268,7 @@ Minimum required content:
 | Failure | Recoverable? | First action |
 |---|---|---|
 | Exit 86 scratch full (first node) | Yes | `sbatch --exclude=<node>` |
-| Exit 86 scratch full (second node) | Borderline | Try `BEANS_PRO_SCRATCH_MIN_FREE_GB=20` |
+| Exit 86 scratch full (second node) | Borderline | Try `BEANS_NEXT_SCRATCH_MIN_FREE_GB=20` |
 | Exit 86 scratch full (third node) | No | Write BLOCKED |
 | Job stuck PD > 10 min | Yes | Switch partition |
 | HF gated access denied | No | Report; operator action needed |

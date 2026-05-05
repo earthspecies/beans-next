@@ -28,14 +28,21 @@ from types import ModuleType
 from beans_next.api.types import DatasetExample
 
 _SAMPLE_ID_PREFIX = "beanspro:esp_data:"
-_AUDIO_CACHE_ENV = "BEANS_PRO_ESP_AUDIO_CACHE_DIR"
-_DIAGNOSTICS_ENV = "BEANS_PRO_ESP_DATA_DIAGNOSTICS"
-_ROW_TIMEOUT_S_ENV = "BEANS_PRO_ESP_DATA_ROW_TIMEOUT_S"
-_AUDIO_TIMEOUT_S_ENV = "BEANS_PRO_ESP_DATA_AUDIO_TIMEOUT_S"
-_AUDIO_WRITE_RETRIES_ENV = "BEANS_PRO_ESP_DATA_AUDIO_WRITE_RETRIES"
-_LOG_EVERY_N_ENV = "BEANS_PRO_ESP_DATA_LOG_EVERY_N"
+_AUDIO_CACHE_ENV = "BEANS_NEXT_ESP_AUDIO_CACHE_DIR"
+_AUDIO_CACHE_ENV_COMPAT = "BEANS_PRO_ESP_AUDIO_CACHE_DIR"
+_DIAGNOSTICS_ENV = "BEANS_NEXT_ESP_DATA_DIAGNOSTICS"
+_DIAGNOSTICS_ENV_COMPAT = "BEANS_PRO_ESP_DATA_DIAGNOSTICS"
+_ROW_TIMEOUT_S_ENV = "BEANS_NEXT_ESP_DATA_ROW_TIMEOUT_S"
+_ROW_TIMEOUT_S_ENV_COMPAT = "BEANS_PRO_ESP_DATA_ROW_TIMEOUT_S"
+_AUDIO_TIMEOUT_S_ENV = "BEANS_NEXT_ESP_DATA_AUDIO_TIMEOUT_S"
+_AUDIO_TIMEOUT_S_ENV_COMPAT = "BEANS_PRO_ESP_DATA_AUDIO_TIMEOUT_S"
+_AUDIO_WRITE_RETRIES_ENV = "BEANS_NEXT_ESP_DATA_AUDIO_WRITE_RETRIES"
+_AUDIO_WRITE_RETRIES_ENV_COMPAT = "BEANS_PRO_ESP_DATA_AUDIO_WRITE_RETRIES"
+_LOG_EVERY_N_ENV = "BEANS_NEXT_ESP_DATA_LOG_EVERY_N"
+_LOG_EVERY_N_ENV_COMPAT = "BEANS_PRO_ESP_DATA_LOG_EVERY_N"
 # Controls parallel GCS download threads.  Set to e.g. 8 on nodes with ample CPUs.
-_WORKERS_ENV = "BEANS_PRO_ESP_DATA_WORKERS"
+_WORKERS_ENV = "BEANS_NEXT_ESP_DATA_WORKERS"
+_WORKERS_ENV_COMPAT = "BEANS_PRO_ESP_DATA_WORKERS"
 # Sentinel key injected into rows when we bypass _process (no GCS audio download yet).
 _DATA_ROOT_KEY = "_beans_next_data_root"
 
@@ -44,6 +51,16 @@ _LOG = logging.getLogger(__name__)
 
 def _env_int(name: str, *, default: int) -> int:
     raw = os.environ.get(name)
+    if raw is None:
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        return default
+
+
+def _env_int_compat(name: str, compat: str, *, default: int) -> int:
+    raw = os.environ.get(name) or os.environ.get(compat)
     if raw is None:
         return default
     try:
@@ -207,7 +224,7 @@ def _download_gcs_to_wav(
 
 @lru_cache(maxsize=1)
 def _audio_cache_dir() -> str:
-    root = os.environ.get(_AUDIO_CACHE_ENV)
+    root = os.environ.get(_AUDIO_CACHE_ENV) or os.environ.get(_AUDIO_CACHE_ENV_COMPAT)
     if root is None or not root.strip():
         root = tempfile.mkdtemp(prefix="beans-next-esp-audio-")
     os.makedirs(root, exist_ok=True)
@@ -240,9 +257,20 @@ def _materialize_wav_from_row_audio(
         "false",
         "False",
     )
-    row_timeout_s = float(_env_int(_ROW_TIMEOUT_S_ENV, default=0)) or None
-    audio_timeout_s = float(_env_int(_AUDIO_TIMEOUT_S_ENV, default=0)) or None
-    write_retries = max(0, _env_int(_AUDIO_WRITE_RETRIES_ENV, default=2))
+    row_timeout_s = float(
+        _env_int_compat(_ROW_TIMEOUT_S_ENV, _ROW_TIMEOUT_S_ENV_COMPAT, default=0)
+    ) or None
+    audio_timeout_s = float(
+        _env_int_compat(_AUDIO_TIMEOUT_S_ENV, _AUDIO_TIMEOUT_S_ENV_COMPAT, default=0)
+    ) or None
+    write_retries = max(
+        0,
+        _env_int_compat(
+            _AUDIO_WRITE_RETRIES_ENV,
+            _AUDIO_WRITE_RETRIES_ENV_COMPAT,
+            default=2,
+        ),
+    )
 
     try:
         audio_val = _row_get(row, "audio", timeout_s=row_timeout_s)
@@ -763,7 +791,9 @@ def _resolve_audio_for_row(
         if not gcs_rel:
             return None
         gcs_abs = data_root.rstrip("/") + "/" + gcs_rel.lstrip("/")
-        dl_timeout_raw = _env_int(_AUDIO_TIMEOUT_S_ENV, default=60)
+        dl_timeout_raw = _env_int_compat(
+            _AUDIO_TIMEOUT_S_ENV, _AUDIO_TIMEOUT_S_ENV_COMPAT, default=60
+        )
         dl_timeout: float | None = float(dl_timeout_raw) if dl_timeout_raw > 0 else None
         return _download_gcs_to_wav(
             gcs_abs,
@@ -895,11 +925,17 @@ def iter_esp_data_beans_zero_examples(
         "false",
         "False",
     )
-    log_every_n = max(1, _env_int(_LOG_EVERY_N_ENV, default=50))
+    log_every_n = max(
+        1,
+        _env_int_compat(_LOG_EVERY_N_ENV, _LOG_EVERY_N_ENV_COMPAT, default=50),
+    )
     # Allow env-var override so Slurm jobs can set BEANS_PRO_ESP_DATA_WORKERS=8
     # without changing CLI args.
     if workers == 1:
-        workers = max(1, _env_int(_WORKERS_ENV, default=1))
+        workers = max(
+            1,
+            _env_int_compat(_WORKERS_ENV, _WORKERS_ENV_COMPAT, default=1),
+        )
 
     if workers > 1:
         yield from _iter_esp_data_concurrent(
@@ -1082,9 +1118,15 @@ def iter_esp_data_beans_next_examples(
         "false",
         "False",
     )
-    log_every_n = max(1, _env_int(_LOG_EVERY_N_ENV, default=50))
+    log_every_n = max(
+        1,
+        _env_int_compat(_LOG_EVERY_N_ENV, _LOG_EVERY_N_ENV_COMPAT, default=50),
+    )
     if workers == 1:
-        workers = max(1, _env_int(_WORKERS_ENV, default=1))
+        workers = max(
+            1,
+            _env_int_compat(_WORKERS_ENV, _WORKERS_ENV_COMPAT, default=1),
+        )
 
     if workers > 1:
         yield from _iter_esp_data_beans_next_concurrent(
@@ -1427,9 +1469,15 @@ def iter_esp_data_birdset_examples(
         "false",
         "False",
     )
-    log_every_n = max(1, _env_int(_LOG_EVERY_N_ENV, default=50))
+    log_every_n = max(
+        1,
+        _env_int_compat(_LOG_EVERY_N_ENV, _LOG_EVERY_N_ENV_COMPAT, default=50),
+    )
     if workers == 1:
-        workers = max(1, _env_int(_WORKERS_ENV, default=1))
+        workers = max(
+            1,
+            _env_int_compat(_WORKERS_ENV, _WORKERS_ENV_COMPAT, default=1),
+        )
 
     if workers > 1:
         yield from _iter_esp_data_birdset_concurrent(
@@ -1753,7 +1801,9 @@ def _resolve_audio_paths_for_row(
     if not isinstance(audio_paths_raw, list) or not audio_paths_raw:
         return []
 
-    dl_timeout_raw = _env_int(_AUDIO_TIMEOUT_S_ENV, default=60)
+    dl_timeout_raw = _env_int_compat(
+        _AUDIO_TIMEOUT_S_ENV, _AUDIO_TIMEOUT_S_ENV_COMPAT, default=60
+    )
     dl_timeout: float | None = float(dl_timeout_raw) if dl_timeout_raw > 0 else None
 
     resolved: list[str] = []
@@ -1954,9 +2004,15 @@ def iter_esp_data_beans_next_multiaudio_examples(
         "false",
         "False",
     )
-    log_every_n = max(1, _env_int(_LOG_EVERY_N_ENV, default=50))
+    log_every_n = max(
+        1,
+        _env_int_compat(_LOG_EVERY_N_ENV, _LOG_EVERY_N_ENV_COMPAT, default=50),
+    )
     if workers == 1:
-        workers = max(1, _env_int(_WORKERS_ENV, default=1))
+        workers = max(
+            1,
+            _env_int_compat(_WORKERS_ENV, _WORKERS_ENV_COMPAT, default=1),
+        )
 
     if workers > 1:
         yield from _iter_esp_data_beans_next_multiaudio_concurrent(

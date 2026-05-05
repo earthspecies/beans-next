@@ -38,6 +38,61 @@
 
 set -euo pipefail
 
+# ---------------------------------------------------------------------------
+# BEANS_NEXT_* environment variables (preferred) + BEANS_PRO_* compatibility.
+# ---------------------------------------------------------------------------
+
+_env_first() {
+  local new_name="$1"
+  local old_name="$2"
+  local default_val="$3"
+  local v="${!new_name:-}"
+  if [[ -n "$v" ]]; then
+    printf '%s' "$v"
+    return 0
+  fi
+  v="${!old_name:-}"
+  if [[ -n "$v" ]]; then
+    printf '%s' "$v"
+    return 0
+  fi
+  printf '%s' "$default_val"
+}
+
+_export_compat() {
+  local new_name="$1"
+  local old_name="$2"
+  local default_val="${3:-}"
+  # shellcheck disable=SC2163
+  export "${new_name}=$(_env_first "$new_name" "$old_name" "$default_val")"
+}
+
+_export_compat "BEANS_NEXT_DATA_SOURCE" "BEANS_PRO_DATA_SOURCE" "esp_data"
+_export_compat "BEANS_NEXT_URL_FILE" "BEANS_PRO_URL_FILE" ""
+_export_compat "BEANS_NEXT_SUITE" "BEANS_PRO_SUITE" ""
+_export_compat "BEANS_NEXT_LIMIT" "BEANS_PRO_LIMIT" ""
+_export_compat "BEANS_NEXT_OUT_DIR" "BEANS_PRO_OUT_DIR" ""
+_export_compat "BEANS_NEXT_CONFIG" "BEANS_PRO_CONFIG" ""
+_export_compat "BEANS_NEXT_RUN_ID" "BEANS_PRO_RUN_ID" ""
+_export_compat "BEANS_NEXT_TASK_ID" "BEANS_PRO_TASK_ID" ""
+_export_compat "BEANS_NEXT_DATASET_NAME" "BEANS_PRO_DATASET_NAME" ""
+_export_compat "BEANS_NEXT_SPLIT" "BEANS_PRO_SPLIT" ""
+_export_compat "BEANS_NEXT_HF_PATH" "BEANS_PRO_HF_PATH" ""
+_export_compat "BEANS_NEXT_HF_CONFIG" "BEANS_PRO_HF_CONFIG" ""
+_export_compat "BEANS_NEXT_WORKERS" "BEANS_PRO_WORKERS" ""
+_export_compat "BEANS_NEXT_SKIP_UV_SYNC" "BEANS_PRO_SKIP_UV_SYNC" "0"
+_export_compat "BEANS_NEXT_UV_PYTHON" "BEANS_PRO_UV_PYTHON" "3.11"
+_export_compat "BEANS_NEXT_URL_WAIT_TIMEOUT_SEC" "BEANS_PRO_URL_WAIT_TIMEOUT_SEC" "1800"
+_export_compat "BEANS_NEXT_URL_WAIT_INTERVAL_SEC" "BEANS_PRO_URL_WAIT_INTERVAL_SEC" "5"
+_export_compat "BEANS_NEXT_HEALTH_TIMEOUT_SEC" "BEANS_PRO_HEALTH_TIMEOUT_SEC" "900"
+_export_compat "BEANS_NEXT_HEALTH_INTERVAL_SEC" "BEANS_PRO_HEALTH_INTERVAL_SEC" "5"
+_export_compat "BEANS_NEXT_HEALTH_CONNECT_TIMEOUT_SEC" "BEANS_PRO_HEALTH_CONNECT_TIMEOUT_SEC" "2"
+_export_compat "BEANS_NEXT_HEALTH_MAX_TIME_SEC" "BEANS_PRO_HEALTH_MAX_TIME_SEC" "5"
+_export_compat "BEANS_NEXT_COPY_RESULTS_TO_HOME" "BEANS_PRO_COPY_RESULTS_TO_HOME" "0"
+_export_compat "BEANS_NEXT_RESULTS_HOME_DIR" "BEANS_PRO_RESULTS_HOME_DIR" ""
+_export_compat "BEANS_NEXT_HEARTBEAT_SEC" "BEANS_PRO_HEARTBEAT_SEC" "30"
+_export_compat "BEANS_NEXT_FAULTHANDLER_TIMEOUT_SEC" "BEANS_PRO_FAULTHANDLER_TIMEOUT_SEC" "300"
+
 # In Slurm, scripts are copied to a spool dir before execution, so $0 does not point at the repo.
 # Use the submission directory as the repo root (we submit from the repo root in all runbooks).
 REPO="${SLURM_SUBMIT_DIR:-}"
@@ -49,9 +104,21 @@ fi
 # Ensure all `uv` operations use a job-scoped environment on node-local scratch.
 export UV_PROJECT_ENVIRONMENT="${UV_PROJECT_ENVIRONMENT:-/scratch/$USER/venvs/beans-next-infer-${SLURM_JOB_ID}}"
 
-# Audio materialization cache: shared scratch location, cleaned by scratch_guard when space is low.
-export BEANS_PRO_HF_AUDIO_CACHE_DIR="${BEANS_PRO_HF_AUDIO_CACHE_DIR:-/scratch/.cache/huggingface/beans-next-audio}"
-export BEANS_PRO_ESP_AUDIO_CACHE_DIR="${BEANS_PRO_ESP_AUDIO_CACHE_DIR:-/scratch/.cache/huggingface/beans-next-audio}"
+# HuggingFace caches: default to NFS-backed $HOME.
+export HF_HOME="${HF_HOME:-$HOME/.cache/huggingface}"
+export HF_DATASETS_CACHE="${HF_DATASETS_CACHE:-$HF_HOME/datasets}"
+export HUGGINGFACE_HUB_CACHE="${HUGGINGFACE_HUB_CACHE:-$HF_HOME/hub}"
+export TRANSFORMERS_CACHE="${TRANSFORMERS_CACHE:-$HF_HOME/transformers}"
+
+# Temporary files: keep on NFS by default.
+export TMPDIR="${TMPDIR:-$HOME/.cache/beans-next/tmp}"
+export TEMP="${TEMP:-$TMPDIR}"
+export TMP="${TMP:-$TMPDIR}"
+mkdir -p "$TMPDIR"
+
+# Audio materialization cache (NFS-backed by default).
+export BEANS_NEXT_HF_AUDIO_CACHE_DIR="$(_env_first "BEANS_NEXT_HF_AUDIO_CACHE_DIR" "BEANS_PRO_HF_AUDIO_CACHE_DIR" "$HF_HOME/beans-next-audio")"
+export BEANS_NEXT_ESP_AUDIO_CACHE_DIR="$(_env_first "BEANS_NEXT_ESP_AUDIO_CACHE_DIR" "BEANS_PRO_ESP_AUDIO_CACHE_DIR" "$HF_HOME/beans-next-audio")"
 
 # Shell helpers (bash-only; avoid non-portable external deps).
 _pause() {
@@ -187,9 +254,9 @@ WORKERS="${BEANS_PRO_WORKERS:-}"         # optional: override runner --workers
 cd "$REPO"
 
 # Dataset backend selection:
-# - For BEANS-Zero suites, prefer esp_data on the cluster (compute nodes may not have outbound HF access).
-# - Override any time by exporting BEANS_PRO_DATA_SOURCE=hf (or esp_data).
-if [[ -z "${BEANS_PRO_DATA_SOURCE:-}" && "$SUITE" =~ ^beans_zero_ ]]; then
+# - Default to esp_data everywhere.
+# - Override: export BEANS_PRO_DATA_SOURCE=esp_data|huggingface|hf before `sbatch`.
+if [[ -z "${BEANS_PRO_DATA_SOURCE:-}" ]]; then
   export BEANS_PRO_DATA_SOURCE="esp_data"
 fi
 
@@ -207,7 +274,7 @@ export PYTHONUNBUFFERED="${PYTHONUNBUFFERED:-1}"
 # Ensure the job-scoped environment exists.
 # If esp_data is requested, try to inherit any site-provided esp_data install via system site-packages.
 if [[ ! -x "${UV_PROJECT_ENVIRONMENT%/}/bin/python" ]]; then
-  if [[ "${BEANS_PRO_DATA_SOURCE:-hf}" == "esp_data" ]]; then
+  if [[ "${BEANS_PRO_DATA_SOURCE:-esp_data}" == "esp_data" ]]; then
     uv venv --system-site-packages "$UV_PROJECT_ENVIRONMENT"
   else
     uv venv "$UV_PROJECT_ENVIRONMENT"
@@ -219,7 +286,7 @@ fi
 #
 # If `esp_data` is selected, include the `esp` dependency group (configured in pyproject.toml).
 if [[ "${BEANS_PRO_SKIP_UV_SYNC:-0}" != "1" ]]; then
-  if [[ "${BEANS_PRO_DATA_SOURCE:-hf}" == "esp_data" ]]; then
+  if [[ "${BEANS_PRO_DATA_SOURCE:-esp_data}" == "esp_data" ]]; then
     uv sync --group esp
   else
     uv sync
@@ -228,7 +295,7 @@ else
   echo "BEANS_PRO_SKIP_UV_SYNC=1 set; skipping 'uv sync'"
 fi
 
-if [[ "${BEANS_PRO_DATA_SOURCE:-hf}" == "esp_data" ]]; then
+if [[ "${BEANS_PRO_DATA_SOURCE:-esp_data}" == "esp_data" ]]; then
   set +e
   esp_data_import_out="$(uv run python -c "import esp_data" 2>&1)"
   has_esp_data=$?
@@ -244,7 +311,7 @@ if [[ "${BEANS_PRO_DATA_SOURCE:-hf}" == "esp_data" ]]; then
     echo "Fix options:" >&2
     echo "  - Ensure this job ran 'uv sync --group esp' successfully (default when BEANS_PRO_DATA_SOURCE=esp_data)." >&2
     echo "  - Ensure your 'pyproject.toml' has an 'esp' dependency group with 'esp-data', and 'tool.uv.index'/'tool.uv.sources' configured for esp-pypi." >&2
-    echo "  - Or force HuggingFace loading: export BEANS_PRO_DATA_SOURCE=hf" >&2
+    echo "  - Or force HuggingFace loading: export BEANS_PRO_DATA_SOURCE=huggingface" >&2
     exit 1
   fi
 fi

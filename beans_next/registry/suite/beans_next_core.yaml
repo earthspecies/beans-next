@@ -2,4 +2,5 @@ beans_next_core:
   description: BeansPro core single-audio suite (esp_data).
   eval_tasks:
     - beans_next_crow_description
+    - beans_next_zebra_description
     - beans_next_alarm_call_presence

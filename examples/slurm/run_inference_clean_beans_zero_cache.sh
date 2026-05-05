@@ -7,10 +7,10 @@
 #
 # Usage:
 #   SERVE_JOB_ID=12345
-#   BEANS_PRO_URL_FILE=$HOME/beans-next-launchers/$SERVE_JOB_ID.url \
-#   BEANS_PRO_DATA_SOURCE=hf \
-#   BEANS_PRO_TASK_ID=beans_zero_esc50 \
-#   BEANS_PRO_DATASET_NAME=esc50 \
+#   BEANS_NEXT_URL_FILE=$HOME/beans-next-launchers/$SERVE_JOB_ID.url \
+#   BEANS_NEXT_DATA_SOURCE=huggingface \
+#   BEANS_NEXT_TASK_ID=beans_zero_esc50 \
+#   BEANS_NEXT_DATASET_NAME=esc50 \
 #   sbatch --dependency=after:$SERVE_JOB_ID examples/slurm/run_inference_clean_beans_zero_cache.sh
 #
 # Optional override:
@@ -30,7 +30,12 @@ if [[ -z "${SLURM_SUBMIT_DIR:-}" ]]; then
 fi
 
 # Must be set: path to the URL file written by the serving job.
-export BEANS_PRO_URL_FILE="${BEANS_PRO_URL_FILE:?BEANS_PRO_URL_FILE must be set}"
+export BEANS_NEXT_URL_FILE="${BEANS_NEXT_URL_FILE:-${BEANS_PRO_URL_FILE:-}}"
+if [[ -z "${BEANS_NEXT_URL_FILE:-}" ]]; then
+  echo "ERROR: BEANS_NEXT_URL_FILE must be set." >&2
+  echo "Compat: BEANS_PRO_URL_FILE is also supported." >&2
+  exit 1
+fi
 
 HF_DATASETS_CACHE="${HF_DATASETS_CACHE:-$HOME/.cache/huggingface/datasets}"
 TARGET_DIR="${HF_DATASETS_CACHE%/}/EarthSpeciesProject___beans-zero"

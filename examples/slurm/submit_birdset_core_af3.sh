@@ -5,16 +5,16 @@
 #   bash examples/slurm/submit_birdset_core_af3.sh
 #
 # Optional overrides:
-#   BEANS_PRO_OUT_DIR=/my/path bash examples/slurm/submit_birdset_core_af3.sh
+#   BEANS_NEXT_OUT_DIR=/my/path bash examples/slurm/submit_birdset_core_af3.sh
 #
 # Notes:
-# - Requires esp_data for BirdSet loading: this script sets BEANS_PRO_DATA_SOURCE=esp_data.
+# - Requires esp_data for BirdSet loading: this script sets BEANS_NEXT_DATA_SOURCE=esp_data.
 # - AF3 takes time to load weights on first startup.
 
 set -euo pipefail
 
 RUN_TAG="birdset_core_af3_$(date +%Y%m%d_%H%M%S)"
-OUT_DIR="${BEANS_PRO_OUT_DIR:-${SCRATCH:-$HOME}/beans-next-results/$RUN_TAG}"
+OUT_DIR="${BEANS_NEXT_OUT_DIR:-${BEANS_PRO_OUT_DIR:-${SCRATCH:-$HOME}/beans-next-results/$RUN_TAG}}"
 
 echo "Submitting serving job..."
 SERVE_JOB="$(sbatch --parsable examples/slurm/serve_af3.sh)"
@@ -23,11 +23,11 @@ echo "  Log: ~/logs/$SERVE_JOB.log"
 
 echo "Submitting inference job (depends on serve job $SERVE_JOB)..."
 INFER_JOB="$(
-  BEANS_PRO_URL_FILE=\"$HOME/beans-next-launchers/$SERVE_JOB.url\" \
-  BEANS_PRO_DATA_SOURCE=esp_data \
-  BEANS_PRO_SUITE=birdset_core \
-  BEANS_PRO_RUN_ID=\"$RUN_TAG\" \
-  BEANS_PRO_OUT_DIR=\"$OUT_DIR\" \
+  BEANS_NEXT_URL_FILE=\"$HOME/beans-next-launchers/$SERVE_JOB.url\" \
+  BEANS_NEXT_DATA_SOURCE=esp_data \
+  BEANS_NEXT_SUITE=birdset_core \
+  BEANS_NEXT_RUN_ID=\"$RUN_TAG\" \
+  BEANS_NEXT_OUT_DIR=\"$OUT_DIR\" \
   sbatch --parsable --dependency=after:\"$SERVE_JOB\" examples/slurm/run_inference.sh
 )"
 echo "  Inference job: $INFER_JOB"

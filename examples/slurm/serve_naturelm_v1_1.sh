@@ -5,7 +5,7 @@
 #   NATURELM_GCS_CHECKPOINT_URI=gs://foundation-models/naturelm-audio-1.1/base_model/1290000 \
 #     sbatch examples/slurm/serve_naturelm_v1_1.sh
 #
-# The launcher writes its predict URL to $BEANS_PRO_URL_DIR/<job_id>.url
+# The launcher writes its predict URL to $BEANS_NEXT_URL_DIR/<job_id>.url
 
 # Partition preference: a100-40 first, h100-80 fallback.
 # Check availability before submitting: sinfo; squeue --me
@@ -31,9 +31,9 @@ set -euo pipefail
 # ───────────────────────────────────────────────────────────────────────────
 
 # Optional debug mode.
-# Enable with: BEANS_PRO_DEBUG=1 (or true/yes).
+# Enable with: BEANS_NEXT_DEBUG=1 (or true/yes).
 _debug_enabled() {
-  case "${BEANS_PRO_DEBUG:-0}" in
+  case "${BEANS_NEXT_DEBUG:-${BEANS_PRO_DEBUG:-0}}" in
     1|true|TRUE|yes|YES) return 0 ;;
     *) return 1 ;;
   esac
@@ -58,14 +58,14 @@ fi
 # Default port selection:
 # - avoid fixed-port collisions on shared GPU nodes
 # - keep it deterministic per job for easier debugging
-# Override any time with BEANS_PRO_PORT.
-if [[ -n "${BEANS_PRO_PORT:-}" ]]; then
-  PORT="$BEANS_PRO_PORT"
+# Override any time with BEANS_NEXT_PORT (compat: BEANS_PRO_PORT).
+if [[ -n "${BEANS_NEXT_PORT:-${BEANS_PRO_PORT:-}}" ]]; then
+  PORT="${BEANS_NEXT_PORT:-${BEANS_PRO_PORT}}"
 else
   PORT="$((18000 + (SLURM_JOB_ID % 1000)))"
 fi
 
-URL_DIR="${BEANS_PRO_URL_DIR:-$HOME/beans-next-launchers}"
+URL_DIR="${BEANS_NEXT_URL_DIR:-${BEANS_PRO_URL_DIR:-$HOME/beans-next-launchers}}"
 mkdir -p "$URL_DIR"
 URL_FILE="$URL_DIR/${SLURM_JOB_ID}.url"
 rm -f "$URL_FILE"
@@ -100,7 +100,7 @@ mkdir -p "$TMPDIR" 2>/dev/null || true
 # Prefer Python 3.11+ for this project. Some compute nodes may not have a compatible system
 # interpreter, so allow uv to download a managed Python when needed.
 export UV_PYTHON_DOWNLOADS="${UV_PYTHON_DOWNLOADS:-auto}"
-export UV_PYTHON="${BEANS_PRO_UV_PYTHON:-3.12}"
+export UV_PYTHON="${BEANS_NEXT_UV_PYTHON:-${BEANS_PRO_UV_PYTHON:-3.12}}"
 
 # ---------------------------------------------------------------------------
 # Scratch disk guard (check → prune safe caches → fail loudly if still low).
@@ -113,7 +113,7 @@ beans_next_scratch_guard "naturelm" "naturelm-v1.1" "${HF_HOME:-}"
 if _debug_enabled; then
   export PS4='+[$(_ts)] ${BASH_SOURCE##*/}:${LINENO}: '
   set -x
-  _step "DEBUG enabled (BEANS_PRO_DEBUG=1)"
+  _step "DEBUG enabled (BEANS_NEXT_DEBUG=1)"
   _step "UV_PROJECT_ENVIRONMENT: $UV_PROJECT_ENVIRONMENT"
   _step "URL_FILE: $URL_FILE"
   _step "PORT: $PORT"
@@ -125,14 +125,14 @@ if [[ ! -x "${UV_PROJECT_ENVIRONMENT%/}/bin/python" ]]; then
 fi
 
 # Fully-uv install: this launcher directory is a uv project (pyproject.toml).
-if [[ "${BEANS_PRO_SKIP_UV_SYNC:-0}" != "1" ]]; then
+if [[ "${BEANS_NEXT_SKIP_UV_SYNC:-${BEANS_PRO_SKIP_UV_SYNC:-0}}" != "1" ]]; then
   if [[ "${NATURELM_STUB_MODE:-0}" == "1" ]]; then
     uv sync
   else
     uv sync --group real
   fi
 else
-  echo "BEANS_PRO_SKIP_UV_SYNC=1 set; skipping 'uv sync'" >&2
+  echo "BEANS_NEXT_SKIP_UV_SYNC=1 set; skipping 'uv sync'" >&2
   exit 1
 fi
 

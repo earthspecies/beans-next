@@ -5,7 +5,7 @@
 #   bash examples/slurm/submit_beans_zero_core_naturelm_v1_0.sh
 #
 # Optional overrides:
-#   BEANS_PRO_OUT_DIR=/my/path bash examples/slurm/submit_beans_zero_core_naturelm_v1_0.sh
+#   BEANS_NEXT_OUT_DIR=/my/path bash examples/slurm/submit_beans_zero_core_naturelm_v1_0.sh
 #
 # Prereqs:
 #   - Weights downloaded: HF_HOME=/scratch/shared/hf_cache snapshot_download naturelm-audio-1.0
@@ -15,7 +15,7 @@
 set -euo pipefail
 
 RUN_TAG="naturelm_v1_0_$(date +%Y%m%d_%H%M%S)"
-OUT_DIR="${BEANS_PRO_OUT_DIR:-${SCRATCH:-$HOME}/beans-next-results/$RUN_TAG}"
+OUT_DIR="${BEANS_NEXT_OUT_DIR:-${BEANS_PRO_OUT_DIR:-${SCRATCH:-$HOME}/beans-next-results/$RUN_TAG}}"
 
 echo "Submitting serving job..."
 SERVE_JOB=$(sbatch --parsable examples/slurm/serve_naturelm_v1_0.sh)
@@ -24,10 +24,10 @@ echo "  Log: ~/logs/$SERVE_JOB.log"
 
 echo "Submitting inference job (depends on serve job $SERVE_JOB)..."
 INFER_JOB=$(
-  BEANS_PRO_URL_FILE="$HOME/beans-next-launchers/$SERVE_JOB.url" \
-  BEANS_PRO_SUITE=beans_zero_core \
-  BEANS_PRO_RUN_ID="$RUN_TAG" \
-  BEANS_PRO_OUT_DIR="$OUT_DIR" \
+  BEANS_NEXT_URL_FILE="$HOME/beans-next-launchers/$SERVE_JOB.url" \
+  BEANS_NEXT_SUITE=beans_zero_core \
+  BEANS_NEXT_RUN_ID="$RUN_TAG" \
+  BEANS_NEXT_OUT_DIR="$OUT_DIR" \
   sbatch --parsable --dependency=after:"$SERVE_JOB" examples/slurm/run_inference.sh
 )
 echo "  Inference job: $INFER_JOB"

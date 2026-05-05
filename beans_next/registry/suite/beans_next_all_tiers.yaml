@@ -1,0 +1,17 @@
+beans_next_all_tiers:
+  description: >
+    BEANS-Next suite spanning all tiers represented in the bundled registry:
+    single-audio (tiers 1–3) + in-context multi-audio (tier 4).
+    Uses esp_data dataset loading in Slurm workflows.
+  eval_tasks:
+    # Tiers 1–3 (single-audio)
+    - beans_next_crow_description
+    - beans_next_zebra_description
+    - beans_next_alarm_call_presence
+    # Tier 4 (in-context multi-audio)
+    - beans_next_multiaudio_crow_4way
+    - beans_next_multiaudio_giant_otter_4way
+    - beans_next_multiaudio_gibbon_fewshot_detection_balanced
+    - beans_next_multiaudio_dcase_fewshot_detection_balanced
+    - beans_next_multiaudio_unseen_species_4way
+

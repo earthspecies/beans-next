@@ -11,7 +11,7 @@ Notes
 
 Dataset policy (important)
 - **Always use `esp_data`** for dataset loading in evaluations. Do **not** use HuggingFace dataset loading in these workflows.
-  - Slurm inference jobs: set `BEANS_PRO_DATA_SOURCE=esp_data`.
+- Slurm inference jobs: set `BEANS_NEXT_DATA_SOURCE=esp_data`.
   - Local inference (`uv run beans-next run ...`): pass `--data-source esp_data`.
 
 BirdSet policy (important)
@@ -22,8 +22,8 @@ BirdSet policy (important)
   - `scientific_labels:` (auto-synced from `esp_data.BirdSet` metadata)
   - Script to refresh those vocabularies: `uv run python scripts/birdset_sync_scientific_labels.py`
 - Inference entrypoints:
-  - Full suite: `BEANS_PRO_SUITE=birdset_core` (8 subsets)
-  - Single subset task id: `BEANS_PRO_TASK_ID=birdset_nbp_test_5s` (and the other `birdset_*_test_5s`)
+  - Full suite: `BEANS_NEXT_SUITE=birdset_core` (8 subsets)
+  - Single subset task id: `BEANS_NEXT_TASK_ID=birdset_nbp_test_5s` (and the other `birdset_*_test_5s`)
 
 GCS prediction upload (important)
 - **Always upload run artifacts to GCS** after a successful full run so colleagues can reparse results.
@@ -58,7 +58,7 @@ Requirements:
 - Submit from the repo root: `/home/$USER/code/beans-next`.
 - Use port default `8000` unless the increment requires otherwise.
 - Ensure the gated HF token is available: set `HF_TOKEN="$(< ~/.config/huggingface/hf_token)"` (and set `HUGGINGFACE_HUB_TOKEN` to the same value) before calling `sbatch`.
-- If UV connectivity might be blocked, set `BEANS_PRO_SKIP_UV_SYNC=1`.
+- If UV connectivity might be blocked, set `BEANS_NEXT_SKIP_UV_SYNC=1`.
 - If you submit via `ssh slurm "..."`, be careful with `$(...)` expansion:
   - `ssh slurm "export HF_TOKEN=\"$(< ~/.config/huggingface/hf_token)\" ..."` will try to read the token file on the *local* machine first.
   - Fix: escape the substitution so it runs remotely (`\\$(< ...)`), or run exports as separate remote commands (examples below).
@@ -72,7 +72,7 @@ rsync -av --delete --exclude '.venv/' \
 cd /home/$USER/code/beans-next
 export HF_TOKEN="$(< ~/.config/huggingface/hf_token)"
 export HUGGINGFACE_HUB_TOKEN="${HF_TOKEN}"
-# Optional: BEANS_PRO_SKIP_UV_SYNC=1
+# Optional: BEANS_NEXT_SKIP_UV_SYNC=1
 SERVE_JOB_ID="$(sbatch --parsable examples/slurm/serve_naturelm_v1_0.sh)"
 echo "SERVE_JOB_ID=$SERVE_JOB_ID"
 ```
@@ -125,8 +125,8 @@ export HUGGINGFACE_HUB_TOKEN="${HF_TOKEN}"
 export NATURELM_GCS_CHECKPOINT_URI="gs://foundation-models/naturelm-audio-1.1/base_model/1290000"
 # export NATURELM_GCS_CHECKPOINT_URI="gs://foundation-models/naturelm-audio-1.5/all_backup/merged_variations_f0_v5"
 # Optional:
-# - BEANS_PRO_SKIP_UV_SYNC=1
-# - BEANS_PRO_DEBUG=1
+# - BEANS_NEXT_SKIP_UV_SYNC=1
+# - BEANS_NEXT_DEBUG=1
 SERVE_JOB_ID="$(sbatch --parsable examples/slurm/serve_naturelm_v1_1.sh)"
 echo "SERVE_JOB_ID=$SERVE_JOB_ID"
 ```
@@ -165,8 +165,8 @@ export HUGGINGFACE_HUB_TOKEN="${HF_TOKEN}"
 # Default AF3_MODEL is already set in the script; override only if needed:
 # export AF3_MODEL="nvidia/audio-flamingo-next-hf"
 # Optional:
-# - BEANS_PRO_SKIP_UV_SYNC=1
-# - BEANS_PRO_DEBUG=1
+# - BEANS_NEXT_SKIP_UV_SYNC=1
+# - BEANS_NEXT_DEBUG=1
 SERVE_JOB_ID="$(sbatch --parsable examples/slurm/serve_af3.sh)"
 echo "SERVE_JOB_ID=$SERVE_JOB_ID"
 ```
@@ -223,7 +223,7 @@ export VLLM_OMNI="1"
 export VLLM_MAX_MODEL_LEN="16384"
 export VLLM_AUDIO_CONTENT_FORMAT="audio_url_data"
 export HF_HUB_DISABLE_XET="1"
-export BEANS_PRO_HF_HOME="/home/$USER/hf_cache_qwen3_omni_instruct_lean"
+export BEANS_NEXT_HF_HOME="/home/$USER/hf_cache_qwen3_omni_instruct_lean"
 export VLLM_EXTRA_ARGS="--stage-configs-path /home/$USER/code/beans-next/examples/servers/vllm/qwen3_omni_moe_instruct_text_single_h100.yaml --download-dir /home/$USER/hf_cache_qwen3_omni_instruct_lean"
 SERVE_JOB_ID="$(sbatch --parsable \
   --partition=h100-80 --gpus=1 --exclude=slurm-8x-h100-1 \
@@ -300,12 +300,12 @@ Commands (run on login node):
 ```bash
 cd /home/$USER/code/beans-next
 
-# OpenAI GPT proxy (default port 19085; override with BEANS_PRO_PORT if needed)
+# OpenAI GPT proxy (default port 19085; override with BEANS_NEXT_PORT if needed)
 OPENAI_PROXY_STUB=0 \
   SERVE_JOB_ID="$(sbatch --parsable examples/slurm/serve_openai_proxy_gpt4o.sh)"
 echo "SERVE_JOB_ID=$SERVE_JOB_ID"
 
-# OR Gemini proxy (default port 19086; override with BEANS_PRO_PORT if needed)
+# OR Gemini proxy (default port 19086; override with BEANS_NEXT_PORT if needed)
 OPENAI_PROXY_STUB=0 \
   SERVE_JOB_ID="$(sbatch --parsable examples/slurm/serve_openai_proxy_gemini.sh)"
 echo "SERVE_JOB_ID=$SERVE_JOB_ID"
@@ -365,43 +365,43 @@ BASE_URL="${PREDICT_URL%/predict}"
 curl -sf "${BASE_URL}/health"
 curl -sf "${BASE_URL}/info"
 # D) Smoke eval on cluster CPU/general partition
-export BEANS_PRO_SUITE="<SUITE>"   # or use BEANS_PRO_TASK_ID + BEANS_PRO_DATASET_NAME
-export BEANS_PRO_LIMIT="5"
-export BEANS_PRO_RUN_ID="smoke_${SERVE_JOB_ID}"
-export BEANS_PRO_COPY_RESULTS_TO_HOME="1"
-export BEANS_PRO_OUT_DIR="/scratch/$USER/beans-next-results/smoke_${SERVE_JOB_ID}"
-ssh slurm "BEANS_PRO_URL_FILE=\"\$HOME/beans-next-launchers/${SERVE_JOB_ID}.url\" \
-  BEANS_PRO_DATA_SOURCE=esp_data \
-  BEANS_PRO_SUITE='${BEANS_PRO_SUITE}' \
-  BEANS_PRO_LIMIT='${BEANS_PRO_LIMIT}' \
-  BEANS_PRO_RUN_ID='${BEANS_PRO_RUN_ID}' \
-  BEANS_PRO_COPY_RESULTS_TO_HOME='${BEANS_PRO_COPY_RESULTS_TO_HOME}' \
-  BEANS_PRO_OUT_DIR='${BEANS_PRO_OUT_DIR}' \
+export BEANS_NEXT_SUITE="<SUITE>"   # or use BEANS_NEXT_TASK_ID + BEANS_NEXT_DATASET_NAME
+export BEANS_NEXT_LIMIT="5"
+export BEANS_NEXT_RUN_ID="smoke_${SERVE_JOB_ID}"
+export BEANS_NEXT_COPY_RESULTS_TO_HOME="1"
+export BEANS_NEXT_OUT_DIR="/scratch/$USER/beans-next-results/smoke_${SERVE_JOB_ID}"
+ssh slurm "BEANS_NEXT_URL_FILE=\"\$HOME/beans-next-launchers/${SERVE_JOB_ID}.url\" \
+  BEANS_NEXT_DATA_SOURCE=esp_data \
+  BEANS_NEXT_SUITE='${BEANS_NEXT_SUITE}' \
+  BEANS_NEXT_LIMIT='${BEANS_NEXT_LIMIT}' \
+  BEANS_NEXT_RUN_ID='${BEANS_NEXT_RUN_ID}' \
+  BEANS_NEXT_COPY_RESULTS_TO_HOME='${BEANS_NEXT_COPY_RESULTS_TO_HOME}' \
+  BEANS_NEXT_OUT_DIR='${BEANS_NEXT_OUT_DIR}' \
   sbatch examples/slurm/test_run_inference.sh"
 # E) Full eval on cluster CPU/general partition
-unset BEANS_PRO_LIMIT
-export BEANS_PRO_RUN_ID="full_${SERVE_JOB_ID}"
-export BEANS_PRO_OUT_DIR="/scratch/$USER/beans-next-results/full_${SERVE_JOB_ID}"
-ssh slurm "BEANS_PRO_URL_FILE=\"\$HOME/beans-next-launchers/${SERVE_JOB_ID}.url\" \
-  BEANS_PRO_DATA_SOURCE=esp_data \
-  BEANS_PRO_SUITE='${BEANS_PRO_SUITE}' \
-  BEANS_PRO_RUN_ID='${BEANS_PRO_RUN_ID}' \
-  BEANS_PRO_COPY_RESULTS_TO_HOME='${BEANS_PRO_COPY_RESULTS_TO_HOME}' \
-  BEANS_PRO_OUT_DIR='${BEANS_PRO_OUT_DIR}' \
+unset BEANS_NEXT_LIMIT
+export BEANS_NEXT_RUN_ID="full_${SERVE_JOB_ID}"
+export BEANS_NEXT_OUT_DIR="/scratch/$USER/beans-next-results/full_${SERVE_JOB_ID}"
+ssh slurm "BEANS_NEXT_URL_FILE=\"\$HOME/beans-next-launchers/${SERVE_JOB_ID}.url\" \
+  BEANS_NEXT_DATA_SOURCE=esp_data \
+  BEANS_NEXT_SUITE='${BEANS_NEXT_SUITE}' \
+  BEANS_NEXT_RUN_ID='${BEANS_NEXT_RUN_ID}' \
+  BEANS_NEXT_COPY_RESULTS_TO_HOME='${BEANS_NEXT_COPY_RESULTS_TO_HOME}' \
+  BEANS_NEXT_OUT_DIR='${BEANS_NEXT_OUT_DIR}' \
   sbatch examples/slurm/run_inference.sh"
 # F) (Optional) validate artifacts
-# When BEANS_PRO_COPY_RESULTS_TO_HOME=1, run_inference.sh copies to:
+# When BEANS_NEXT_COPY_RESULTS_TO_HOME=1, run_inference.sh copies to:
 #   $HOME/beans-next-results/ingested/${RUN_ID}
 # So you can validate:
-#   bash scripts/validate_run_dir.sh "$HOME/beans-next-results/ingested/${BEANS_PRO_RUN_ID}"
+#   bash scripts/validate_run_dir.sh "$HOME/beans-next-results/ingested/${BEANS_NEXT_RUN_ID}"
 # G) Full artifacts on GCS (required for rescoring suite tasks)
 # run_inference.sh already runs `gsutil -m rsync -r` over the *entire* ingested tree when
-# BEANS_PRO_COPY_RESULTS_TO_HOME=1 (default) and BEANS_PRO_UPLOAD_GCS=1 (default).
+# BEANS_NEXT_COPY_RESULTS_TO_HOME=1 (default) and BEANS_NEXT_UPLOAD_GCS=1 (default).
 # Do NOT use `upload_run_artifacts()` for suite runs — it only uploads flat files in one
 # directory, not suite/<suite_id>/<task_id>/*.jsonl.
 # Backfill from a complete local tree (scratch or NFS):
-#   LOCAL_SRC="$HOME/beans-next-results/ingested/${BEANS_PRO_RUN_ID}" \
-#     BEANS_PRO_GCS_REL_PATH="<same suffix as under beans-next-results/>" \
+#   LOCAL_SRC="$HOME/beans-next-results/ingested/${BEANS_NEXT_RUN_ID}" \
+#     BEANS_NEXT_GCS_REL_PATH="<same suffix as under beans-next-results/>" \
 #     bash scripts/sync_beans_next_results_to_gcs.sh
 # H) Shutdown serve job after eval completion
 ssh slurm "scancel ${SERVE_JOB_ID}"
@@ -420,7 +420,7 @@ You are running the full BirdSet core suite (`birdset_core`) end-to-end on Slurm
 server on Slurm GPU (or CPU proxy) + inference on Slurm CPU.
 
 Requirements:
-- Always use `esp_data`: set `BEANS_PRO_DATA_SOURCE=esp_data`.
+- Always use `esp_data`: set `BEANS_NEXT_DATA_SOURCE=esp_data`.
 - Use scientific-name prompt wiring (BirdSet tasks use `birdset_species_v1`).
 - Refresh BirdSet scientific label vocabularies before a big run:
   - `uv run python scripts/birdset_sync_scientific_labels.py`
@@ -442,11 +442,11 @@ echo "SERVE_JOB_ID=$SERVE_JOB_ID"
 RUN_ID="birdset_core_${SERVE_JOB_ID}_$(date -u +%Y%m%d_%H%M%S)"
 OUT_DIR="/scratch/$USER/beans-next-results/${RUN_ID}"
 INFER_JOB_ID="$(
-  BEANS_PRO_URL_FILE=\"$HOME/beans-next-launchers/${SERVE_JOB_ID}.url\" \
-  BEANS_PRO_DATA_SOURCE=esp_data \
-  BEANS_PRO_SUITE=birdset_core \
-  BEANS_PRO_RUN_ID=\"$RUN_ID\" \
-  BEANS_PRO_OUT_DIR=\"$OUT_DIR\" \
+  BEANS_NEXT_URL_FILE=\"$HOME/beans-next-launchers/${SERVE_JOB_ID}.url\" \
+  BEANS_NEXT_DATA_SOURCE=esp_data \
+  BEANS_NEXT_SUITE=birdset_core \
+  BEANS_NEXT_RUN_ID=\"$RUN_ID\" \
+  BEANS_NEXT_OUT_DIR=\"$OUT_DIR\" \
   sbatch --parsable --dependency=after:\"$SERVE_JOB_ID\" examples/slurm/run_inference.sh
 )"
 echo "INFER_JOB_ID=$INFER_JOB_ID"
@@ -454,7 +454,7 @@ echo "OUT_DIR=$OUT_DIR"
 ```
 
 Optional smoke run:
-- Set `BEANS_PRO_LIMIT=5` (or `1`) on the inference job submission to validate wiring.
+- Set `BEANS_NEXT_LIMIT=5` (or `1`) on the inference job submission to validate wiring.
 
 Outputs to report back:
 - serve job id + URL file path
@@ -468,7 +468,7 @@ When launching evaluation:
 - `examples/slurm/test_run_inference.sh` is a tiny smoke run (defaults: suite `beans_zero_smoke`, limit `1`).
 - `examples/slurm/run_inference.sh` is the full inference job.
   It *already*:
-  1) waits for `BEANS_PRO_URL_FILE` to exist
+  1) waits for `BEANS_NEXT_URL_FILE` to exist
   2) polls `GET /health` from the server
   3) then runs `uv run beans-next ...` to materialize predictions + summaries
 Therefore, the orchestration logic is:
@@ -484,7 +484,7 @@ You are running the **full** `beans_zero_core` suite (all BEANS-Zero subsets) ag
 running launcher discovered via the URL-file protocol.
 
 Requirements:
-- Dataset backend policy: **always** `esp_data` (`BEANS_PRO_DATA_SOURCE=esp_data`).
+- Dataset backend policy: **always** `esp_data` (`BEANS_NEXT_DATA_SOURCE=esp_data`).
 - Smoke-first: **submit smoke** (limit 1–5) before any uncapped run.
 - Use a run-config YAML (do not enumerate tasks by hand).
 
@@ -517,23 +517,23 @@ FULL_OUT_DIR="/scratch/${USER}/.cache/beans-next-results/${INC}/${MODEL_DIR}/${S
 
 # Smoke first (limit 5 recommended)
 SMOKE_JOB_ID="$(
-  BEANS_PRO_URL_FILE="$URL_FILE" \
-  BEANS_PRO_DATA_SOURCE=esp_data \
-  BEANS_PRO_CONFIG="$CONFIG_PATH" \
-  BEANS_PRO_LIMIT=5 \
-  BEANS_PRO_RUN_ID="$SMOKE_RUN_ID" \
-  BEANS_PRO_OUT_DIR="$SMOKE_OUT_DIR" \
+  BEANS_NEXT_URL_FILE="$URL_FILE" \
+  BEANS_NEXT_DATA_SOURCE=esp_data \
+  BEANS_NEXT_CONFIG="$CONFIG_PATH" \
+  BEANS_NEXT_LIMIT=5 \
+  BEANS_NEXT_RUN_ID="$SMOKE_RUN_ID" \
+  BEANS_NEXT_OUT_DIR="$SMOKE_OUT_DIR" \
   sbatch --parsable examples/slurm/test_run_inference.sh
 )"
 echo "SMOKE_JOB_ID=$SMOKE_JOB_ID"
 
 # Full run (uncapped) only after smoke passes
 FULL_JOB_ID="$(
-  BEANS_PRO_URL_FILE="$URL_FILE" \
-  BEANS_PRO_DATA_SOURCE=esp_data \
-  BEANS_PRO_CONFIG="$CONFIG_PATH" \
-  BEANS_PRO_RUN_ID="$FULL_RUN_ID" \
-  BEANS_PRO_OUT_DIR="$FULL_OUT_DIR" \
+  BEANS_NEXT_URL_FILE="$URL_FILE" \
+  BEANS_NEXT_DATA_SOURCE=esp_data \
+  BEANS_NEXT_CONFIG="$CONFIG_PATH" \
+  BEANS_NEXT_RUN_ID="$FULL_RUN_ID" \
+  BEANS_NEXT_OUT_DIR="$FULL_OUT_DIR" \
   sbatch --parsable --dependency=afterok:"$SMOKE_JOB_ID" examples/slurm/run_inference.sh
 )"
 echo "FULL_JOB_ID=$FULL_JOB_ID"
@@ -562,10 +562,10 @@ rsync -av --delete --exclude '.venv/' \
   /mnt/home/$USER/code/beans-next/
 
 # Always use esp_data for dataset loading in BEANS-Next runs.
-export BEANS_PRO_DATA_SOURCE="esp_data"
+export BEANS_NEXT_DATA_SOURCE="esp_data"
 
 # 1) Submit serve job on login node (fixed port avoids collisions)
-ssh slurm "cd /home/$USER/code/beans-next && BEANS_PRO_PORT=<PORT> BEANS_PRO_DEBUG=1 sbatch <SERVE_SCRIPT>"
+ssh slurm "cd /home/$USER/code/beans-next && BEANS_NEXT_PORT=<PORT> BEANS_NEXT_DEBUG=1 sbatch <SERVE_SCRIPT>"
 # → capture <SERVE_JOB_ID>
 
 # 2) Poll until Slurm job is RUNNING
@@ -632,11 +632,11 @@ rsync -av --delete --exclude '.venv/' \
   /mnt/home/$USER/code/beans-next/
 
 # Always use esp_data for dataset loading in evaluation jobs.
-export BEANS_PRO_DATA_SOURCE="esp_data"
+export BEANS_NEXT_DATA_SOURCE="esp_data"
 
 # 1) Submit serve job (example: NatureLM v1.0)
 cd /home/$USER/code/beans-next
-BEANS_PRO_PORT=<PORT> BEANS_PRO_DEBUG=1 sbatch examples/slurm/serve_naturelm_v1_0.sh
+BEANS_NEXT_PORT=<PORT> BEANS_NEXT_DEBUG=1 sbatch examples/slurm/serve_naturelm_v1_0.sh
 # → capture <SERVE_JOB_ID>
 
 # 2) Wait for URL file on NFS
@@ -648,17 +648,17 @@ curl -fsS "${BASE_URL}/health"
 curl -fsS "${BASE_URL}/info"
 # 4) Submit ESC-50 official inference job (limit 5 or 1 while debugging)
 RUN_ID="esc50_official_limit5_<SERVE_JOB_ID>_$(date -u +%Y%m%d_%H%M%S)"
-BEANS_PRO_URL_FILE="$HOME/beans-next-launchers/<SERVE_JOB_ID>.url" \
-  BEANS_PRO_DATA_SOURCE=esp_data \
-  BEANS_PRO_DEBUG=1 \
-  BEANS_PRO_LIMIT=5 \
-  BEANS_PRO_TASK_ID=beans_zero_esc50_official \
-  BEANS_PRO_DATASET_NAME=esc50 \
-  BEANS_PRO_OUT_DIR="/home/$USER/code/beans-next/results/ingested/<INCREMENT>/naturelm_v1_0_esc50_official_esp_data/${RUN_ID}" \
-  BEANS_PRO_RUN_ID="${RUN_ID}" \
+BEANS_NEXT_URL_FILE="$HOME/beans-next-launchers/<SERVE_JOB_ID>.url" \
+  BEANS_NEXT_DATA_SOURCE=esp_data \
+  BEANS_NEXT_DEBUG=1 \
+  BEANS_NEXT_LIMIT=5 \
+  BEANS_NEXT_TASK_ID=beans_zero_esc50_official \
+  BEANS_NEXT_DATASET_NAME=esc50 \
+  BEANS_NEXT_OUT_DIR="/home/$USER/code/beans-next/results/ingested/<INCREMENT>/naturelm_v1_0_esc50_official_esp_data/${RUN_ID}" \
+  BEANS_NEXT_RUN_ID="${RUN_ID}" \
   sbatch examples/slurm/run_esc50_official_inference.sh
 # 5) Ingest + validate (if needed)
-# If BEANS_PRO_COPY_RESULTS_TO_HOME=1 was used, artifacts already exist locally.
+# If BEANS_NEXT_COPY_RESULTS_TO_HOME=1 was used, artifacts already exist locally.
 # Otherwise rsync from /home on Slurm to local checkout and validate:
 bash scripts/validate_run_dir.sh results/ingested/<INCREMENT>/<...>/<RUN_ID>
 ```
