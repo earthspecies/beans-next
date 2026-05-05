@@ -1423,6 +1423,49 @@ def _load_examples_for_eval_task(
         return rows
 
     if data_source == "huggingface":
+        if isinstance(dataset_name, str) and dataset_name.strip() == "birdset":
+            from beans_next.datasets.hf_birdset import iter_hf_birdset_examples
+
+            subset_name = eval_task.get("subset") or split
+            if not isinstance(subset_name, str) or not subset_name.strip():
+                raise SystemExit(
+                    "BirdSet huggingface loading requires a non-empty `subset` in the "
+                    "eval task (e.g. subset: HSN-test_5s)."
+                )
+            for ex in iter_hf_birdset_examples(
+                subset=subset_name.strip(),
+                split=str(split),
+                task_id=task_id,
+                limit=limit,
+            ):
+                rows.append(ex)
+                if len(rows) >= limit:
+                    break
+            return rows
+
+        _BEANS_ZERO_REPO = "EarthSpeciesProject/BEANS-Zero"
+        if isinstance(hf_path, str) and hf_path.strip() == _BEANS_ZERO_REPO:
+            from beans_next.datasets.hf import iter_hf_dataset_examples
+
+            if not isinstance(dataset_name, str) or not dataset_name.strip():
+                raise SystemExit(
+                    "BEANS-Zero huggingface loading requires a non-empty `subset` or "
+                    "`dataset_name` in the eval task."
+                )
+            revision = str(eval_task.get("revision") or "main")
+            for ex in iter_hf_dataset_examples(
+                hf_path.strip(),
+                split=str(split),
+                config_name=cast(str | None, hf_config),
+                revision=revision,
+                task_id=task_id,
+                row_filter=row_filter,
+            ):
+                rows.append(ex)
+                if len(rows) >= limit:
+                    break
+            return rows
+
         from beans_next.datasets.beans_next_hub import (
             BEANS_NEXT_HUB_REPO_ID,
             iter_hf_beans_next_examples,

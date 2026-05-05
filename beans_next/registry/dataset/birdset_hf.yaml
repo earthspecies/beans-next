@@ -1,0 +1,18 @@
+birdset_hf:
+  # BirdSet (HuggingFace) — 8 evaluation subsets, test_5s splits.
+  # Source: DBD-research-group/BirdSet on Hugging Face Hub.
+  # eBird codes are converted to scientific names via the eBird taxonomy CSV.
+  # Set BEANS_NEXT_EBIRD_TAXONOMY_CSV to the path of eBird_taxonomy_v2024.csv,
+  # or ensure huggingface_hub can download it from the BirdSet dataset repo.
+  data_source: huggingface
+  dataset: birdset
+  default_split: HSN-test_5s
+  subsets:
+    - HSN-test_5s
+    - NBP-test_5s
+    - NES-test_5s
+    - PER-test_5s
+    - POW-test_5s
+    - SSW-test_5s
+    - SNE-test_5s
+    - UHH-test_5s
