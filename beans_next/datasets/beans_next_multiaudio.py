@@ -59,9 +59,24 @@ try:
 except ModuleNotFoundError as exc:  # pragma: no cover
     _ESP_DATA_IMPORT_ERROR = exc
 
-    Dataset = object  # type: ignore[assignment]
-    DatasetConfig = object  # type: ignore[assignment]
-    DatasetInfo = object  # type: ignore[assignment]
+    class Dataset:  # type: ignore[no-redef]
+        """Stub for ``esp_data.Dataset`` when ``esp_data`` is not installed."""
+
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            pass
+
+    class DatasetConfig:  # type: ignore[no-redef]
+        """Stub for ``esp_data.DatasetConfig`` when ``esp_data`` is not installed."""
+
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            pass
+
+    class DatasetInfo:  # type: ignore[no-redef]
+        """Stub for ``esp_data.DatasetInfo`` when ``esp_data`` is not installed."""
+
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            pass
+
     BackendType = object  # type: ignore[assignment]
     PolarsBackend = object  # type: ignore[assignment]
     AnyPathT = object  # type: ignore[assignment]
@@ -85,7 +100,7 @@ logger = logging.getLogger(__name__)
 
 # ── Split configuration ──────────────────────────────────────────────────
 
-_GCS_BASE = "gs://esp-data-ingestion/beans-next/v0.1.0/raw"
+_GCS_BASE = "gs://esp-data-ingestion/beans-pro/v0.1.0/raw"
 
 _SPLITS: dict[str, str] = {
     "gibbon-fewshot-detection-balanced": (
@@ -109,7 +124,7 @@ _AUDIO_ROOT_OVERRIDES: dict[str, str] = {
     "dcase-fewshot-detection-balanced": "gs://esp-ml-datasets/beans-zero/v0.1.0/raw/",
     "crow-4way": f"{_GCS_BASE}/carrion_crow_descriptions/",
     "zebra-4way": f"{_GCS_BASE}/zebra_descriptions/",
-    "unseen-species-4way": "gs://esp-ml-datasets/beans-zero/v0.1.0/raw/",
+    "unseen-species-4way": "gs://esp-data-ingestion/",
 }
 
 
@@ -130,10 +145,10 @@ class BeansProMultiAudio(Dataset):
 
     Examples
     --------
-    >>> from esp_data.datasets.beans_next_multi_audio import BeansProMultiAudio
-    >>> ds = BeansProMultiAudio(split="gibbon-fewshot-detection-balanced", sample_rate=32000)
-    >>> row = ds[0]
-    >>> len(row["audios"]) >= 4
+    >>> from esp_data.datasets.beans_next_multi_audio import BeansProMultiAudio  # doctest: +SKIP
+    >>> ds = BeansProMultiAudio(split="gibbon-fewshot-detection-balanced", sample_rate=32000)  # doctest: +SKIP
+    >>> row = ds[0]  # doctest: +SKIP
+    >>> len(row["audios"]) >= 4  # doctest: +SKIP
     True
     """
 

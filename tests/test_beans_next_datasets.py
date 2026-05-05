@@ -18,6 +18,8 @@ from typing import Any
 import numpy as np
 import pytest
 
+pytest.importorskip("esp_data")
+
 
 def _write_wav(path: Path, *, sample_rate: int = 16_000, n_frames: int = 160) -> None:
     """Write a minimal mono PCM16 WAV file."""

@@ -131,6 +131,12 @@
     "rai:audience": "Researchers in machine learning, bioacoustics, and ecology",
     "rai:usageGuidelines": "Training and deployment decisions should not rely on this dataset alone; validate in target environments and consult experts for conservation or policy use"
   },
+  "rai:dataLimitations": "ROOTS contains weakly labeled, metadata-derived, and synthetic audio-language supervision. Metadata coverage is incomplete and uneven across source datasets, taxa, regions, and task types. Synthetic examples may not fully capture real-world acoustic complexity. Models trained on ROOTS may perform poorly on rare taxa, unseen recording conditions, or tasks not well represented in the dataset.",
+  "rai:dataBiases": "ROOTS is biased toward taxa and regions that are well represented in public bioacoustic archives, especially birds. It may underrepresent insects, amphibians, marine mammals, and other taxa with less available data. Geographic, seasonal, recording-device, and annotation-protocol biases may also be present. Synthetic pipelines may introduce additional distributional artifacts.",
+  "rai:personalSensitiveInformation": "ROOTS is not intended to contain personal or sensitive human information. It focuses on animal vocalizations and environmental audio. Some source datasets may contain ecologically sensitive information, such as locations or presence records for rare or endangered species, and users should avoid exposing or misusing such information.",
+  "rai:dataUseCases": "ROOTS is intended for training and fine-tuning bioacoustic audio-language models. Supported use cases include species recognition, taxonomic prediction, call-type recognition, life-stage classification, acoustic description, event counting, temporal reasoning, multi-audio reasoning, and in-context learning for bioacoustic research.",
+  "rai:dataSocialImpact": "ROOTS may support ethology, biodiversity monitoring, conservation, and animal communication research by enabling more capable bioacoustic audio-language models. Potential negative impacts include misuse of trained models to locate endangered species, overreliance on noisy or synthetic labels, incorrect ecological conclusions, and reduced performance for underrepresented taxa.",
+  "rai:hasSyntheticData": true,
   "http://purl.org/dc/terms/conformsTo": "http://mlcommons.org/croissant/1.0",
   "isLiveDataset": true
 }

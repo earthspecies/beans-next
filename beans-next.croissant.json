@@ -117,6 +117,12 @@
     "rai:audience": "Researchers in machine learning, bioacoustics, and ecology",
     "rai:usageGuidelines": "Benchmark results should not be used as sole evidence for ecological decision-making"
   },
+  "rai:dataLimitations": "BEANS-Next evaluates a defined taxonomy of bioacoustic audio-language tasks but does not cover all possible bioacoustic analyses or real-world ecological deployment settings. Results may not generalize to unseen taxa, rare species, unseen acoustic environments, long-term monitoring scenarios, or task formulations outside the benchmark.",
+  "rai:dataBiases": "The benchmark inherits biases from its source datasets, including overrepresentation of birds, geographic imbalance, variation in recording conditions, and uneven coverage across task families. Some task types may be better represented than others, which may favor models optimized for particular capabilities.",
+  "rai:personalSensitiveInformation": "The benchmark is not intended to contain personal or sensitive human information. It focuses on animal vocalizations and environmental audio. Some source datasets may include ecologically sensitive information, such as locations or presence records for rare or endangered species, and users should handle such information responsibly.",
+  "rai:dataUseCases": "The benchmark is intended for evaluating bioacoustic audio-language models across acoustic perception, semantic recognition, structural and temporal reasoning, and in-context learning. It is suitable for research model comparison, diagnostic evaluation, and analysis of model strengths and weaknesses across biologically relevant capabilities.",
+  "rai:dataSocialImpact": "The benchmark may help accelerate bioacoustic research, biodiversity monitoring, and ethology by improving evaluation of general-purpose audio-language models. Potential negative impacts include overinterpretation of benchmark scores, inappropriate deployment in ecological decision-making, or misuse of species detection capabilities for harmful activities such as locating endangered species.",
+  "rai:hasSyntheticData": false,
   "http://purl.org/dc/terms/conformsTo": "http://mlcommons.org/croissant/1.0",
   "isLiveDataset": true
 }

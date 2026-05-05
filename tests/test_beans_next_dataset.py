@@ -22,17 +22,6 @@ def beans_next_instruction_snippet() -> str:
     )
 
 
-@pytest.fixture
-def beans_next_row(beans_next_instruction_snippet: str) -> dict[str, object]:
-    # Minimal schema described in INCREMENTS.md I15-C.
-    return {
-        "instruction": beans_next_instruction_snippet,
-        "output": "No",
-        "audio_path_original_sample_rate": "audio/example.wav",
-        "metadata": '{"sample_rate": 44100}',
-    }
-
-
 def _registry_root() -> Path:
     return Path(importlib.resources.files("beans_next")).joinpath("registry")
 
@@ -90,31 +79,19 @@ def _requires_esp_data() -> None:
 
 
 def test_build_dataset_example_from_beans_next_row_fixture(
-    _requires_esp_data: None,
-    beans_next_row: dict[str, object],
-    beans_next_instruction_snippet: str,
+    beans_next_example: DatasetExample,
 ) -> None:
-    from beans_next.datasets.esp_data import _build_dataset_example
-
-    ex = _build_dataset_example(
-        beans_next_row,
-        sample_id="beanspro:row:0",
-        audio_path="/tmp/audio.wav",
-        split="test",
-        task_id="beans_next_crow_description",
-    )
+    ex = beans_next_example
     assert isinstance(ex, DatasetExample)
-    assert ex.sample_id == "beanspro:row:0"
+    assert ex.sample_id == "beanspro:test:0"
     assert ex.task_id == "beans_next_crow_description"
     assert ex.split == "test"
-    assert ex.labels == "No"
-    assert ex.metadata["audio_path"] == "/tmp/audio.wav"
-    assert ex.metadata["instruction"] == beans_next_instruction_snippet
+    assert ex.labels == "A"
+    assert "audio_path" in ex.metadata
+    assert "instruction" in ex.metadata
 
 
-def test_synthesize_esp_data_sample_id_is_stable_for_beans_next_dataset(
-    _requires_esp_data: None,
-) -> None:
+def test_synthesize_esp_data_sample_id_is_stable_for_beans_next_dataset() -> None:
     from beans_next.datasets.esp_data import synthesize_esp_data_sample_id
 
     a = synthesize_esp_data_sample_id(

@@ -25,13 +25,40 @@ This means:
 - You can re-score any completed run without re-running the model: `beans-next score-from-file`.
 - Cloud models (GPT-4o-audio, Gemini) need no GPU at all.
 
-### Dataset backend selection (HF vs esp_data)
+### Dataset backend selection
 
-By default, BEANS-Next loads BEANS-Zero from HuggingFace. If you have `esp_data` available, you can switch dataset loading to `esp_data` (usually faster on ESP infrastructure) without changing task definitions:
+BEANS-Next supports two dataset backends. The backend controls how audio and metadata are loaded; task definitions and metrics are identical.
 
-- CLI: `beans-next run --data-source esp_data ...`
-- Run-config YAML: add `data_source: esp_data`
-- Env var (fallback): `BEANS_PRO_DATA_SOURCE=esp_data`
+| Backend | Flag | When to use |
+|---|---|---|
+| `esp_data` | `--backend esp_data` | ESP infrastructure with GCS access and the `esp` dependency group installed |
+| `huggingface` | `--backend huggingface` | Public access — loads from the two-table Parquet bundle on HuggingFace Hub; no private credentials needed |
+
+Switch via CLI flag, run-config YAML, or env var (env var is the lowest-priority fallback):
+
+```bash
+# CLI flag (takes priority over everything)
+beans-next run --backend huggingface ...
+
+# Run-config YAML field
+data_source: huggingface
+
+# Env var fallback (used when flag and YAML field are both absent)
+BEANS_PRO_DATA_SOURCE=huggingface beans-next run ...
+```
+
+The `huggingface` backend requires `HF_TOKEN` if the dataset is private:
+
+```bash
+export HF_TOKEN=hf_...
+```
+
+The `esp_data` backend requires the `esp` dependency group and GCS credentials:
+
+```bash
+uv sync --group esp
+gcloud auth application-default login
+```
 
 ---
 
@@ -285,14 +312,6 @@ sbatch --dependency=after:$SERVE_JOB examples/slurm/run_inference.sh
 **Hardware**: 1× GPU, ≥ 24 GB VRAM
 **CPU (inference job)**: 4 cores, no GPU
 **Requires**: gated HuggingFace access (`HF_TOKEN`)
-
-#### Authoritative inference notes (esp-research)
-
-The most complete inference instructions for NatureLM-audio (including v1.1) live in
-`esp-research` on the `david-multi-audio` branch under `projects/NatureLM-audio-v1.5/`.
-
-- Local clone (recommended): `~/code/esp-research__david-multi-audio`
-- Upstream reference: `https://github.com/earthspecies/esp-research/blob/david-multi-audio/projects/NatureLM-audio-v1.5/`
 
 #### One-time setup
 

@@ -44,13 +44,52 @@ uv sync
 
 This creates `.venv/` and installs `beans_next` plus all dev deps. Use `uv run` to execute anything inside that environment.
 
-To use `esp_data` datasets (internal ESP data access), also install the `esp` group:
+### Dataset backends
+
+BEANS-Next supports two backends for loading evaluation data:
+
+| Backend | Flag | Notes |
+|---|---|---|
+| `huggingface` | `--backend huggingface` | Loads from HuggingFace Hub Parquet files. No private credentials needed for public datasets. Set `HF_TOKEN` for private repos. |
+| `esp_data` | `--backend esp_data` | Loads from GCS via the `esp_data` library. Requires GCS credentials and the `esp` dependency group. |
+
+The default backend when no flag is provided is `esp_data` (falls back to the `BEANS_PRO_DATA_SOURCE` env var, defaulting to `esp_data`). To use HuggingFace:
+
+```bash
+uv run beans-next run --backend huggingface --suite beans_zero_core ...
+```
+
+To use `esp_data`, also install the `esp` group:
 
 ```bash
 uv sync --group esp
 ```
 
 > **Launchers** (model servers under `examples/servers/`) have their own isolated venvs and are set up separately — see the [launcher guide](examples/servers/README.md).
+
+---
+
+## Credentials and tokens
+
+Many launchers and dataset backends require credentials. Store them in protected config files so they are auto-loaded without appearing in command history:
+
+```bash
+# HuggingFace token (gated model weights, private HF datasets)
+mkdir -p ~/.config/huggingface && chmod 700 ~/.config/huggingface
+printf 'hf_...\n' > ~/.config/huggingface/hf_token && chmod 600 ~/.config/huggingface/hf_token
+
+# OpenAI API key (GPT-4o-audio-preview and compatible APIs)
+mkdir -p ~/.config/openai && chmod 700 ~/.config/openai
+printf 'OPENAI_API_KEY=sk-...\n' > ~/.config/openai/cfg && chmod 600 ~/.config/openai/cfg
+
+# Google AI Studio API key (Gemini models)
+mkdir -p ~/.config/gemini && chmod 700 ~/.config/gemini
+printf 'AIza...\n' > ~/.config/gemini/cfg && chmod 600 ~/.config/gemini/cfg
+```
+
+The launchers auto-read from these files. You can also pass tokens as environment variables (`HF_TOKEN`, `OPENAI_API_KEY`, `GEMINI_API_KEY`) if you prefer.
+
+See [docs/full_evaluation_pipeline.md](docs/full_evaluation_pipeline.md) for full credential setup including GCS auth.
 
 ---
 
@@ -127,29 +166,6 @@ Results are written to `--output-dir` (default `results/<run_id>/`):
 | `processed_predictions.jsonl` | Post-processed predictions with ground truth |
 | `scored_predictions.jsonl` | Post-processed predictions with computed scores |
 
-### 4. Generate prompt/answer pairs (BeansPro)
-
-To collect analysis artifacts (rendered prompts, **raw** model answers, **post-processed**
-answers, and ground truth) for **BeansPro** subsets:
-
-```bash
-uv run beans-next pairs \
-  --predict-url http://127.0.0.1:8000/predict \
-  --model-tag naturelm_v1_0 \
-  --k 100 \
-  --subsets crow-description,alarm-call-presence
-```
-
-Outputs are written under:
-
-- `results/prompt_answer_pairs/beans_next_v0_1_0/<run_id>/pairs.jsonl`
-- `results/prompt_answer_pairs/beans_next_v0_1_0/<run_id>/manifest.json`
-- `results/prompt_answer_pairs/beans_next_v0_1_0/<run_id>/sample_ids/<subset>.jsonl`
-
-For convenience, you can also concatenate multiple model runs into a single analysis file:
-
-- `results/prompt_answer_pairs/beans_next_v0_1_0/beans_next_pairs_ALL6_concat_20260428.jsonl`
-
 ### 4. YAML run config (reproducible runs)
 
 ```yaml
@@ -166,36 +182,29 @@ uv run beans-next run --config my_run.yaml
 
 ### NatureLM 1.1 checkpoint-specific configs
 
-You can benchmark different NatureLM checkpoints by creating dedicated run config files
-that point to the launcher URL you are serving. We include a ready-to-run example for:
+You can benchmark different NatureLM v1.1 checkpoints by creating a run config that
+points the launcher at your checkpoint URI. Start from the generic template:
 
-- `gs://foundation-models/naturelm-audio-1.5/all_backup/merged_variations_f0_v5`
-- config file: `configs/benchmarks/beans_zero_core_naturelm_v1_1_ckpt_merged_variations_f0_v5.yaml`
+- `configs/benchmarks/beans_zero_core_naturelm_v1_1_checkpoint_template.yaml`
 
-Start the launcher with your target checkpoint URI first:
+Customize these fields in the YAML:
+
+- `models[0].inline.name` — unique identifier in outputs
+- `models[0].inline.description` — human-readable checkpoint note
+
+Then start the launcher with your checkpoint URI:
 
 ```bash
-NATURELM_GCS_CHECKPOINT_URI=gs://foundation-models/naturelm-audio-1.5/all_backup/merged_variations_f0_v5 \
+NATURELM_GCS_CHECKPOINT_URI=gs://<your-bucket>/<path-to-checkpoint>/ \
   sbatch examples/slurm/serve_naturelm_v1_1.sh
 ```
 
-Then run the matching config:
+And run with the config:
 
 ```bash
-uv run beans-next run --config \
-  configs/benchmarks/beans_zero_core_naturelm_v1_1_ckpt_merged_variations_f0_v5.yaml \
-  -o results/naturelm_v1_1_ckpt_merged_variations_f0_v5_$(date +%Y%m%d)
+uv run beans-next run --config configs/benchmarks/beans_zero_core_naturelm_v1_1_checkpoint_template.yaml \
+  -o results/naturelm_v1_1_custom_$(date +%Y%m%d)
 ```
-
-To test your own checkpoints, duplicate that YAML and update:
-
-- `models[0].inline.name` (unique identifier in outputs)
-- `models[0].inline.description` (human-readable checkpoint note)
-- launcher startup command (`NATURELM_GCS_CHECKPOINT_URI=<your gs://...>`)
-
-You can also start from the generic template:
-
-- `configs/benchmarks/beans_zero_core_naturelm_v1_1_checkpoint_template.yaml`
 
 Available registry model presets:
 

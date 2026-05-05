@@ -19,9 +19,24 @@ except ModuleNotFoundError as exc:  # pragma: no cover
     # Keep module importable so doctest/test collection can proceed.
     _ESP_DATA_IMPORT_ERROR = exc
 
-    Dataset = object  # type: ignore[assignment]
-    DatasetConfig = object  # type: ignore[assignment]
-    DatasetInfo = object  # type: ignore[assignment]
+    class Dataset:  # type: ignore[no-redef]
+        """Stub for ``esp_data.Dataset`` when ``esp_data`` is not installed."""
+
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            pass
+
+    class DatasetConfig:  # type: ignore[no-redef]
+        """Stub for ``esp_data.DatasetConfig`` when ``esp_data`` is not installed."""
+
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            pass
+
+    class DatasetInfo:  # type: ignore[no-redef]
+        """Stub for ``esp_data.DatasetInfo`` when ``esp_data`` is not installed."""
+
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            pass
+
     BackendType = object  # type: ignore[assignment]
     AnyPathT = object  # type: ignore[assignment]
 
@@ -89,11 +104,11 @@ class BeansPro(Dataset):
 
     Examples
     --------
-    >>> from esp_data.datasets import BeansPro
-    >>> dataset = BeansPro(
+    >>> from esp_data.datasets import BeansPro  # doctest: +SKIP
+    >>> dataset = BeansPro(  # doctest: +SKIP
     ...     split="crow-description",
     ...     sample_rate=16000,
-    ...     data_root="gs://esp-data-ingestion/beans-next/v0.1.0/raw/carrion_crow_descriptions/"
+    ...     data_root="gs://esp-data-ingestion/beans-pro/v0.1.0/raw/carrion_crow_descriptions/"
     ... )
     """
 
@@ -109,17 +124,17 @@ class BeansPro(Dataset):
         name="beans_next",
         owner="david",
         split_paths={
-            "crow-description": "gs://esp-data-ingestion/beans-next/v0.1.0/raw/carrion_crow_descriptions/test.jsonl",
-            "zebra-description": "gs://esp-data-ingestion/beans-next/v0.1.0/raw/zebra_descriptions/test.jsonl",
-            "f0-mean-seen-taxa": "gs://esp-data-ingestion/beans-next/v0.1.0/raw/f0_mean_seen_taxa/test.jsonl",
-            "f0-mean-heldout-taxa": "gs://esp-data-ingestion/beans-next/v0.1.0/raw/f0_mean_heldout_taxa/test.jsonl",
-            "bird-presence": "gs://esp-data-ingestion/beans-next/v0.1.0/raw/bird_presence/test.jsonl",
-            "mammal-presence": "gs://esp-data-ingestion/beans-next/v0.1.0/raw/mammal_presence/test.jsonl",
-            "insect-presence": "gs://esp-data-ingestion/beans-next/v0.1.0/raw/insect_presence/test.jsonl",
-            "amphibian-presence": "gs://esp-data-ingestion/beans-next/v0.1.0/raw/amphibian_presence/test.jsonl",
-            "alarm-call-presence": "gs://esp-data-ingestion/beans-next/v0.1.0/raw/alarm_call_presence/test.jsonl",
-            "flight-call-presence": "gs://esp-data-ingestion/beans-next/v0.1.0/raw/flight_call_presence/test.jsonl",
-            "call-type-fixed-vocab": "gs://esp-data-ingestion/beans-next/v0.1.0/raw/call_type_fixed_vocab/test.jsonl",
+            "crow-description": "gs://esp-data-ingestion/beans-pro/v0.1.0/raw/carrion_crow_descriptions/test.jsonl",
+            "zebra-description": "gs://esp-data-ingestion/beans-pro/v0.1.0/raw/zebra_descriptions/test.jsonl",
+            "f0-mean-seen-taxa": "gs://esp-data-ingestion/beans-pro/v0.1.0/raw/f0_mean_seen_taxa/test.jsonl",
+            "f0-mean-heldout-taxa": "gs://esp-data-ingestion/beans-pro/v0.1.0/raw/f0_mean_heldout_taxa/test.jsonl",
+            "bird-presence": "gs://esp-data-ingestion/beans-pro/v0.1.0/raw/bird_presence/test.jsonl",
+            "mammal-presence": "gs://esp-data-ingestion/beans-pro/v0.1.0/raw/mammal_presence/test.jsonl",
+            "insect-presence": "gs://esp-data-ingestion/beans-pro/v0.1.0/raw/insect_presence/test.jsonl",
+            "amphibian-presence": "gs://esp-data-ingestion/beans-pro/v0.1.0/raw/amphibian_presence/test.jsonl",
+            "alarm-call-presence": "gs://esp-data-ingestion/beans-pro/v0.1.0/raw/alarm_call_presence/test.jsonl",
+            "flight-call-presence": "gs://esp-data-ingestion/beans-pro/v0.1.0/raw/flight_call_presence/test.jsonl",
+            "call-type-fixed-vocab": "gs://esp-data-ingestion/beans-pro/v0.1.0/raw/call_type_fixed_vocab/test.jsonl",
         },
         version="0.1.0",
         description=(
@@ -139,17 +154,17 @@ class BeansPro(Dataset):
 
     # Data roots per split (used when data_root is None)
     _default_data_roots = {
-        "crow-description": "gs://esp-data-ingestion/beans-next/v0.1.0/raw/carrion_crow_descriptions/",
-        "zebra-description": "gs://esp-data-ingestion/beans-next/v0.1.0/raw/zebra_descriptions/",
+        "crow-description": "gs://esp-data-ingestion/beans-pro/v0.1.0/raw/carrion_crow_descriptions/",
+        "zebra-description": "gs://esp-data-ingestion/beans-pro/v0.1.0/raw/zebra_descriptions/",
         "f0-mean-seen-taxa": "gs://esp-data-ingestion/f0-prediction/audio/",
         "f0-mean-heldout-taxa": "gs://esp-data-ingestion/f0-prediction/audio/",
-        "bird-presence": "gs://esp-ml-datasets/",
-        "mammal-presence": "gs://esp-ml-datasets/",
-        "insect-presence": "gs://esp-ml-datasets/",
-        "amphibian-presence": "gs://esp-ml-datasets/",
-        "alarm-call-presence": "gs://esp-ml-datasets/",
-        "flight-call-presence": "gs://esp-ml-datasets/",
-        "call-type-fixed-vocab": "gs://esp-ml-datasets/",
+        "bird-presence": "gs://esp-data-ingestion/xeno-canto/v0.1.0/raw/",
+        "mammal-presence": "gs://esp-data-ingestion/xeno-canto/v0.1.0/raw/",
+        "insect-presence": "gs://esp-data-ingestion/xeno-canto/v0.1.0/raw/",
+        "amphibian-presence": "gs://esp-data-ingestion/xeno-canto/v0.1.0/raw/",
+        "alarm-call-presence": "gs://esp-data-ingestion/xeno-canto/v0.1.0/raw/",
+        "flight-call-presence": "gs://esp-data-ingestion/xeno-canto/v0.1.0/raw/",
+        "call-type-fixed-vocab": "gs://esp-data-ingestion/xeno-canto/v0.1.0/raw/",
     }
 
     _originals_path_column = "audio_path_original_sample_rate"
