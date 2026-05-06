@@ -1,0 +1,12 @@
+beans_next_t3_vocalization_presence_binary:
+  task_type: classification
+  data_source: esp_data
+  dataset: beans_next
+  subset: t3-vocalization-presence-binary
+  split: t3-vocalization-presence-binary
+  prompt: classification_beans_zero_official_v1
+  metrics:
+    - name: top1_accuracy
+      scorer_kwargs:
+        label_separator: ","
+

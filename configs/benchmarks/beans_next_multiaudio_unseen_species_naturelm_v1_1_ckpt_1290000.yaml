@@ -21,7 +21,7 @@ models:
       audio_payload: base64_wav
 
 tasks:
-  - beans_next_multiaudio_unseen_species_4way
+  - beans_next_unseen_species_4way
 
 limit: 5
 

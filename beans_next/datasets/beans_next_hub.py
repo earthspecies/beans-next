@@ -46,14 +46,20 @@ _METADATA_FILE_ENV_COMPAT: Final[str] = "BEANS_PRO_HF_BEANS_NEXT_METADATA_FILE"
 
 TIER_1_SUBSETS: Final[frozenset[str]] = frozenset(
     {
+        "t1-caption",
+        "t1-description-mcq",
         "crow-description",
         "zebra-description",
+        "t1-snr-mcq",
+        "t1-snr-regression",
         "f0-mean-seen-taxa",
         "f0-mean-heldout-taxa",
     }
 )
 TIER_2_SUBSETS: Final[frozenset[str]] = frozenset(
     {
+        "t2-behavior",
+        "t2-captioning",
         "bird-presence",
         "mammal-presence",
         "amphibian-presence",
@@ -62,13 +68,38 @@ TIER_2_SUBSETS: Final[frozenset[str]] = frozenset(
         "call-type-fixed-vocab",
     }
 )
-TIER_3_SUBSETS: Final[frozenset[str]] = frozenset({"insect-presence"})
+TIER_3_SUBSETS: Final[frozenset[str]] = frozenset(
+    {
+        "t3-species-count-oe",
+        "t3-vocalization-count-total-oe",
+        "t3-vocalization-count-total-mcq",
+        "t3-vocalization-presence-binary",
+        "t3-vocalization-count-per-species-oe",
+        "t3-vocalization-referring-mcq",
+        "t3-vocalization-cooccurrence-binary",
+        "t3-species-by-vocalization-order-oe",
+        "t3-species-by-vocalization-order-mcq",
+        "t3-species-by-highest-pitch-oe",
+        "t3-species-by-highest-pitch-mcq",
+        "t3-species-by-lowest-pitch-oe",
+        "t3-species-by-lowest-pitch-mcq",
+        "t3-species-by-longest-vocalization-oe",
+        "t3-species-by-longest-vocalization-mcq",
+        "t3-species-by-vocalization-frequency-oe",
+        "t3-species-by-vocalization-frequency-mcq",
+        "t3-structural-captioning",
+        "t3-species-listing-open-list",
+        "t3-frequency-range-description",
+        "t3-ordered-species-summary",
+    }
+)
 TIER_4_SUBSETS: Final[frozenset[str]] = frozenset(
     {
         "gibbon-fewshot-detection-balanced",
         "giant-otter-4way",
         "dcase-fewshot-detection-balanced",
         "crow-4way",
+        # Back-compat: some Hub revisions still include this task.
         "zebra-4way",
         "unseen-species-4way",
     }

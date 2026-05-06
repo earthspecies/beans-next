@@ -1,0 +1,12 @@
+beans_next_t3_species_by_vocalization_frequency_mcq:
+  task_type: classification
+  data_source: esp_data
+  dataset: beans_next
+  subset: t3-species-by-vocalization-frequency-mcq
+  split: t3-species-by-vocalization-frequency-mcq
+  prompt: classification_beans_zero_official_v1
+  metrics:
+    - name: top1_accuracy
+      scorer_kwargs:
+        label_separator: ","
+

@@ -1,0 +1,29 @@
+# Full BEANS-Next HuggingFace Hub sweep (all tiers shipped on HF) using the
+# OpenAI-compatible proxy in stub mode — no real ChatGPT / OpenAI API calls.
+#
+# Prereq (terminal 1):
+#   cd <repo-root>
+#   PORT=8765 OPENAI_PROXY_STUB=1 uv run python -m uvicorn \
+#     examples.servers.openai_compatible_proxy.serve:app \
+#     --host 127.0.0.1 --port 8765
+#
+# Run:
+#   uv run beans-next run --config configs/benchmarks/beans_next_all_tiers_hf_openai_proxy_stub.yaml
+#
+# Gated Hub: set HF_TOKEN (or use a cached snapshot).
+
+models:
+  - inline:
+      name: openai_proxy_stub
+      description: OpenAI Chat Completions-shaped launcher; stub responses only
+      predict_url: http://127.0.0.1:8765/predict
+      info_url: http://127.0.0.1:8765/info
+      health_url: http://127.0.0.1:8765/health
+      response_schema: predictions_v1
+      audio_payload: base64_wav
+      auth: {}
+
+suite: beans_next_all_tiers_hf
+data_source: huggingface
+run_id: beans_next_all_tiers_hf_openai_stub
+output_dir: results/beans_next_all_tiers_hf_openai_stub

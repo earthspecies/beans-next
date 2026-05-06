@@ -9,6 +9,7 @@ models:
       auth: {}
 
 tasks:
-  - beans_next_crow_description
-  - beans_next_alarm_call_presence
-  - beans_next_zebra_description
+  - beans_next_t1_caption
+  - beans_next_t2_behavior
+  - beans_next_t3_frequency_range_description
+  - beans_next_crow_4way

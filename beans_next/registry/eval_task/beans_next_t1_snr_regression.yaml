@@ -1,0 +1,12 @@
+beans_next_t1_snr_regression:
+  task_type: classification
+  data_source: esp_data
+  dataset: beans_next
+  subset: t1-snr-regression
+  split: t1-snr-regression
+  prompt: classification_beans_zero_official_v1
+  metrics:
+    - name: top1_accuracy
+      scorer_kwargs:
+        label_separator: ","
+

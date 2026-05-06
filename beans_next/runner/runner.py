@@ -1489,10 +1489,14 @@ def _load_examples_for_eval_task(
                 "huggingface backend requires a non-empty `subset` in the eval task."
             )
         revision = str(eval_task.get("revision") or "main")
+        # BEANS-Next on Hugging Face is a single-table Parquet dataset. We treat the
+        # benchmark split as "test" by default (older configs sometimes used
+        # subset-named splits, and HF defaults can be "train" depending on the card).
+        hf_split = str(eval_task.get("hf_split") or "test")
         for ex in iter_hf_beans_next_examples(
             repo_id,
             subset=subset_name.strip(),
-            split=str(split),
+            split=hf_split,
             revision=revision,
             task_id=task_id,
             limit=limit,

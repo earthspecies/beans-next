@@ -1,0 +1,12 @@
+beans_next_call_type_fixed_vocab:
+  task_type: classification
+  data_source: esp_data
+  dataset: beans_next
+  subset: call-type-fixed-vocab
+  split: call-type-fixed-vocab
+  prompt: classification_beans_zero_official_v1
+  metrics:
+    - name: top1_accuracy
+      scorer_kwargs:
+        label_separator: ","
+

@@ -1,0 +1,12 @@
+beans_next_t3_species_by_lowest_pitch_oe:
+  task_type: classification
+  data_source: esp_data
+  dataset: beans_next
+  subset: t3-species-by-lowest-pitch-oe
+  split: t3-species-by-lowest-pitch-oe
+  prompt: classification_beans_zero_official_v1
+  metrics:
+    - name: top1_accuracy
+      scorer_kwargs:
+        label_separator: ","
+

@@ -1,0 +1,12 @@
+beans_next_f0_mean_seen_taxa:
+  task_type: classification
+  data_source: esp_data
+  dataset: beans_next
+  subset: f0-mean-seen-taxa
+  split: f0-mean-seen-taxa
+  prompt: classification_beans_zero_official_v1
+  metrics:
+    - name: top1_accuracy
+      scorer_kwargs:
+        label_separator: ","
+

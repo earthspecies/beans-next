@@ -4,14 +4,54 @@ beans_next_all_tiers:
     single-audio (tiers 1–3) + in-context multi-audio (tier 4).
     Uses esp_data dataset loading in Slurm workflows.
   eval_tasks:
-    # Tiers 1–3 (single-audio)
+    # Tier 1 (single-audio)
+    - beans_next_t1_caption
+    - beans_next_t1_description_mcq
     - beans_next_crow_description
     - beans_next_zebra_description
+    - beans_next_t1_snr_mcq
+    - beans_next_t1_snr_regression
+    - beans_next_f0_mean_seen_taxa
+    - beans_next_f0_mean_heldout_taxa
+
+    # Tier 2 (single-audio)
+    - beans_next_t2_behavior
+    - beans_next_t2_captioning
+    - beans_next_bird_presence
+    - beans_next_mammal_presence
+    - beans_next_amphibian_presence
     - beans_next_alarm_call_presence
+    - beans_next_flight_call_presence
+    - beans_next_call_type_fixed_vocab
+
+    # Tier 3 (single-audio)
+    - beans_next_t3_species_count_oe
+    - beans_next_t3_vocalization_count_total_oe
+    - beans_next_t3_vocalization_count_total_mcq
+    - beans_next_t3_vocalization_count_per_species_oe
+    - beans_next_t3_vocalization_presence_binary
+    - beans_next_t3_vocalization_referring_mcq
+    - beans_next_t3_vocalization_cooccurrence_binary
+    - beans_next_t3_species_by_vocalization_order_oe
+    - beans_next_t3_species_by_vocalization_order_mcq
+    - beans_next_t3_species_by_highest_pitch_oe
+    - beans_next_t3_species_by_highest_pitch_mcq
+    - beans_next_t3_species_by_lowest_pitch_oe
+    - beans_next_t3_species_by_lowest_pitch_mcq
+    - beans_next_t3_species_by_longest_vocalization_oe
+    - beans_next_t3_species_by_longest_vocalization_mcq
+    - beans_next_t3_species_by_vocalization_frequency_oe
+    - beans_next_t3_species_by_vocalization_frequency_mcq
+    - beans_next_t3_structural_captioning
+    - beans_next_t3_species_listing_open_list
+    - beans_next_t3_frequency_range_description
+    - beans_next_t3_ordered_species_summary
+
     # Tier 4 (in-context multi-audio)
-    - beans_next_multiaudio_crow_4way
-    - beans_next_multiaudio_giant_otter_4way
-    - beans_next_multiaudio_gibbon_fewshot_detection_balanced
-    - beans_next_multiaudio_dcase_fewshot_detection_balanced
-    - beans_next_multiaudio_unseen_species_4way
+    - beans_next_gibbon_fewshot_detection_balanced
+    - beans_next_giant_otter_4way
+    - beans_next_dcase_fewshot_detection_balanced
+    - beans_next_crow_4way
+    - beans_next_zebra_4way
+    - beans_next_unseen_species_4way
 

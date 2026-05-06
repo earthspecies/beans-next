@@ -9,7 +9,7 @@ models:
       audio_payload: base64_wav
 
 tasks:
-  - beans_next_multiaudio_crow_4way
+  - beans_next_crow_4way
 
 data_source: esp_data
 limit: 1

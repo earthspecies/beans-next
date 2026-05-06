@@ -5,8 +5,8 @@ beans_next_multiaudio_core:
     tasks.  For full multi-audio evaluation (openai_compatible_proxy, af3),
     set prompt: beans_next_multiaudio_passthrough_v1 per eval-task.
   eval_tasks:
-    - beans_next_multiaudio_crow_4way
-    - beans_next_multiaudio_giant_otter_4way
-    - beans_next_multiaudio_gibbon_fewshot_detection_balanced
-    - beans_next_multiaudio_dcase_fewshot_detection_balanced
-    - beans_next_multiaudio_unseen_species_4way
+    - beans_next_crow_4way
+    - beans_next_giant_otter_4way
+    - beans_next_gibbon_fewshot_detection_balanced
+    - beans_next_dcase_fewshot_detection_balanced
+    - beans_next_unseen_species_4way
