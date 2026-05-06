@@ -33,6 +33,7 @@ from types import ModuleType
 from typing import Any, Final
 
 from huggingface_hub import HfApi, hf_hub_download
+from huggingface_hub.errors import EntryNotFoundError
 
 from beans_next.api.types import DatasetExample
 from beans_next.prompts.audio_tags import AUDIO_PLACEHOLDER
@@ -43,6 +44,8 @@ _METADATA_PARQUET_CANONICAL: Final[str] = "metadata.parquet"
 _AUDIO_PARQUET_LEGACY: Final[str] = "beans_next_audio.parquet"
 _METADATA_FILE_ENV: Final[str] = "BEANS_NEXT_HF_BEANS_NEXT_METADATA_FILE"
 _METADATA_FILE_ENV_COMPAT: Final[str] = "BEANS_PRO_HF_BEANS_NEXT_METADATA_FILE"
+_HF_SPLIT_DIRNAME_ENV: Final[str] = "BEANS_NEXT_HF_BEANS_NEXT_SPLIT_DIR"
+_HF_SPLIT_DIRNAME_ENV_COMPAT: Final[str] = "BEANS_PRO_HF_BEANS_NEXT_SPLIT_DIR"
 
 TIER_1_SUBSETS: Final[frozenset[str]] = frozenset(
     {
@@ -329,10 +332,26 @@ def _hub_metadata_filename(repo_id: str, revision: str) -> str:
     if env:
         return env
     files = _hub_dataset_files(repo_id, revision)
-    if _METADATA_PARQUET_CANONICAL in files:
-        return _METADATA_PARQUET_CANONICAL
-    if _METADATA_PARQUET_LEGACY in files:
-        return _METADATA_PARQUET_LEGACY
+    split_dir = (
+        os.environ.get(_HF_SPLIT_DIRNAME_ENV, "").strip()
+        or os.environ.get(_HF_SPLIT_DIRNAME_ENV_COMPAT, "").strip()
+    )
+    candidates = [
+        _METADATA_PARQUET_CANONICAL,
+        _METADATA_PARQUET_LEGACY,
+        "test/metadata.parquet",
+        "test/beans_next_metadata.parquet",
+        "train/metadata.parquet",
+        "train/beans_next_metadata.parquet",
+    ]
+    if split_dir:
+        candidates = [
+            f"{split_dir.strip().rstrip('/')}/{_METADATA_PARQUET_CANONICAL}",
+            f"{split_dir.strip().rstrip('/')}/{_METADATA_PARQUET_LEGACY}",
+        ] + candidates
+    for name in candidates:
+        if name in files:
+            return name
     msg = (
         f"No metadata parquet found in {repo_id}@{revision!r}; expected "
         f"{_METADATA_PARQUET_CANONICAL!r} or {_METADATA_PARQUET_LEGACY!r}"
@@ -344,7 +363,13 @@ def _hub_has_legacy_audio_parquet(repo_id: str, revision: str) -> bool:
     return _AUDIO_PARQUET_LEGACY in _hub_dataset_files(repo_id, revision)
 
 
-def _hf_download_audio_path(repo_id: str, rel_path: str, *, revision: str) -> str:
+def _hf_download_audio_path(
+    repo_id: str,
+    rel_path: str,
+    *,
+    revision: str,
+    base_dir: str | None = None,
+) -> str:
     """Download (or take from cache) a repo-relative audio file.
 
     Returns
@@ -361,14 +386,25 @@ def _hf_download_audio_path(repo_id: str, rel_path: str, *, revision: str) -> st
     if not rel:
         msg = "Hub audio path is empty"
         raise ValueError(msg)
-    return str(
-        hf_hub_download(
-            repo_id,
-            rel,
-            repo_type="dataset",
-            revision=revision,
-        )
-    )
+    # Some BEANS-Next Hub revisions store data under split directories, e.g.:
+    #   test/metadata.parquet
+    #   test/audio/<id>.wav
+    # while Parquet rows keep ``file_name`` as ``audio/<id>.wav`` for the viewer.
+    if base_dir is not None and base_dir.strip():
+        prefix = base_dir.strip().rstrip("/") + "/"
+        if not rel.startswith(prefix):
+            try:
+                return str(
+                    hf_hub_download(
+                        repo_id,
+                        prefix + rel,
+                        repo_type="dataset",
+                        revision=revision,
+                    )
+                )
+            except EntryNotFoundError:
+                pass
+    return str(hf_hub_download(repo_id, rel, repo_type="dataset", revision=revision))
 
 
 def _row_matches_task(row: Mapping[str, Any], task: str) -> bool:
@@ -472,6 +508,7 @@ def _prefetch_hub_files(
     *,
     revision: str,
     workers: int,
+    base_dir: str | None = None,
 ) -> dict[str, str]:
     """Download unique repo-relative paths.
 
@@ -485,7 +522,9 @@ def _prefetch_hub_files(
         return {}
 
     def _one(rel: str) -> tuple[str, str]:
-        return rel, _hf_download_audio_path(repo_id, rel, revision=revision)
+        return rel, _hf_download_audio_path(
+            repo_id, rel, revision=revision, base_dir=base_dir
+        )
 
     if workers > 1:
         with ThreadPoolExecutor(max_workers=workers) as pool:
@@ -554,6 +593,7 @@ def _iter_single_examples(
     )
 
     meta_name = _hub_metadata_filename(repo_id, revision)
+    base_dir = meta_name.rsplit("/", 1)[0] if "/" in meta_name else None
     meta_path = _local_hub_file(repo_id, meta_name, revision=revision)
     meta_rows: list[dict[str, Any]] = []
     for row in iter_parquet_row_dicts(meta_path):
@@ -585,7 +625,11 @@ def _iter_single_examples(
 
     to_fetch = [r for r in rels if r is not None]
     path_by_rel = _prefetch_hub_files(
-        repo_id, to_fetch, revision=revision, workers=max(1, workers)
+        repo_id,
+        to_fetch,
+        revision=revision,
+        workers=max(1, workers),
+        base_dir=base_dir,
     )
 
     raw_rows: list[tuple[str, dict[str, Any], str]] = []
@@ -659,6 +703,7 @@ def _iter_multiaudio_examples(
     )
 
     meta_name = _hub_metadata_filename(repo_id, revision)
+    base_dir = meta_name.rsplit("/", 1)[0] if "/" in meta_name else None
     meta_path = _local_hub_file(repo_id, meta_name, revision=revision)
     meta_rows: list[dict[str, Any]] = []
     for row in iter_parquet_row_dicts(meta_path):
@@ -715,7 +760,11 @@ def _iter_multiaudio_examples(
         if rels is not None:
             all_rels.extend(rels)
     path_by_rel = _prefetch_hub_files(
-        repo_id, all_rels, revision=revision, workers=max(1, workers)
+        repo_id,
+        all_rels,
+        revision=revision,
+        workers=max(1, workers),
+        base_dir=base_dir,
     )
 
     raw_rows: list[tuple[str, dict[str, Any], list[str], str]] = []
