@@ -314,8 +314,9 @@ class BenchmarkRunner:
     runner attempts ``from beans_next.metrics import score_sample`` and records
     empty ``scores`` when that module is absent.
 
-    When ``judge`` is provided, :meth:`~beans_next.judges.scorer.JudgeScorer.score_batch`
-    is called once after all inference and primary scoring complete. Results are written
+    When ``judge`` is provided,
+    :meth:`~beans_next.judges.scorer.JudgeScorer.score_batch` is called once after all
+    inference and primary scoring complete. Results are written
     to ``judge_outputs.jsonl`` in the output directory. Errored samples are excluded
     from the judge batch.
 
@@ -1444,7 +1445,15 @@ def _load_examples_for_eval_task(
             return rows
 
         _BEANS_ZERO_REPO = "EarthSpeciesProject/BEANS-Zero"
-        if isinstance(hf_path, str) and hf_path.strip() == _BEANS_ZERO_REPO:
+        _dataset_key = (
+            str(dataset_name).strip() if isinstance(dataset_name, str) else ""
+        )
+        _beans_next_hf_datasets = frozenset({"beans_next", "beans_next_multiaudio"})
+        if (
+            isinstance(hf_path, str)
+            and hf_path.strip() == _BEANS_ZERO_REPO
+            and _dataset_key not in _beans_next_hf_datasets
+        ):
             from beans_next.datasets.hf import iter_hf_dataset_examples
 
             if not isinstance(dataset_name, str) or not dataset_name.strip():
@@ -1471,8 +1480,8 @@ def _load_examples_for_eval_task(
             iter_hf_beans_next_examples,
         )
 
-        # Use eval task's explicit hf_path if set; otherwise canonical BEANS-Next repo.
-        # Do NOT fall back to args.hf_path which defaults to EarthSpeciesProject/BEANS-Zero.
+        # Use eval task hf_path if set; else canonical BEANS-Next repo (not CLI hf-path
+        # default EarthSpeciesProject/BEANS-Zero).
         repo_id = (eval_task.get("hf_path") or "").strip() or BEANS_NEXT_HUB_REPO_ID
         subset_name = eval_task.get("subset") or split
         if not isinstance(subset_name, str) or not subset_name.strip():
@@ -1496,7 +1505,10 @@ def _load_examples_for_eval_task(
     if not isinstance(hf_path, str) or not hf_path.strip():
         raise SystemExit("Eval task must define `hf_path` (or provide `--hf-path`).")
 
-    if isinstance(dataset_name, str) and dataset_name.strip() == "beans_next_multiaudio":
+    if (
+        isinstance(dataset_name, str)
+        and dataset_name.strip() == "beans_next_multiaudio"
+    ):
         tier_cfg = eval_task.get("tier")
         if not isinstance(tier_cfg, str) or not tier_cfg.strip():
             tier_cfg = "tier_4_in_context"

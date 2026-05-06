@@ -69,8 +69,11 @@ def test_beans_next_multiaudio_row_filter_tier_and_subset() -> None:
         subset="crow-4way",
     )
     assert pred({"tier": "tier_4_in_context", "subset": "crow-4way"})
+    assert pred({"tier": 4, "subset": "crow-4way"})
+    assert pred({"tier": 4, "task": "crow-4way"})
     assert not pred({"tier": "tier_4_in_context", "subset": "zebra-4way"})
     assert not pred({"tier": "tier_1_x", "subset": "crow-4way"})
+    assert not pred({"tier": 1, "subset": "crow-4way"})
 
 
 def test_beans_next_multiaudio_row_filter_task_fallback() -> None:

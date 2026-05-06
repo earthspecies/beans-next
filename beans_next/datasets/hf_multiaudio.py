@@ -18,6 +18,69 @@ from beans_next.datasets.base import (
 )
 from beans_next.prompts.audio_tags import AUDIO_PLACEHOLDER
 
+# Registry strings like ``tier_4_in_context`` vs Hub integer ``tier`` column.
+_TIER_FILTER_ALIASES: dict[str, int] = {
+    "tier_1": 1,
+    "tier_2": 2,
+    "tier_3": 3,
+    "tier_4": 4,
+    "tier_4_in_context": 4,
+}
+
+
+def _row_tier_as_int(value: object) -> int | None:
+    """Coerce a Hub ``tier`` cell to ``int`` when possible.
+
+    Returns
+    -------
+    int | None
+        Parsed tier, or ``None`` when ``value`` is not coercible.
+    """
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        s = value.strip()
+        if s.isdigit():
+            return int(s)
+        if s.startswith("tier_"):
+            tail = s.split("_", 1)[1].split("_", 1)[0]
+            if tail.isdigit():
+                return int(tail)
+    return None
+
+
+def _filter_tier_as_int(filter_tier: str) -> int | None:
+    """Map eval-task tier strings to an integer tier when unambiguous.
+
+    Returns
+    -------
+    int | None
+        Integer tier when the filter maps cleanly, else ``None``.
+    """
+    s = filter_tier.strip()
+    if s in _TIER_FILTER_ALIASES:
+        return _TIER_FILTER_ALIASES[s]
+    return _row_tier_as_int(s)
+
+
+def _beans_next_tier_matches(row_tier: object, filter_tier: str) -> bool:
+    """Return whether a dataset row tier satisfies the eval-task tier filter.
+
+    Returns
+    -------
+    bool
+        ``True`` when the row should be kept for the configured tier filter.
+    """
+    want = _filter_tier_as_int(filter_tier)
+    got = _row_tier_as_int(row_tier)
+    if want is not None and got is not None:
+        return want == got
+    if isinstance(row_tier, str) and isinstance(filter_tier, str):
+        return row_tier.strip() == filter_tier.strip()
+    return row_tier == filter_tier
+
 
 def _strip_audio_placeholders_except_last(conversation: str) -> str:
     idx = conversation.rfind(AUDIO_PLACEHOLDER)
@@ -59,15 +122,15 @@ def beans_next_multiaudio_row_filter(
     tier: str | None,
     subset: str | None,
 ) -> Callable[[Mapping[str, Any]], bool]:
-    """Build a row predicate for unified BEANS-Next tables (``tier`` / ``subset`` columns).
+    """Build a row predicate for unified BEANS-Next tables (``tier`` / ``task``).
 
-    Rows from the Hub may use ``subset`` (preferred) or legacy ``task`` for the
-    multiaudio subset id (e.g. ``\"crow-4way\"``).
+    Rows from the Hub use integer ``tier`` (1–4) and string ``task``; legacy tables
+    may still expose string tiers (e.g. ``\"tier_4_in_context\"``) or ``subset``.
 
     Parameters
     ----------
     tier
-        When non-empty, require ``row[\"tier\"] == tier``.
+        When non-empty, require the row tier to match (integer or string forms).
     subset
         When non-empty, require ``row[\"subset\"] == subset`` or
         ``row[\"task\"] == subset``.
@@ -82,7 +145,7 @@ def beans_next_multiaudio_row_filter(
 
     def _pred(row: Mapping[str, Any]) -> bool:
         if t is not None:
-            if row.get("tier") != t:
+            if not _beans_next_tier_matches(row.get("tier"), t):
                 return False
         if s is not None:
             return row.get("subset") == s or row.get("task") == s
@@ -105,8 +168,8 @@ def iter_hf_streaming_multiaudio_examples(
 ) -> Iterator[DatasetExample]:
     """Yield ``DatasetExample`` rows from a streaming multi-audio Hub dataset.
 
-    The loader emits the same metadata keys as the esp_data-backed multiaudio path
-    in :func:`beans_next.datasets.esp_data.iter_esp_data_beans_next_multiaudio_examples`:
+    The loader emits the same ``metadata`` keys as
+    ``esp_data.iter_esp_data_beans_next_multiaudio_examples``:
 
     - ``metadata["conversation"]``: full multi-audio user prompt
     - ``metadata["conversation_query_only"]``: single-audio reformulation
@@ -121,7 +184,7 @@ def iter_hf_streaming_multiaudio_examples(
         Hub split name (typically ``"test"``).
     config_name
         Optional Hub builder config. Use ``None`` for a **single-config** dataset
-        (e.g. ``EarthSpeciesProject/BEANS-Next``) where ``tier`` and ``subset`` are
+        (e.g. ``EarthSpeciesProject/BEANS-Next``) where ``tier`` and ``task`` are
         columns on each row. Pass a string only for legacy multi-config repos.
     revision
         Optional Hub revision.
@@ -137,6 +200,17 @@ def iter_hf_streaming_multiaudio_examples(
     audio_field
         Column name storing the list of decoded HF audio entries (recommended:
         ``"audio"``).
+
+    Yields
+    ------
+    DatasetExample
+        One normalized example per streaming row that passes ``row_filter``.
+
+    Raises
+    ------
+    ValueError
+        When ``streaming=False`` is passed via ``load_dataset_kwargs``, or when
+        multi-audio fields are missing for a row.
     """
     kwargs = dict(load_dataset_kwargs or ())
     if kwargs.get("streaming") is False:
@@ -146,7 +220,12 @@ def iter_hf_streaming_multiaudio_examples(
     datasets = require_datasets()
 
     if config_name is None:
-        loaded = datasets.load_dataset(path_or_id, split=split, revision=revision, **kwargs)
+        loaded = datasets.load_dataset(
+            path_or_id,
+            split=split,
+            revision=revision,
+            **kwargs,
+        )
     else:
         loaded = datasets.load_dataset(
             path_or_id, config_name, split=split, revision=revision, **kwargs

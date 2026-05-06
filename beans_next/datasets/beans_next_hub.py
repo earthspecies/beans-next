@@ -1,17 +1,23 @@
-"""Load BEANS-Next examples from the two-table Parquet bundle on Hugging Face Hub.
+"""Load BEANS-Next examples from the Hugging Face Hub dataset bundle.
 
-The dataset at ``EarthSpeciesProject/BEANS-Next`` ships two root-level files:
+Current layout (``EarthSpeciesProject/BEANS-Next``) uses:
 
-- ``beans_next_metadata.parquet``: one row per evaluation sample across all tiers
-  and subsets. Columns include ``subset``, ``tier``, ``sample_id``, and either
-  ``audio_id`` (tiers 1–3, single-audio) or ``audio_ids`` + ``query_audio_id``
-  (tier 4, in-context multi-audio).
-- ``beans_next_audio.parquet``: one row per unique audio clip, SHA-256 deduplicated.
-  Columns include ``audio_id``, ``sha256``, and ``audio_bytes`` (canonical WAV).
+- ``metadata.parquet``: one row per evaluation sample. Filter rows with the
+  string ``task`` column (legacy tables may still expose ``subset``). ``tier``
+  is an integer (1–4). Single-audio rows set ``file_name`` to a repo-relative
+  path such as ``audio/<id>.wav``.
+  Multi-audio rows use ``query_source_path`` + ``context_source_paths`` and/or
+  ``source_audio_paths`` (legacy columns may still use ``query_audio_path`` +
+  ``context_audio_paths`` + ``audio_paths``; see :func:`_multiaudio_repo_rel_paths`).
+- ``audio/``: WAV (or other) files referenced by those paths (not embedded in
+  Parquet).
 
-Callers use :func:`iter_hf_beans_next_examples` with a ``subset`` name.  The
-function resolves which tier the subset belongs to and routes to the appropriate
-single-audio or multi-audio loader transparently.
+Older revisions used ``beans_next_metadata.parquet`` + ``beans_next_audio.parquet``
+(with ``audio_bytes``). That path remains supported when those files are present.
+
+Callers use :func:`iter_hf_beans_next_examples` with a ``subset`` argument that
+must match the Hub ``task`` string (e.g. ``\"crow-description\"``,
+``\"crow-4way\"``).
 """
 
 from __future__ import annotations
@@ -20,18 +26,23 @@ import json
 import os
 import re
 import tempfile
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
+from functools import lru_cache
 from types import ModuleType
 from typing import Any, Final
 
-from huggingface_hub import hf_hub_url
+from huggingface_hub import HfApi, hf_hub_download
 
 from beans_next.api.types import DatasetExample
+from beans_next.prompts.audio_tags import AUDIO_PLACEHOLDER
 
 BEANS_NEXT_HUB_REPO_ID: Final[str] = "EarthSpeciesProject/BEANS-Next"
-_METADATA_PARQUET: Final[str] = "beans_next_metadata.parquet"
-_AUDIO_PARQUET: Final[str] = "beans_next_audio.parquet"
+_METADATA_PARQUET_LEGACY: Final[str] = "beans_next_metadata.parquet"
+_METADATA_PARQUET_CANONICAL: Final[str] = "metadata.parquet"
+_AUDIO_PARQUET_LEGACY: Final[str] = "beans_next_audio.parquet"
+_METADATA_FILE_ENV: Final[str] = "BEANS_NEXT_HF_BEANS_NEXT_METADATA_FILE"
+_METADATA_FILE_ENV_COMPAT: Final[str] = "BEANS_PRO_HF_BEANS_NEXT_METADATA_FILE"
 
 TIER_1_SUBSETS: Final[frozenset[str]] = frozenset(
     {
@@ -124,6 +135,11 @@ def _coerce_str_sequence(value: object) -> list[str] | None:
     HuggingFace-hosted Parquet sometimes encodes list columns as JSON strings
     (e.g. ``'["a", "b"]'``). Additionally, Arrow decoding can yield tuples or
     other ``Sequence`` implementations. This helper normalizes those variants.
+
+    Returns
+    -------
+    list[str] | None
+        Coerced strings, or ``None`` when ``value`` is not a valid string list.
     """
     if isinstance(value, list):
         items = value
@@ -227,15 +243,223 @@ def _audio_bytes_from_row(row: dict[str, Any]) -> bytes:
     )
 
 
-def _parquet_url(repo_id: str, filename: str, *, revision: str = "main") -> str:
+def _local_hub_file(repo_id: str, filename: str, *, revision: str) -> str:
+    """Download (or reuse cache) a repo file and return a local filesystem path.
+
+    Returns
+    -------
+    str
+        Absolute path under the Hugging Face cache.
+    """
     return str(
-        hf_hub_url(
-            repo_id=repo_id,
-            filename=filename,
+        hf_hub_download(
+            repo_id,
+            filename,
             repo_type="dataset",
             revision=revision,
         )
     )
+
+
+@lru_cache(maxsize=64)
+def _hub_dataset_files(repo_id: str, revision: str) -> frozenset[str]:
+    """List repo-relative paths for a dataset revision (cached).
+
+    Returns
+    -------
+    frozenset[str]
+        Paths returned by ``HfApi.list_repo_files``.
+    """
+    paths = HfApi().list_repo_files(
+        repo_id,
+        repo_type="dataset",
+        revision=revision,
+    )
+    return frozenset(paths)
+
+
+def _hub_metadata_filename(repo_id: str, revision: str) -> str:
+    """Resolve which metadata Parquet file exists on the Hub.
+
+    Returns
+    -------
+    str
+        Filename such as ``metadata.parquet`` or the legacy metadata name.
+
+    Raises
+    ------
+    RuntimeError
+        When no known metadata Parquet is present in the repo revision.
+    """
+    env = (
+        os.environ.get(_METADATA_FILE_ENV, "").strip()
+        or os.environ.get(_METADATA_FILE_ENV_COMPAT, "").strip()
+    )
+    if env:
+        return env
+    files = _hub_dataset_files(repo_id, revision)
+    if _METADATA_PARQUET_CANONICAL in files:
+        return _METADATA_PARQUET_CANONICAL
+    if _METADATA_PARQUET_LEGACY in files:
+        return _METADATA_PARQUET_LEGACY
+    msg = (
+        f"No metadata parquet found in {repo_id}@{revision!r}; expected "
+        f"{_METADATA_PARQUET_CANONICAL!r} or {_METADATA_PARQUET_LEGACY!r}"
+    )
+    raise RuntimeError(msg)
+
+
+def _hub_has_legacy_audio_parquet(repo_id: str, revision: str) -> bool:
+    return _AUDIO_PARQUET_LEGACY in _hub_dataset_files(repo_id, revision)
+
+
+def _hf_download_audio_path(repo_id: str, rel_path: str, *, revision: str) -> str:
+    """Download (or take from cache) a repo-relative audio file.
+
+    Returns
+    -------
+    str
+        Absolute local path from ``hf_hub_download``.
+
+    Raises
+    ------
+    ValueError
+        When ``rel_path`` is empty after normalization.
+    """
+    rel = rel_path.strip().lstrip("/")
+    if not rel:
+        msg = "Hub audio path is empty"
+        raise ValueError(msg)
+    return str(
+        hf_hub_download(
+            repo_id,
+            rel,
+            repo_type="dataset",
+            revision=revision,
+        )
+    )
+
+
+def _row_matches_task(row: Mapping[str, Any], task: str) -> bool:
+    """Match Hub row to requested subset / task string.
+
+    Returns
+    -------
+    bool
+        ``True`` when ``row["task"]`` or legacy ``row["subset"]`` equals ``task``.
+    """
+    if row.get("task") == task:
+        return True
+    return row.get("subset") == task
+
+
+def _single_audio_rel_path(row: Mapping[str, Any]) -> str | None:
+    """Return repo-relative audio path for a single-audio metadata row, if known.
+
+    Returns
+    -------
+    str | None
+        ``file_name`` when set, else ``audio/{audio_id}.wav`` when ``audio_id`` exists.
+    """
+    fn = row.get("file_name")
+    if isinstance(fn, str) and fn.strip():
+        return fn.strip()
+    aid = row.get("audio_id")
+    if isinstance(aid, str) and aid.strip():
+        return f"audio/{aid.strip()}.wav"
+    return None
+
+
+def _placeholder_count_from_messages(row: Mapping[str, Any]) -> int | None:
+    messages_raw = row.get("messages")
+    if not isinstance(messages_raw, list):
+        return None
+    for msg in messages_raw:
+        if not isinstance(msg, dict):
+            continue
+        if msg.get("role") == "user" and isinstance(msg.get("content"), str):
+            return msg["content"].count(AUDIO_PLACEHOLDER)
+    return None
+
+
+def _multiaudio_repo_rel_paths(row: Mapping[str, Any]) -> list[str] | None:
+    """Pick ordered repo-relative paths for multi-audio rows.
+
+    Prefer context paths when they align with the user-message placeholder count.
+    When the last context path does not match the query path but the counts match
+    (few-shot templates), replace the last slot with the query path.
+
+    This function supports both the newer column names:
+
+    - ``query_source_path`` (formerly ``query_audio_path``)
+    - ``context_source_paths`` (formerly ``context_audio_paths``)
+    - ``source_audio_paths`` (formerly ``audio_paths``)
+    - ``original_source_path`` (formerly ``audio_path_original_sample_rate``)
+
+    Returns
+    -------
+    list[str] | None
+        Ordered repo-relative paths, or ``None`` when paths cannot be inferred.
+    """
+    n_ph = _placeholder_count_from_messages(row)
+    q_raw = row.get("query_source_path") or row.get("query_audio_path")
+    q = q_raw.strip() if isinstance(q_raw, str) and q_raw.strip() else None
+
+    cap = _coerce_str_sequence(
+        row.get("context_source_paths") or row.get("context_audio_paths")
+    )
+    ap = _coerce_str_sequence(
+        row.get("source_audio_paths") or row.get("audio_paths")
+    )
+
+    if cap is not None and n_ph is not None and len(cap) == n_ph:
+        if q is not None and cap[-1].strip() != q:
+            return cap[:-1] + [q]
+        return list(cap)
+
+    if ap is not None and n_ph is not None and len(ap) == n_ph:
+        if q is not None and q not in ap:
+            # Last slot is the query recording; ``audio_paths`` may omit ``q`` or
+            # use a mismatched tail (see tier-4 4-way tasks on the Hub).
+            return ap[:-1] + [q]
+        return list(ap)
+
+    if cap is not None and cap:
+        if q is not None and cap[-1].strip() != q:
+            return cap[:-1] + [q]
+        return list(cap)
+
+    if ap is not None and ap:
+        return list(ap)
+
+    return None
+
+
+def _prefetch_hub_files(
+    repo_id: str,
+    rel_paths: Sequence[str],
+    *,
+    revision: str,
+    workers: int,
+) -> dict[str, str]:
+    """Download unique repo-relative paths.
+
+    Returns
+    -------
+    dict[str, str]
+        Maps each repo-relative path to a local cached file path.
+    """
+    unique = list(dict.fromkeys(rel_paths))
+    if not unique:
+        return {}
+
+    def _one(rel: str) -> tuple[str, str]:
+        return rel, _hf_download_audio_path(repo_id, rel, revision=revision)
+
+    if workers > 1:
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            return dict(pool.map(_one, unique))
+    return dict(map(_one, unique))
 
 
 def _load_audio_map(
@@ -244,34 +468,25 @@ def _load_audio_map(
     revision: str,
     needed_ids: set[str],
 ) -> dict[str, bytes]:
-    """Scan ``beans_next_audio.parquet`` and return WAV bytes for requested ids.
-
-    Stops scanning as soon as all ``needed_ids`` are found.
-
-    Parameters
-    ----------
-    repo_id
-        HuggingFace dataset id.
-    revision
-        Hub git revision.
-    needed_ids
-        Set of ``audio_id`` strings to retrieve.
+    """Scan legacy ``beans_next_audio.parquet`` for WAV bytes by ``audio_id``.
 
     Returns
     -------
     dict[str, bytes]
-        Mapping from ``audio_id`` to raw WAV bytes.
+        ``audio_id`` → ``audio_bytes`` for each requested id.
 
     Raises
     ------
     RuntimeError
-        If any ``needed_ids`` are absent from the audio Parquet after a full scan.
+        When any ``needed_ids`` are missing after a full scan.
     """
     if not needed_ids:
         return {}
-    url = _parquet_url(repo_id, _AUDIO_PARQUET, revision=revision)
+    audio_path = _local_hub_file(
+        repo_id, _AUDIO_PARQUET_LEGACY, revision=revision
+    )
     out: dict[str, bytes] = {}
-    for row in iter_parquet_row_dicts(url):
+    for row in iter_parquet_row_dicts(audio_path):
         aid = row.get("audio_id")
         if not isinstance(aid, str) or not aid.strip():
             continue
@@ -284,7 +499,7 @@ def _load_audio_map(
     missing = needed_ids - frozenset(out)
     if missing:
         raise RuntimeError(
-            f"{_AUDIO_PARQUET} missing audio_id(s): "
+            f"{_AUDIO_PARQUET_LEGACY} missing audio_id(s): "
             + ", ".join(sorted(missing)[:12])
             + (" …" if len(missing) > 12 else "")
         )
@@ -307,27 +522,44 @@ def _iter_single_examples(
         synthesize_esp_data_sample_id,
     )
 
-    meta_url = _parquet_url(repo_id, _METADATA_PARQUET, revision=revision)
+    meta_name = _hub_metadata_filename(repo_id, revision)
+    meta_path = _local_hub_file(repo_id, meta_name, revision=revision)
     meta_rows: list[dict[str, Any]] = []
-    for row in iter_parquet_row_dicts(meta_url):
-        if row.get("subset") != subset:
+    for row in iter_parquet_row_dicts(meta_path):
+        if not _row_matches_task(row, subset):
             continue
         meta_rows.append(dict(row))
         if limit is not None and len(meta_rows) >= limit:
             break
 
-    needed: set[str] = set()
-    for row in meta_rows:
-        aid = row.get("audio_id")
-        if isinstance(aid, str) and aid.strip():
-            needed.add(aid.strip())
-    audio_map = _load_audio_map(repo_id, revision=revision, needed_ids=needed)
+    legacy_audio = _hub_has_legacy_audio_parquet(repo_id, revision)
+    rels: list[str | None] = [_single_audio_rel_path(r) for r in meta_rows]
+    legacy_ids: set[str] = set()
+    for row, rel in zip(meta_rows, rels, strict=True):
+        if rel is None:
+            aid = row.get("audio_id")
+            if isinstance(aid, str) and aid.strip():
+                legacy_ids.add(aid.strip())
+
+    audio_map: dict[str, bytes] = {}
+    if legacy_ids:
+        if not legacy_audio:
+            keys_preview = ", ".join(sorted(legacy_ids)[:8])
+            raise RuntimeError(
+                "Single-audio Hub rows lack file_name/audio paths but "
+                f"{_AUDIO_PARQUET_LEGACY!r} is not in the repo. audio_id(s): "
+                f"{keys_preview}"
+            )
+        audio_map = _load_audio_map(repo_id, revision=revision, needed_ids=legacy_ids)
+
+    to_fetch = [r for r in rels if r is not None]
+    path_by_rel = _prefetch_hub_files(
+        repo_id, to_fetch, revision=revision, workers=max(1, workers)
+    )
 
     raw_rows: list[tuple[str, dict[str, Any], str]] = []
     for ordinal, row in enumerate(meta_rows):
-        aid = row.get("audio_id")
-        if not isinstance(aid, str) or not aid.strip():
-            raise RuntimeError(f"metadata row missing audio_id subset={subset!r}")
+        rel = rels[ordinal]
         stable = _resolve_row_id(row)
         sample_id = (
             stable
@@ -336,7 +568,21 @@ def _iter_single_examples(
                 dataset="beans_next", subset=subset, split=split, ordinal=ordinal
             )
         )
-        wav_path = _materialize_wav_bytes(audio_map[aid.strip()], stem=sample_id)
+        if rel is not None:
+            wav_path = path_by_rel[rel]
+        else:
+            aid = row.get("audio_id")
+            if not isinstance(aid, str) or not aid.strip():
+                raise RuntimeError(
+                    f"metadata row missing file_name/audio_id subset={subset!r}"
+                )
+            key = aid.strip()
+            if key not in audio_map:
+                raise RuntimeError(
+                    f"metadata row missing resolvable audio subset={subset!r} "
+                    f"audio_id={key!r}"
+                )
+            wav_path = _materialize_wav_bytes(audio_map[key], stem=sample_id)
         raw_rows.append((sample_id, row, wav_path))
 
     if workers > 1:
@@ -381,26 +627,21 @@ def _iter_multiaudio_examples(
         synthesize_esp_data_sample_id,
     )
 
-    meta_url = _parquet_url(repo_id, _METADATA_PARQUET, revision=revision)
+    meta_name = _hub_metadata_filename(repo_id, revision)
+    meta_path = _local_hub_file(repo_id, meta_name, revision=revision)
     meta_rows: list[dict[str, Any]] = []
-    for row in iter_parquet_row_dicts(meta_url):
-        if row.get("subset") != subset:
+    for row in iter_parquet_row_dicts(meta_path):
+        if not _row_matches_task(row, subset):
             continue
         meta_rows.append(dict(row))
         if limit is not None and len(meta_rows) >= limit:
             break
 
-    needed: set[str] = set()
-    for row in meta_rows:
-        ids = _coerce_str_sequence(row.get("audio_ids"))
-        if ids is not None:
-            needed.update(ids)
-        qid = row.get("query_audio_id")
-        if isinstance(qid, str) and qid.strip():
-            needed.add(qid.strip())
-    audio_map = _load_audio_map(repo_id, revision=revision, needed_ids=needed)
+    legacy_audio = _hub_has_legacy_audio_parquet(repo_id, revision)
 
-    raw_rows: list[tuple[str, dict[str, Any], list[str], str]] = []
+    raw_plan: list[
+        tuple[str, dict[str, Any], list[str] | None, list[str] | None]
+    ] = []
     for ordinal, row in enumerate(meta_rows):
         stable = _resolve_row_id(row)
         sample_id = (
@@ -413,11 +654,51 @@ def _iter_multiaudio_examples(
                 ordinal=ordinal,
             )
         )
+        rels = _multiaudio_repo_rel_paths(row)
         ids = _coerce_str_sequence(row.get("audio_ids"))
+        raw_plan.append((sample_id, row, rels, ids))
+
+    needed_legacy: set[str] = set()
+    for _sid, row, rels, ids in raw_plan:
+        if rels is not None:
+            continue
+        if ids is not None:
+            needed_legacy.update(ids)
+        qid = row.get("query_audio_id")
+        if isinstance(qid, str) and qid.strip():
+            needed_legacy.add(qid.strip())
+
+    audio_map: dict[str, bytes] = {}
+    if needed_legacy:
+        if not legacy_audio:
+            raise RuntimeError(
+                "multiaudio row missing repo-relative audio paths and "
+                f"{_AUDIO_PARQUET_LEGACY!r} is not available for subset={subset!r}"
+            )
+        audio_map = _load_audio_map(
+            repo_id, revision=revision, needed_ids=needed_legacy
+        )
+
+    all_rels: list[str] = []
+    for _sid, _row, rels, _ids in raw_plan:
+        if rels is not None:
+            all_rels.extend(rels)
+    path_by_rel = _prefetch_hub_files(
+        repo_id, all_rels, revision=revision, workers=max(1, workers)
+    )
+
+    raw_rows: list[tuple[str, dict[str, Any], list[str], str]] = []
+    for sample_id, row, rels, ids in raw_plan:
+        if rels is not None:
+            local_paths = [path_by_rel[r] for r in rels]
+            q_path = local_paths[-1]
+            raw_rows.append((sample_id, row, local_paths, q_path))
+            continue
+
         if ids is None:
             keys = ", ".join(sorted(row.keys()))
             raise RuntimeError(
-                "multiaudio row missing/invalid audio_ids "
+                "multiaudio row missing repo-relative audio lists and audio_ids "
                 f"subset={subset!r} keys=[{keys}]"
             )
         paths: list[str] = []
@@ -479,18 +760,18 @@ def iter_hf_beans_next_examples(
 ) -> Iterator[DatasetExample]:
     """Yield ``DatasetExample`` rows for a BEANS-Next subset from HuggingFace Hub.
 
-    Reads the two-table Parquet bundle (``beans_next_metadata.parquet`` +
-    ``beans_next_audio.parquet``) and routes internally to the single-audio loader
-    for tiers 1–3 or the multi-audio loader for tier 4 (in-context tasks), based
-    on the known subset catalog.
+    Reads ``metadata.parquet`` (or the legacy metadata filename), resolves
+    repo-relative audio paths under ``audio/``, and routes to the single-audio
+    loader for tiers 1–3 or the multi-audio loader for tier 4, based on the
+    built-in subset catalog.
 
     Parameters
     ----------
     repo_id
         HuggingFace dataset id. Defaults to ``EarthSpeciesProject/BEANS-Next``.
     subset
-        Subset name, e.g. ``"crow-description"`` (tier 1) or ``"crow-4way"``
-        (tier 4). The tier is resolved from the built-in catalog.
+        Hub ``task`` string, e.g. ``"crow-description"`` (tier 1) or
+        ``"crow-4way"`` (tier 4).
     split
         Split label stored on each ``DatasetExample`` (default ``"test"``).
     revision
@@ -500,7 +781,7 @@ def iter_hf_beans_next_examples(
     limit
         Optional maximum number of examples to yield.
     workers
-        Parallel WAV materialization threads when ``>1``. Sequential when ``1``.
+        Parallel download / WAV materialization threads when ``>1``.
 
     Yields
     ------
