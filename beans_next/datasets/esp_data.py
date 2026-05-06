@@ -403,25 +403,49 @@ def _resolve_row_id(row: Mapping[str, object]) -> str | None:
 
 
 def _audio_path_from_row(row: Mapping[str, object]) -> str | None:
-    direct = row.get("audio_path")
-    if isinstance(direct, str) and direct.strip():
-        return direct.strip()
-    # esp_data's BEANS-Zero rows commonly expose normalized paths by sample rate.
-    # Prefer a consistent resampled path if present.
+    candidates = _audio_path_candidates_from_row(row)
+    return candidates[0] if candidates else None
+
+
+def _audio_path_candidates_from_row(row: Mapping[str, object]) -> list[str]:
+    """Return audio-path candidates from a row, in preference order.
+
+    This is defensive against partially-populated schemas: different esp_data
+    versions and datasets (e.g. BirdSet) may expose multiple audio-path columns.
+    Callers should attempt candidates in order rather than bailing on the first
+    missing/broken path.
+    """
+
+    def _add(out: list[str], val: object) -> None:
+        if not isinstance(val, str):
+            return
+        s = val.strip()
+        if not s or s in out:
+            return
+        out.append(s)
+
+    out: list[str] = []
+
+    # Prefer consistent resampled paths when present.
     for key in (
-        "audio_path_32KHz",
         "audio_path_16KHz",
+        "audio_path_32KHz",
         "audio_path_original_sample_rate",
+        # Common generic column name.
+        "audio_path",
+        # BirdSet column names (sometimes present even before normalization).
+        "16khz_path",
+        "32khz_path",
+        # Absolute GCS path for BirdSet (gs://...).
+        "gcs_path",
     ):
-        val = row.get(key)
-        if isinstance(val, str) and val.strip():
-            return val.strip()
+        _add(out, row.get(key))
+
     audio = row.get("audio")
     if isinstance(audio, Mapping):
-        path = audio.get("path")
-        if isinstance(path, str) and path.strip():
-            return path.strip()
-    return None
+        _add(out, audio.get("path"))
+
+    return out
 
 
 def _labels_from_row(
@@ -778,41 +802,68 @@ def _resolve_audio_for_row(
     """
     data_root = row.get(_DATA_ROOT_KEY)
     if isinstance(data_root, str) and data_root:
-        gcs_rel: str | None = None
-        for _key in (
-            "audio_path_16KHz",
-            "audio_path_32KHz",
-            "audio_path_original_sample_rate",
-        ):
-            _val = row.get(_key)
-            if isinstance(_val, str) and _val.strip():
-                gcs_rel = _val.strip()
-                break
-        if not gcs_rel:
-            return None
-        gcs_abs = data_root.rstrip("/") + "/" + gcs_rel.lstrip("/")
         dl_timeout_raw = _env_int_compat(
             _AUDIO_TIMEOUT_S_ENV, _AUDIO_TIMEOUT_S_ENV_COMPAT, default=60
         )
         dl_timeout: float | None = float(dl_timeout_raw) if dl_timeout_raw > 0 else None
-        return _download_gcs_to_wav(
-            gcs_abs,
-            sample_id=sample_id,
-            timeout_s=dl_timeout,
-            diagnostics=diagnostics,
-        )
 
-    audio_path = _audio_path_from_row(row)
-    if isinstance(audio_path, str) and audio_path.strip():
-        if not os.path.isabs(audio_path):
+        for candidate in _audio_path_candidates_from_row(row):
+            # Some datasets provide absolute GCS URLs directly (BirdSet gcs_path).
+            if candidate.startswith("gs://"):
+                gcs_abs = candidate
+            else:
+                gcs_abs = data_root.rstrip("/") + "/" + candidate.lstrip("/")
+            dl = _download_gcs_to_wav(
+                gcs_abs,
+                sample_id=sample_id,
+                timeout_s=dl_timeout,
+                diagnostics=diagnostics,
+            )
+            if dl is not None:
+                return dl
+        return None
+
+    audio_path: str | None = None
+    for candidate in _audio_path_candidates_from_row(row):
+        if candidate.startswith("gs://"):
+            dl_timeout_raw = _env_int_compat(
+                _AUDIO_TIMEOUT_S_ENV, _AUDIO_TIMEOUT_S_ENV_COMPAT, default=60
+            )
+            dl_timeout: float | None = (
+                float(dl_timeout_raw) if dl_timeout_raw > 0 else None
+            )
+            dl = _download_gcs_to_wav(
+                candidate,
+                sample_id=sample_id,
+                timeout_s=dl_timeout,
+                diagnostics=diagnostics,
+            )
+            if dl is not None:
+                audio_path = dl
+                break
+            continue
+
+        if not os.path.isabs(candidate):
             if diagnostics:
                 _LOG.info(
-                    "esp_data non-absolute audio_path ignored "
-                    "sample_id=%s audio_path=%s",
+                    "esp_data non-absolute audio_path ignored sample_id=%s audio_path=%s",
                     sample_id,
-                    audio_path,
+                    candidate,
                 )
-            audio_path = None
+            continue
+
+        if os.path.isfile(candidate):
+            audio_path = candidate
+            break
+
+        if diagnostics:
+            _LOG.info(
+                "esp_data audio_path does not exist; trying fallback "
+                "sample_id=%s audio_path=%s",
+                sample_id,
+                candidate,
+            )
+
     if audio_path is None:
         try:
             audio_path = _materialize_wav_from_row_audio(row, sample_id=sample_id)

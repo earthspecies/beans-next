@@ -36,12 +36,12 @@ def test_registry_dataset_beans_next_esp_yaml_parses_and_declares_id() -> None:
     assert isinstance(data["beans_next_esp"], dict)
 
 
-def test_suite_beans_next_core_expands_to_exactly_two_eval_tasks() -> None:
+def test_suite_beans_next_core_expands_to_exactly_three_eval_tasks() -> None:
     try:
         eval_tasks = _load_suite_eval_tasks("beans_next_core")
     except RegistryResolutionError:
         pytest.skip("beans_next_core suite registry not present in this checkout")
-    assert len(eval_tasks) == 2
+    assert len(eval_tasks) == 3
 
 
 def test_prompt_renderer_passes_instruction_through_unchanged_official_mode(

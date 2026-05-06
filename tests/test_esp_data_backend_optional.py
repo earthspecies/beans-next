@@ -60,3 +60,91 @@ def test_runner_prefers_explicit_data_source_over_env(
 
     with pytest.raises(SystemExit, match=r"Eval task must define `hf_path`"):
         runner_mod._load_examples_for_eval_task(eval_task, args=args)
+
+
+def test_esp_data_audio_resolution_tries_multiple_gcs_candidates(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from beans_next.datasets import esp_data as mod
+
+    attempted: list[str] = []
+
+    def _fake_download(
+        gcs_path: str,
+        *,
+        sample_id: str,
+        timeout_s: float | None,
+        diagnostics: bool = False,
+    ) -> str | None:
+        del sample_id, timeout_s, diagnostics
+        attempted.append(gcs_path)
+        # Fail the first candidate, succeed on the second.
+        if gcs_path.endswith("/bad.wav"):
+            return None
+        if gcs_path.endswith("/good.wav"):
+            return "/tmp/good.wav"
+        return None
+
+    monkeypatch.setattr(mod, "_download_gcs_to_wav", _fake_download)
+
+    row = {
+        mod._DATA_ROOT_KEY: "gs://bucket/root/",
+        # Prefer 16k first, but it fails.
+        "audio_path_16KHz": "bad.wav",
+        # Then fallback to 32k.
+        "audio_path_32KHz": "good.wav",
+    }
+
+    resolved = mod._resolve_audio_for_row(
+        row,
+        sample_id="s1",
+        subset="HSN-test_5s",
+        split="test",
+        diagnostics=True,
+    )
+    assert resolved == "/tmp/good.wav"
+    assert attempted == [
+        "gs://bucket/root/bad.wav",
+        "gs://bucket/root/good.wav",
+    ]
+
+
+def test_esp_data_audio_resolution_supports_birdset_gcs_path_without_root(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from beans_next.datasets import esp_data as mod
+
+    attempted: list[str] = []
+
+    def _fake_download(
+        gcs_path: str,
+        *,
+        sample_id: str,
+        timeout_s: float | None,
+        diagnostics: bool = False,
+    ) -> str | None:
+        del sample_id, timeout_s, diagnostics
+        attempted.append(gcs_path)
+        if gcs_path == "gs://birdset/audio.wav":
+            return "/tmp/birdset.wav"
+        return None
+
+    monkeypatch.setattr(mod, "_download_gcs_to_wav", _fake_download)
+
+    row = {
+        # No _DATA_ROOT_KEY on purpose.
+        "gcs_path": "gs://birdset/audio.wav",
+        # Also include a bogus local absolute candidate to prove gcs_path wins
+        # (file does not exist).
+        "audio_path": "/does/not/exist.wav",
+    }
+
+    resolved = mod._resolve_audio_for_row(
+        row,
+        sample_id="s2",
+        subset="HSN-test_5s",
+        split="test",
+        diagnostics=True,
+    )
+    assert resolved == "/tmp/birdset.wav"
+    assert attempted == ["gs://birdset/audio.wav"]
