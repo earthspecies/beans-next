@@ -667,56 +667,205 @@ uv run beans-next run \
 
     <section class="soft" id="prompt-examples">
       <div class="container">
-        <h2 class="section-title">Prompt &amp; ground-truth examples</h2>
+        <h2 class="section-title">BEANS-Next benchmark examples</h2>
         <p class="section-body">
-          A few concrete examples of prompts and labels (pulled from the current HuggingFace bundle).
-          Audio is omitted here; the library inserts audio placeholders and sends the corresponding
-          audio inputs to the model server.
+          Audio placeholders are omitted or compacted; each row shows the split/task family, prompt,
+          and reference output used for evaluation.
         </p>
 
-        <table class="data-table" aria-label="Prompt and ground truth examples table">
+        <table class="data-table" aria-label="BEANS-Next benchmark examples table">
           <thead>
             <tr>
-              <th>Task</th>
-              <th>Prompt (instruction)</th>
-              <th>Ground truth label</th>
+              <th>Split / task family</th>
+              <th>Format</th>
+              <th>Prompt</th>
+              <th>Reference output</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td><span class="highlight">bird-presence</span></td>
-              <td>Is there a bird vocalizing in this recording? Answer Yes or No.</td>
-              <td><span class="highlight">No</span></td>
-            </tr>
-            <tr>
-              <td><span class="highlight">t1-description-mcq</span></td>
+              <td>T1 vocalization description</td>
+              <td>MCQ</td>
               <td>
-                Which of the following best describes the vocalization in this recording?
-                Options: a) a nasal, rising inflection, b) a quiet, rhythmic series of soft, staccato bursts,
-                c) a high-pitched, continuous piercing whistle, d) a low, drawn-out, descending trill
+                Which description best matches the vocalization? Options include a slow trill, low
+                drone, sharp whistle, and staccato notes with nasal rise.
               </td>
-              <td><span class="highlight">a</span></td>
-            </tr>
-            <tr>
-              <td><span class="highlight">t1-snr-regression</span></td>
-              <td>What is the signal-to-noise ratio (SNR) in dB of this Hooded Crow call?</td>
-              <td><span class="highlight">39 dB</span></td>
-            </tr>
-            <tr>
-              <td><span class="highlight">call-type-fixed-vocab</span></td>
               <td>
-                Which of the following are present in this recording? Choose all that apply: alarm call, flight call,
-                begging call, song, call.
+                a series of rapid, repetitive, staccato notes followed by a nasal, rising inflection
               </td>
-              <td><span class="highlight">alarm call, flight call</span></td>
             </tr>
             <tr>
-              <td><span class="highlight">crow-4way</span></td>
+              <td>T1 vocalization description</td>
+              <td>MCQ</td>
               <td>
-                Here are four call types. A: [audio] B: [audio] C: [audio] D: [audio]
-                Which call type best matches the following recording? &lt;Audio&gt;&lt;AudioHere&gt;&lt;/Audio&gt;
+                Which description best matches the sound? Options include impulsive bursts, a
+                melodic whistle, sharp staccato notes, and a low nasal moan.
               </td>
-              <td><span class="highlight">B</span></td>
+              <td>
+                A series of dense, impulsive bursts followed by a quiet, rapid trill and punctuated
+                by loud clicks
+              </td>
+            </tr>
+            <tr>
+              <td>T1 acoustic caption</td>
+              <td>Caption</td>
+              <td>Describe the acoustic character of this vocalization, including its frequency range.</td>
+              <td>
+                The vocalizations consist of high-pitched, whistling one-note sounds spanning
+                roughly 2,500 to 7,000 Hz, as well as buzzing, nasal one-note sounds ranging from
+                2,000 to 18,000 Hz.
+              </td>
+            </tr>
+            <tr>
+              <td>T1 acoustic caption</td>
+              <td>Caption</td>
+              <td>Describe the acoustic character of this vocalization, including its recording quality.</td>
+              <td>
+                This vocalization consists of a series of rapid rattles that increase in frequency,
+                concluding with a single prolonged rattle. The sound is difficult to hear over
+                background noise but becomes more audible towards the end of the recording.
+              </td>
+            </tr>
+            <tr>
+              <td>T2 behavior</td>
+              <td>MCQ</td>
+              <td>
+                Which acoustic behavior is the Flame-crested Manakin performing? Options: wing snap,
+                no vocalization/silent, song.
+              </td>
+              <td>Wing snap</td>
+            </tr>
+            <tr>
+              <td>T2 behavior</td>
+              <td>MCQ</td>
+              <td>
+                Which vocalizations can be heard from the blue duck? Options: rapid drumming,
+                continuous song, male whistle followed by female growl.
+              </td>
+              <td>A male whistle followed by a female growl</td>
+            </tr>
+            <tr>
+              <td>T2 semantic caption</td>
+              <td>Caption</td>
+              <td>What can you hear in this recording?</td>
+              <td>
+                A pair of Bronze-winged Ducks produces distinct vocalizations. The female emits
+                quacking calls, while the male provides accompanying wheezy whistles.
+              </td>
+            </tr>
+            <tr>
+              <td>T2 semantic caption</td>
+              <td>Caption</td>
+              <td>Describe the vocalization in this recording.</td>
+              <td>
+                A Scarlet-and-white Tanager pair performs a duet, consisting of a single note from
+                the male and a fine rattle from the female. Faint background vocalizations from
+                other species are also audible.
+              </td>
+            </tr>
+            <tr>
+              <td>T2 semantic caption</td>
+              <td>Caption</td>
+              <td>What can be heard in this recording?</td>
+              <td>
+                Multiple Tawny Owls engage in a complex vocal interaction consisting of compound
+                hooting and “ku-wick” calls. The calls include high-pitched, harsh hooting from a
+                female responding to at least three males.
+              </td>
+            </tr>
+            <tr>
+              <td>T3 structural caption</td>
+              <td>Caption</td>
+              <td>Describe the pattern of vocalizations in this recording.</td>
+              <td>
+                The recording features a sequence of low-frequency calls from
+                <em>Streptopelia decaocto</em>, which appear at the beginning, middle, and end of the
+                clip. These calls are interspersed with higher-pitched vocalizations from
+                <em>Sturnus unicolor</em> and <em>Luscinia megarhynchos</em>.
+              </td>
+            </tr>
+            <tr>
+              <td>T3 highest pitch</td>
+              <td>MCQ</td>
+              <td>
+                Which species produces the highest-pitched vocalization? Options:
+                <em>Charadrius hiaticula</em>, <em>Numenius arquata</em>, <em>Motacilla alba</em>,
+                <em>Erithacus rubecula</em>.
+              </td>
+              <td><em>Motacilla alba</em></td>
+            </tr>
+            <tr>
+              <td>T3 longest vocalization</td>
+              <td>MCQ</td>
+              <td>
+                Which species produces the longest vocalization? Options:
+                <em>Poecile atricapillus</em>, <em>Pipilo erythrophthalmus</em>,
+                <em>Cardinalis cardinalis</em>, <em>Geothlypis trichas</em>.
+              </td>
+              <td><em>Cardinalis cardinalis</em></td>
+            </tr>
+            <tr>
+              <td>T3 co-occurrence</td>
+              <td>Binary</td>
+              <td>
+                Are there any moments where both <em>Vireo olivaceus</em> and
+                <em>Setophaga ruticilla</em> are calling simultaneously?
+              </td>
+              <td>Yes</td>
+            </tr>
+            <tr>
+              <td>T3 species listing</td>
+              <td>Open-ended</td>
+              <td>How many different species are vocalizing, and what are they? Give scientific names.</td>
+              <td>
+                4: <em>Corvus brachyrhynchos</em>, <em>Pipilo erythrophthalmus</em>,
+                <em>Seiurus aurocapilla</em>, <em>Setophaga virens</em>
+              </td>
+            </tr>
+            <tr>
+              <td>T3 per-species counting</td>
+              <td>Open-ended</td>
+              <td>How many calls from each species can you hear? Give scientific names.</td>
+              <td>
+                <em>Pipilo erythrophthalmus</em>: 6; <em>Cardinalis cardinalis</em>: 5;
+                <em>Geothlypis trichas</em>: 4; <em>Polioptila caerulea</em>: 2
+              </td>
+            </tr>
+            <tr>
+              <td>T3 ordered summary</td>
+              <td>Open-ended</td>
+              <td>Describe each species in order of appearance, with call counts and frequency ranges.</td>
+              <td>
+                <em>Corvus brachyrhynchos</em>: 3 calls, 920–2130 Hz; <em>Seiurus aurocapilla</em>: 2
+                calls, 2730–9550 Hz; <em>Regulus calendula</em>: 2 calls, 1430–8030 Hz;
+                <em>Poecile atricapillus</em>: 6 calls, 2850–8830 Hz.
+              </td>
+            </tr>
+            <tr>
+              <td>T4 gibbon few-shot detection</td>
+              <td>Multi-audio</td>
+              <td>
+                Given three support sounds A–C, which are present in the query recording, if any?
+              </td>
+              <td>Multiple pulse gibbon call</td>
+            </tr>
+            <tr>
+              <td>T4 giant otter call matching</td>
+              <td>Multi-audio</td>
+              <td>
+                Given four call-type audio exemplars A–D, which call type best matches the query
+                recording?
+              </td>
+              <td>Begging Scream</td>
+            </tr>
+            <tr>
+              <td>T4 held-out species matching</td>
+              <td>Multi-audio</td>
+              <td>
+                Given four species audio exemplars A–D, which species best matches the query
+                recording?
+              </td>
+              <td><em>Minervarya agricola</em></td>
             </tr>
           </tbody>
         </table>

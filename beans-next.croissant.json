@@ -49,12 +49,12 @@
   },
   "@type": "sc:Dataset",
   "name": "BEANS-Next: Bioacoustic Audio-Language Benchmark",
-  "description": "BEANS-Next is a benchmark for evaluating bioacoustic audio-language models across a taxonomy of tasks including acoustic perception, semantic recognition, structural and temporal reasoning, and in-context learning. It extends BEANS-Zero and BirdSet with new task families aligned with ethological workflows.",
-  "url": "https://your-benchmark-page",
+  "description": "BEANS-Next is a benchmark intended to evaluate bioacoustic audio-language models across a taxonomy of tasks including acoustic perception, semantic recognition, structural and temporal reasoning, and in-context learning. It builds on prior benchmarks (e.g., BEANS-Zero and BirdSet) and includes additional task families aligned with ethological workflows.",
+  "url": "https://earthspecies.github.io/beans-next/",
   "version": "1.0.0",
   "datePublished": "2026-01-01",
   "citeAs": "To be added (BEANS-Next paper citation).",
-  "license": "Mixed; inherits licenses from source datasets",
+  "license": "CC-BY-NC-SA 4.0",
   "isAccessibleForFree": true,
   "keywords": [
     "bioacoustics",
@@ -74,11 +74,14 @@
       "@type": "cr:FileObject",
       "@id": "benchmark_metadata",
       "name": "Benchmark tasks and metadata",
-      "encodingFormat": "application/json",
-      "contentUrl": "https://link-to-benchmark-json"
+      "description": "Hugging Face Hub Parquet bundle for BEANS-Next benchmark tasks, prompts, and evaluation metadata.",
+      "encodingFormat": "application/x-parquet",
+      "contentUrl": "https://hf.co/datasets/EarthSpeciesProject/BEANS-Next"
     }
   ],
   "citation": "To be added (paper citation)",
+  "temporalCoverage": "Varies by source dataset",
+  "spatialCoverage": "Global (depends on source archives)",
   "measurementTechnique": [
     "Benchmark evaluation",
     "Task-based evaluation",
@@ -90,38 +93,38 @@
     "temporal reasoning",
     "generalization ability"
   ],
-  "ethicsPolicy": "Benchmark uses animal audio data. Users should ensure ethical use and avoid ecological harm (e.g., misuse of sensitive species information).",
+  "ethicsPolicy": "Benchmark includes animal audio data. Users should avoid misuse related to sensitive ecological information (e.g., rare or endangered species locations) and validate conclusions with domain experts where appropriate.",
   "includedInDataCatalog": {
     "@type": "DataCatalog",
     "name": "BEANS-Next benchmark collection"
   },
   "usageInfo": {
-    "downstreamUse": "The benchmark is intended for evaluating audio-language models on a broad range of bioacoustic tasks, including acoustic perception, semantic recognition, structural and temporal reasoning, and in-context learning. It supports research in general-purpose audio-language modeling and enables systematic comparison of models across biologically relevant capabilities.",
+    "downstreamUse": "The benchmark is intended for evaluating audio-language models on a broad range of bioacoustic tasks, including acoustic perception, semantic recognition, structural and temporal reasoning, and in-context learning. It can support research in general-purpose audio-language modeling and help compare models across biologically relevant capabilities.",
     "outOfScopeUse": "The benchmark is not designed as a comprehensive measure of real-world ecological performance. It should not be used as the sole basis for model deployment in conservation, biodiversity monitoring, or policy decisions. Performance on BEANS-Next may not reflect generalization to unseen taxa, environments, or recording conditions beyond those represented in the benchmark.",
     "biasRisksLimitations": {
       "bias": "The benchmark inherits biases from its source datasets, including overrepresentation of certain taxa (especially birds), geographic regions, and recording conditions. Some task types are better represented than others, which may favor models optimized for specific capabilities. Evaluation results may therefore not generalize uniformly across the full diversity of bioacoustic scenarios.",
       "risks": "Over-reliance on benchmark performance may lead to overestimation of model capabilities in real-world settings. Models that perform well on the benchmark may still fail on unseen species, rare behaviors, or noisy field conditions. Misinterpretation of results could lead to inappropriate deployment in ecological applications.",
       "limitations": "The benchmark focuses on a defined taxonomy of tasks and does not cover all possible bioacoustic analyses. Some tasks rely on derived or transformed metadata, and may not fully reflect real-world annotation complexity. The benchmark does not evaluate all aspects of bioacoustic modeling, such as long-term ecological monitoring performance or robustness to extreme conditions."
     },
-    "safetyMitigations": "Users should interpret benchmark results cautiously and validate model performance in real-world conditions before deployment. Benchmark evaluation should be complemented with domain-specific testing and expert analysis, especially for high-stakes ecological applications.",
-    "recommendations": "We recommend using BEANS-Next as a research tool for comparing models and diagnosing strengths and weaknesses across task types. It should be used in conjunction with additional datasets and evaluation protocols to assess real-world performance and generalization."
+    "safetyMitigations": "Users should apply ecological and ethical safeguards when interpreting results, validate model performance in target conditions before deployment, and complement benchmark evaluation with domain-specific testing and expert analysis, especially for high-stakes ecological applications.",
+    "recommendations": "We recommend using BEANS-Next as a research tool for model comparison and for diagnosing strengths and weaknesses across task types. Use it in conjunction with additional datasets and evaluation protocols to assess real-world performance and generalization."
   },
   "rai:considerations": {
     "@type": "rai:Considerations",
-    "rai:downstreamUse": "The benchmark is intended for evaluating audio-language models on a broad range of bioacoustic tasks, including acoustic perception, semantic recognition, structural and temporal reasoning, and in-context learning. It supports research in general-purpose audio-language modeling and enables systematic comparison of models across biologically relevant capabilities.",
+    "rai:downstreamUse": "The benchmark is intended for evaluating audio-language models on a broad range of bioacoustic tasks, including acoustic perception, semantic recognition, structural and temporal reasoning, and in-context learning. It can support research in general-purpose audio-language modeling and help compare models across biologically relevant capabilities.",
     "rai:outOfScopeUse": "The benchmark is not designed as a comprehensive measure of real-world ecological performance. It should not be used as the sole basis for model deployment in conservation, biodiversity monitoring, or policy decisions.",
     "rai:knownBiases": "The benchmark inherits biases from its source datasets, including overrepresentation of birds, geographic imbalance, and variation in recording conditions.",
     "rai:potentialRisks": "Models evaluated on this benchmark may be misinterpreted as general-purpose ecological tools, leading to incorrect deployment decisions. Performance may not generalize to rare species or unseen environments.",
     "rai:limitations": "The benchmark evaluates a defined taxonomy of tasks and does not capture all aspects of bioacoustic analysis or real-world ecological complexity.",
-    "rai:mitigationStrategies": "Users should validate model performance in real-world conditions, complement benchmark evaluation with domain-specific datasets, and consult domain experts for high-stakes applications.",
+    "rai:mitigationStrategies": "Validate model performance in target conditions, complement benchmark evaluation with domain-specific datasets, and consult domain experts for high-stakes applications.",
     "rai:audience": "Researchers in machine learning, bioacoustics, and ecology",
-    "rai:usageGuidelines": "Benchmark results should not be used as sole evidence for ecological decision-making"
+    "rai:usageGuidelines": "Benchmark results should not be used as the sole evidence for ecological decision-making; validate in target environments and consult experts for conservation or policy use"
   },
   "rai:dataLimitations": "BEANS-Next evaluates a defined taxonomy of bioacoustic audio-language tasks but does not cover all possible bioacoustic analyses or real-world ecological deployment settings. Results may not generalize to unseen taxa, rare species, unseen acoustic environments, long-term monitoring scenarios, or task formulations outside the benchmark.",
   "rai:dataBiases": "The benchmark inherits biases from its source datasets, including overrepresentation of birds, geographic imbalance, variation in recording conditions, and uneven coverage across task families. Some task types may be better represented than others, which may favor models optimized for particular capabilities.",
   "rai:personalSensitiveInformation": "The benchmark is not intended to contain personal or sensitive human information. It focuses on animal vocalizations and environmental audio. Some source datasets may include ecologically sensitive information, such as locations or presence records for rare or endangered species, and users should handle such information responsibly.",
-  "rai:dataUseCases": "The benchmark is intended for evaluating bioacoustic audio-language models across acoustic perception, semantic recognition, structural and temporal reasoning, and in-context learning. It is suitable for research model comparison, diagnostic evaluation, and analysis of model strengths and weaknesses across biologically relevant capabilities.",
-  "rai:dataSocialImpact": "The benchmark may help accelerate bioacoustic research, biodiversity monitoring, and ethology by improving evaluation of general-purpose audio-language models. Potential negative impacts include overinterpretation of benchmark scores, inappropriate deployment in ecological decision-making, or misuse of species detection capabilities for harmful activities such as locating endangered species.",
+  "rai:dataUseCases": "The benchmark is intended for evaluating bioacoustic audio-language models across acoustic perception, semantic recognition, structural and temporal reasoning, and in-context learning. It can be used for research model comparison, diagnostic evaluation, and analysis of model strengths and weaknesses across biologically relevant capabilities.",
+  "rai:dataSocialImpact": "The benchmark may support bioacoustic research, biodiversity monitoring, and ethology by enabling more systematic evaluation of audio-language models. Potential negative impacts include overinterpretation of benchmark scores, inappropriate deployment in ecological decision-making, or misuse of species detection capabilities for harmful activities such as locating endangered species.",
   "rai:hasSyntheticData": false,
   "http://purl.org/dc/terms/conformsTo": "http://mlcommons.org/croissant/1.0",
   "isLiveDataset": true

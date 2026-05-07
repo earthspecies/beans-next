@@ -1,0 +1,12 @@
+beans_next_tier_4_hf:
+  description: >
+    BEANS-Next tier 4 (in-context multi-audio) suite for tasks present in the
+    HuggingFace Hub Parquet bundle (EarthSpeciesProject/BEANS-Next).
+  eval_tasks:
+    - beans_next_gibbon_fewshot_detection_balanced
+    - beans_next_giant_otter_4way
+    - beans_next_dcase_fewshot_detection_balanced
+    - beans_next_crow_4way
+    - beans_next_zebra_4way
+    - beans_next_unseen_species_4way
+

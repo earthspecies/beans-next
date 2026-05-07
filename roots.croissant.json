@@ -50,11 +50,11 @@
   "@type": "sc:Dataset",
   "name": "ROOTS: Bioacoustic Audio-Language Training Dataset",
   "description": "ROOTS is a large-scale bioacoustic audio-language training dataset constructed from curated bioacoustic archives, structured metadata, metadata-grounded text synthesis, and synthetic audio pipelines. It supports a taxonomy of tasks including acoustic perception, semantic recognition, structural and temporal reasoning, and in-context learning.",
-  "url": "https://your-project-page-or-repo",
+  "url": "https://earthspecies.github.io/beans-next/",
   "version": "1.0.0",
   "datePublished": "2026-01-01",
   "citeAs": "To be added (ROOTS paper citation).",
-  "license": "Mixed; see source datasets (e.g., Xeno-Canto, WABAD, BirdSet)",
+  "license": "CC-BY-NC-SA 4.0",
   "isAccessibleForFree": true,
   "keywords": [
     "bioacoustics",
@@ -73,18 +73,35 @@
   "distribution": [
     {
       "@type": "cr:FileObject",
-      "@id": "audio_files",
-      "name": "Audio files",
-      "description": "Collection of raw and synthetic bioacoustic audio recordings",
-      "encodingFormat": "audio/*",
-      "contentUrl": "https://link-to-audio-or-dataset"
+      "@id": "roots_hf",
+      "name": "ROOTS training dataset (Hugging Face)",
+      "description": "ROOTS: Bioacoustic audio-language training dataset.",
+      "encodingFormat": "application/x-parquet",
+      "contentUrl": "https://hf.co/datasets/EarthSpeciesProject/ROOTS"
     },
     {
       "@type": "cr:FileObject",
-      "@id": "metadata",
-      "name": "Metadata and prompts",
-      "encodingFormat": "application/json",
-      "contentUrl": "https://link-to-metadata-json"
+      "@id": "synthetic_strong_detection_hf",
+      "name": "Synthetic Strong Detection (Hugging Face)",
+      "description": "Strongly labeled synthetic detection data used in ROOTS training.",
+      "encodingFormat": "application/x-parquet",
+      "contentUrl": "https://hf.co/datasets/EarthSpeciesProject/synthetic-strong-detection"
+    },
+    {
+      "@type": "cr:FileObject",
+      "@id": "synthetic_detect_diarize_hf",
+      "name": "Synthetic Detect-Diarize (Hugging Face)",
+      "description": "Synthetic detection and proxy diarization/speaker-count supervision used in ROOTS training.",
+      "encodingFormat": "application/x-parquet",
+      "contentUrl": "https://hf.co/datasets/EarthSpeciesProject/synthetic-detect-diarize"
+    },
+    {
+      "@type": "cr:FileObject",
+      "@id": "animalspeak_pseudovox_hf",
+      "name": "AnimalSpeak-PseudoVox (Hugging Face)",
+      "description": "Synthetic and pseudo-vocalization resources used in ROOTS training.",
+      "encodingFormat": "application/x-parquet",
+      "contentUrl": "https://hf.co/datasets/EarthSpeciesProject/animalspeak-pseudovox"
     }
   ],
   "citation": "To be added (paper citation)",
@@ -111,13 +128,13 @@
   },
   "usageInfo": {
     "downstreamUse": "The dataset is intended for training audio-language models for bioacoustic analysis across a broad range of tasks, including species recognition, acoustic measurement, temporal reasoning, and in-context learning. It can be used to develop general-purpose bioacoustic models, support ethology research, and be integrated into ecological monitoring systems or fine-tuned for specific taxa or tasks.",
-    "outOfScopeUse": "The dataset is not designed for tasks outside of bioacoustics. Performance may be unreliable for taxa, environments, or task types that are underrepresented in the training data. The dataset is not suitable for applications requiring precise temporal localization (e.g., exact timestamp detection) or high-confidence ecological decision-making without expert validation. Tasks such as individual identification or fine-grained behavioral inference may require additional supervision beyond what is provided.",
+    "outOfScopeUse": "The dataset is not designed for tasks outside of bioacoustics. Performance may be unreliable for taxa, environments, or task types that are underrepresented in the training data. The dataset is not suitable for applications requiring precise temporal localization (e.g., exact timestamp detection) or high-confidence ecological decision-making without expert validation.",
     "biasRisksLimitations": {
-      "bias": "The dataset is biased toward taxa that are well represented in public bioacoustic archives, particularly birds. This may limit performance on underrepresented taxa such as insects, amphibians, or marine mammals. Geographic and recording-condition biases are also present. Additionally, synthetic data pipelines may introduce distributional artifacts that differ from real-world recordings.",
+      "bias": "The dataset is biased toward taxa that are well represented in public bioacoustic archives, particularly birds. This may limit performance on underrepresented taxa such as insects, amphibians, or marine mammals. Geographic and recording-condition biases are also present.",
       "risks": "Models trained on this dataset could be misused to detect or locate endangered species, potentially enabling harmful activities such as poaching or habitat disruption. Errors in model predictions may also lead to incorrect ecological conclusions if used without expert validation. Synthetic data may amplify misleading patterns if over-relied upon.",
-      "limitations": "The dataset includes weakly labeled data with missing or incomplete annotations, as well as synthetic supervision that may not fully capture real-world acoustic complexity. Coverage across tasks is uneven, with some capabilities (e.g., temporal reasoning or in-context learning) relying heavily on synthetic data. Performance may degrade for rare species, unseen acoustic environments, or novel task formulations."
+      "limitations": "The dataset is derived from weakly labeled data with missing or incomplete annotations. It contains synthetic data that may not fully capture real-world acoustic complexity. Coverage across tasks is uneven, with some capabilities (e.g., temporal reasoning or in-context learning) relying heavily on synthetic data. Performance may degrade for rare species, unseen acoustic environments, or novel task formulations."
     },
-    "safetyMitigations": "Users should apply ecological and ethical safeguards when using models trained on this dataset. This includes avoiding disclosure of sensitive species information, validating outputs with domain experts, and combining model predictions with other monitoring tools. Care should be taken when interpreting results for underrepresented taxa or in high-stakes conservation contexts.",
+    "safetyMitigations": "Users should apply ecological and ethical safeguards when using models trained on this dataset. This includes validating outputs with domain experts, and combining model predictions with other monitoring tools. Care should be taken when interpreting results for underrepresented taxa or in high-stakes conservation contexts.",
     "recommendations": "We recommend using the dataset for research and model development, validating performance across taxa and environments, and applying additional fine-tuning or in-context learning for specialized tasks. Users should be aware of dataset biases and limitations when deploying models trained on ROOTS."
   },
   "rai:considerations": {
@@ -127,7 +144,7 @@
     "rai:knownBiases": "The dataset is biased toward taxa well represented in public bioacoustic archives (especially birds), with geographic and recording-condition imbalance and synthetic-data artifacts that may differ from real-world recordings.",
     "rai:potentialRisks": "Models trained on this data could be misused to detect or locate sensitive species; predictions may be wrong in the field without validation. Synthetic and weak labels may amplify misleading patterns if over-relied upon.",
     "rai:limitations": "Weak labels, missing annotations, uneven task coverage, and reliance on synthetic supervision for some capabilities mean the data does not capture all real-world bioacoustic complexity or monitoring scenarios.",
-    "rai:mitigationStrategies": "Apply ecological and ethical safeguards: avoid disclosing sensitive species information, validate outputs with domain experts, combine model predictions with other monitoring tools, and test across taxa and environments before deployment.",
+    "rai:mitigationStrategies": "Apply ecological and ethical safeguards: validate outputs with domain experts, combine model predictions with other monitoring tools, and test across taxa and environments before deployment.",
     "rai:audience": "Researchers in machine learning, bioacoustics, and ecology",
     "rai:usageGuidelines": "Training and deployment decisions should not rely on this dataset alone; validate in target environments and consult experts for conservation or policy use"
   },
@@ -135,7 +152,7 @@
   "rai:dataBiases": "ROOTS is biased toward taxa and regions that are well represented in public bioacoustic archives, especially birds. It may underrepresent insects, amphibians, marine mammals, and other taxa with less available data. Geographic, seasonal, recording-device, and annotation-protocol biases may also be present. Synthetic pipelines may introduce additional distributional artifacts.",
   "rai:personalSensitiveInformation": "ROOTS is not intended to contain personal or sensitive human information. It focuses on animal vocalizations and environmental audio. Some source datasets may contain ecologically sensitive information, such as locations or presence records for rare or endangered species, and users should avoid exposing or misusing such information.",
   "rai:dataUseCases": "ROOTS is intended for training and fine-tuning bioacoustic audio-language models. Supported use cases include species recognition, taxonomic prediction, call-type recognition, life-stage classification, acoustic description, event counting, temporal reasoning, multi-audio reasoning, and in-context learning for bioacoustic research.",
-  "rai:dataSocialImpact": "ROOTS may support ethology, biodiversity monitoring, conservation, and animal communication research by enabling more capable bioacoustic audio-language models. Potential negative impacts include misuse of trained models to locate endangered species, overreliance on noisy or synthetic labels, incorrect ecological conclusions, and reduced performance for underrepresented taxa.",
+  "rai:dataSocialImpact": "ROOTS supports ethology, biodiversity monitoring, conservation, and animal communication research by enabling more capable bioacoustic audio-language models. Potential negative impacts include misuse of trained models to locate endangered species, overreliance on noisy or synthetic labels, incorrect ecological conclusions, and reduced performance for underrepresented taxa.",
   "rai:hasSyntheticData": true,
   "http://purl.org/dc/terms/conformsTo": "http://mlcommons.org/croissant/1.0",
   "isLiveDataset": true

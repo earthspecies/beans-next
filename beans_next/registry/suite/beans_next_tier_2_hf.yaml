@@ -1,0 +1,14 @@
+beans_next_tier_2_hf:
+  description: >
+    BEANS-Next tier 2 (single-audio) suite for tasks present in the HuggingFace
+    Hub Parquet bundle (EarthSpeciesProject/BEANS-Next).
+  eval_tasks:
+    - beans_next_t2_behavior
+    - beans_next_t2_captioning
+    - beans_next_bird_presence
+    - beans_next_mammal_presence
+    - beans_next_amphibian_presence
+    - beans_next_alarm_call_presence
+    - beans_next_flight_call_presence
+    - beans_next_call_type_fixed_vocab
+

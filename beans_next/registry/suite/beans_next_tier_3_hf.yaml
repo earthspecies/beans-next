@@ -1,0 +1,27 @@
+beans_next_tier_3_hf:
+  description: >
+    BEANS-Next tier 3 (single-audio) suite for tasks present in the HuggingFace
+    Hub Parquet bundle (EarthSpeciesProject/BEANS-Next).
+  eval_tasks:
+    - beans_next_t3_species_count_oe
+    - beans_next_t3_vocalization_count_total_oe
+    - beans_next_t3_vocalization_count_total_mcq
+    - beans_next_t3_vocalization_count_per_species_oe
+    - beans_next_t3_vocalization_presence_binary
+    - beans_next_t3_vocalization_referring_mcq
+    - beans_next_t3_vocalization_cooccurrence_binary
+    - beans_next_t3_species_by_vocalization_order_oe
+    - beans_next_t3_species_by_vocalization_order_mcq
+    - beans_next_t3_species_by_highest_pitch_oe
+    - beans_next_t3_species_by_highest_pitch_mcq
+    - beans_next_t3_species_by_lowest_pitch_oe
+    - beans_next_t3_species_by_lowest_pitch_mcq
+    - beans_next_t3_species_by_longest_vocalization_oe
+    - beans_next_t3_species_by_longest_vocalization_mcq
+    - beans_next_t3_species_by_vocalization_frequency_oe
+    - beans_next_t3_species_by_vocalization_frequency_mcq
+    - beans_next_t3_structural_captioning
+    - beans_next_t3_species_listing_open_list
+    - beans_next_t3_frequency_range_description
+    - beans_next_t3_ordered_species_summary
+

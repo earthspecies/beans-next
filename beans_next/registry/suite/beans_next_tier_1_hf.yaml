@@ -1,0 +1,14 @@
+beans_next_tier_1_hf:
+  description: >
+    BEANS-Next tier 1 (single-audio) suite for tasks present in the HuggingFace
+    Hub Parquet bundle (EarthSpeciesProject/BEANS-Next).
+  eval_tasks:
+    - beans_next_t1_caption
+    - beans_next_t1_description_mcq
+    - beans_next_crow_description
+    - beans_next_zebra_description
+    - beans_next_t1_snr_mcq
+    - beans_next_t1_snr_regression
+    - beans_next_f0_mean_seen_taxa
+    - beans_next_f0_mean_heldout_taxa
+
