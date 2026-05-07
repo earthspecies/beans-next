@@ -1,0 +1,491 @@
+# BEANS-Next and ROOTS — Project Website
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BEANS-Next and ROOTS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  --pine: #1f4d3a;
+  --sage: #9caf88;
+  --light-gray: #f3f4f1;
+  --text: #1e1e1e;
+  --border: #d9ddd6;
+  --white: #ffffff;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Tiempos Text", Georgia, serif;
+  color: var(--text);
+  background: var(--white);
+  line-height: 1.7;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: "Tiempos Text", Georgia, serif;
+  color: var(--pine);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+p, li, a, button {
+  font-family: "Inter", sans-serif;
+}
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.hero {
+  padding: 96px 0 72px;
+  background: linear-gradient(to bottom, #f8faf7, #ffffff);
+  border-bottom: 1px solid var(--border);
+}
+
+.hero h1 {
+  font-size: 3.4rem;
+  line-height: 1.05;
+  margin-bottom: 24px;
+}
+
+.hero p {
+  font-size: 1.15rem;
+  max-width: 820px;
+  color: #444;
+}
+
+.authors {
+  margin-top: 24px;
+  color: #555;
+  font-size: 1rem;
+}
+
+.button-row {
+  margin-top: 36px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.button {
+  display: inline-block;
+  padding: 12px 20px;
+  border-radius: 999px;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  border: 1px solid var(--pine);
+}
+
+.button.primary {
+  background: var(--pine);
+  color: white;
+}
+
+.button.primary:hover {
+  background: #17392b;
+}
+
+.button.secondary {
+  background: transparent;
+  color: var(--pine);
+}
+
+.button.secondary:hover {
+  background: var(--light-gray);
+}
+
+section {
+  padding: 72px 0;
+}
+
+.section-title {
+  font-size: 2.1rem;
+  margin-bottom: 20px;
+}
+
+.section-subtitle {
+  color: #555;
+  max-width: 900px;
+  margin-bottom: 40px;
+  font-size: 1.05rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 22px;
+}
+
+.card {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 26px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 24px rgba(31, 77, 58, 0.08);
+}
+
+.card h3 {
+  margin-bottom: 14px;
+  font-size: 1.2rem;
+}
+
+.card p {
+  color: #555;
+  font-size: 0.98rem;
+}
+
+.tier {
+  border-left: 5px solid var(--pine);
+  background: #fafcf9;
+}
+
+.links-list a {
+  display: block;
+  margin-bottom: 12px;
+  color: var(--pine);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.links-list a:hover {
+  text-decoration: underline;
+}
+
+.example-box {
+  border: 1px dashed var(--sage);
+  background: #fbfcfa;
+  border-radius: 18px;
+  padding: 24px;
+  text-align: center;
+  color: #666;
+}
+
+.code-block {
+  background: #f7f8f6;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 22px;
+  overflow-x: auto;
+  font-family: monospace;
+  font-size: 0.95rem;
+}
+
+footer {
+  padding: 48px 0 64px;
+  border-top: 1px solid var(--border);
+  background: #fafbf9;
+  color: #666;
+}
+
+.citation {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 24px;
+  white-space: pre-wrap;
+  font-family: monospace;
+  font-size: 0.92rem;
+  margin-top: 20px;
+}
+
+.highlight {
+  color: var(--pine);
+}
+
+.soft-bg {
+  background: var(--light-gray);
+}
+
+@media (max-width: 768px) {
+  .hero h1 {
+    font-size: 2.4rem;
+  }
+
+  .section-title {
+    font-size: 1.8rem;
+  }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <div class="title">
+      BEANS-Next and ROOTS
+    </div>
+
+    <div class="subtitle">
+      A benchmark and training dataset for generalist bioacoustic audio-language models.
+      BEANS-Next evaluates broad bioacoustic reasoning abilities, while ROOTS provides large-scale instruction-following supervision aligned with ethology workflows.
+    </div>
+
+    <div class="authors">
+      Anonymous Authors · NeurIPS 2026 Submission
+    </div>
+
+    <div class="links">
+      <a class="button" href="#">📄 Paper</a>
+      <a class="button" href="https://github.com/earthspecies/beans-next">💻 GitHub</a>
+      <a class="button" href="https://hf.co/datasets/EarthSpeciesProject/BEANS-Next">🧪 BEANS-Next</a>
+      <a class="button" href="https://hf.co/datasets/EarthSpeciesProject/ROOTS">🌱 ROOTS</a>
+      <a class="button" href="#citation">📚 Citation</a>
+    </div>
+  </div>
+</header>
+
+<section>
+  <div class="container">
+    <h2>Overview</h2>
+
+    <p>
+      Existing bioacoustic machine learning benchmarks primarily evaluate species classification and narrow semantic recognition tasks. However, real-world ethology workflows require substantially broader capabilities, including acoustic measurement, temporal reasoning, call counting, structural comparison, and adaptation to novel taxa or user-defined sound classes.
+    </p>
+
+    <p>
+      BEANS-Next introduces a taxonomy and benchmark for evaluating these capabilities, while ROOTS provides a large-scale training dataset constructed from curated bioacoustic archives, metadata-grounded synthesis, and synthetic audio pipelines.
+    </p>
+
+    <div class="grid">
+      <div class="card">
+        <h3>🧪 BEANS-Next</h3>
+        <p class="muted">
+          Benchmark covering acoustic perception, semantic recognition, structural reasoning, and in-context learning.
+        </p>
+      </div>
+
+      <div class="card">
+        <h3>🌱 ROOTS</h3>
+        <p class="muted">
+          Large-scale audio-language training dataset aligned with the benchmark taxonomy.
+        </p>
+      </div>
+
+      <div class="card">
+        <h3>🦜 Ethology-Centered</h3>
+        <p class="muted">
+          Designed around real bioacoustic research workflows rather than narrow classification-only evaluation.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <h2>BEANS-Next Taxonomy</h2>
+
+    <div class="benchmark-tiers">
+      <div class="tier">
+        <h3>Tier 1</h3>
+        <strong>Acoustic Perception</strong>
+        <p class="muted">
+          Fundamental frequency, duration, acoustic descriptors, and fine-grained perceptual reasoning.
+        </p>
+      </div>
+
+      <div class="tier">
+        <h3>Tier 2</h3>
+        <strong>Semantic Recognition</strong>
+        <p class="muted">
+          Species recognition, taxonomy prediction, call-type classification, and life-stage prediction.
+        </p>
+      </div>
+
+      <div class="tier">
+        <h3>Tier 3</h3>
+        <strong>Structural Reasoning</strong>
+        <p class="muted">
+          Counting, temporal structure, vocal ordering, diarization, and relational analysis.
+        </p>
+      </div>
+
+      <div class="tier">
+        <h3>Tier 4</h3>
+        <strong>In-Context Learning</strong>
+        <p class="muted">
+          Adaptation to novel taxa, user-defined classes, and multi-audio reasoning.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <h2>Datasets and Resources</h2>
+
+    <div class="grid">
+      <div class="card">
+        <h3>BEANS-Next Benchmark</h3>
+        <p>
+          Hugging Face dataset containing benchmark tasks and evaluation metadata.
+        </p>
+        <p>
+          <a href="https://hf.co/datasets/EarthSpeciesProject/BEANS-Next">
+            https://hf.co/datasets/EarthSpeciesProject/BEANS-Next
+          </a>
+        </p>
+      </div>
+
+      <div class="card">
+        <h3>ROOTS Training Dataset</h3>
+        <p>
+          Audio-language supervision dataset aligned with the benchmark taxonomy.
+        </p>
+        <p>
+          <a href="https://hf.co/datasets/EarthSpeciesProject/ROOTS">
+            https://hf.co/datasets/EarthSpeciesProject/ROOTS
+          </a>
+        </p>
+      </div>
+
+      <div class="card">
+        <h3>Evaluation Library</h3>
+        <p>
+          Open-source evaluation toolkit and benchmark implementation.
+        </p>
+        <p>
+          <a href="https://github.com/earthspecies/beans-next">
+            https://github.com/earthspecies/beans-next
+          </a>
+        </p>
+      </div>
+    </div>
+
+    <div class="grid" style="margin-top: 20px;">
+      <div class="card">
+        <h3>Synthetic Strong Detection</h3>
+        <a href="https://hf.co/datasets/EarthSpeciesProject/synthetic-strong-detection">
+          View dataset
+        </a>
+      </div>
+
+      <div class="card">
+        <h3>Synthetic Detect-Diarize</h3>
+        <a href="https://hf.co/datasets/EarthSpeciesProject/synthetic-detect-diarize">
+          View dataset
+        </a>
+      </div>
+
+      <div class="card">
+        <h3>AnimalSpeak-PseudoVox</h3>
+        <a href="https://hf.co/datasets/EarthSpeciesProject/animalspeak-pseudovox">
+          View dataset
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <h2>Examples</h2>
+
+    <div class="examples">
+      <div class="example-box">
+        <div class="placeholder">
+          Add spectrogram + question example
+        </div>
+        <div class="example-content">
+          <strong>Acoustic reasoning</strong>
+          <p class="muted">
+            Example placeholder for low-level perceptual tasks such as frequency estimation or duration comparison.
+          </p>
+        </div>
+      </div>
+
+      <div class="example-box">
+        <div class="placeholder">
+          Add multi-audio example
+        </div>
+        <div class="example-content">
+          <strong>In-context learning</strong>
+          <p class="muted">
+            Example placeholder for query-conditioned classification or novel call-type adaptation.
+          </p>
+        </div>
+      </div>
+
+      <div class="example-box">
+        <div class="placeholder">
+          Add counting / temporal example
+        </div>
+        <div class="example-content">
+          <strong>Structural reasoning</strong>
+          <p class="muted">
+            Example placeholder for call counting, diarization, or ordering tasks.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <h2>Quick Start</h2>
+
+    <div class="code-block">
+<pre>
+pip install beans-next
+
+from beans_next import evaluate
+
+results = evaluate(
+    model="your-model",
+    benchmark="beans-next"
+)
+</pre>
+    </div>
+  </div>
+</section>
+
+<section id="citation">
+  <div class="container">
+    <h2>Citation</h2>
+
+    <div class="code-block">
+<pre>
+@article{beansnext2026,
+  title={BEANS-Next and ROOTS: Toward Generalist Bioacoustic Audio-Language Models},
+  author={Anonymous Authors},
+  journal={NeurIPS},
+  year={2026}
+}
+</pre>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    BEANS-Next and ROOTS · Earth Species Project · 2026
+  </div>
+</footer>
+
+</body>
+</html>
+```
