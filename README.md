@@ -2,6 +2,7 @@
 
 [![Hugging Face: BEANS-Next](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-BEANS--Next-yellow)](https://hf.co/datasets/EarthSpeciesProject/BEANS-Next)
 [![Hugging Face: ROOTS](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-ROOTS-yellow)](https://hf.co/datasets/EarthSpeciesProject/ROOTS)
+[![Website](https://img.shields.io/badge/Website-Docs-blue)](https://earthspecies.github.io/beans-next/)
 ![CI status](https://github.com/earthspecies/beans-next/actions/workflows/ci.yml/badge.svg?branch=main)
 ![Pre-commit status](https://github.com/earthspecies/beans-next/actions/workflows/pre-commit.yml/badge.svg?branch=main)
 
