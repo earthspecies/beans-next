@@ -7,6 +7,7 @@
     "conformsTo": "dct:conformsTo",
     "cr": "http://mlcommons.org/croissant/",
     "rai": "http://mlcommons.org/croissant/RAI/",
+    "prov": "http://www.w3.org/ns/prov#",
     "data": {
       "@id": "cr:data",
       "@type": "@json"
@@ -77,7 +78,7 @@
       "name": "ROOTS training dataset (Hugging Face)",
       "description": "ROOTS: Bioacoustic audio-language training dataset.",
       "encodingFormat": "application/x-parquet",
-      "contentUrl": "https://hf.co/datasets/EarthSpeciesProject/ROOTS"
+      "contentUrl": "https://huggingface.co/datasets/EarthSpeciesProject/ROOTS/tree/neurips2026"
     },
     {
       "@type": "cr:FileObject",
@@ -85,7 +86,7 @@
       "name": "Synthetic Strong Detection (Hugging Face)",
       "description": "Strongly labeled synthetic detection data used in ROOTS training.",
       "encodingFormat": "application/x-parquet",
-      "contentUrl": "https://hf.co/datasets/EarthSpeciesProject/synthetic-strong-detection"
+      "contentUrl": "https://huggingface.co/datasets/EarthSpeciesProject/synthetic-strong-detection/tree/neurips2026"
     },
     {
       "@type": "cr:FileObject",
@@ -93,7 +94,7 @@
       "name": "Synthetic Detect-Diarize (Hugging Face)",
       "description": "Synthetic detection and proxy diarization/speaker-count supervision used in ROOTS training.",
       "encodingFormat": "application/x-parquet",
-      "contentUrl": "https://hf.co/datasets/EarthSpeciesProject/synthetic-detect-diarize"
+      "contentUrl": "https://huggingface.co/datasets/EarthSpeciesProject/synthetic-detect-diarize/tree/neurips2026"
     },
     {
       "@type": "cr:FileObject",
@@ -101,7 +102,7 @@
       "name": "AnimalSpeak-PseudoVox (Hugging Face)",
       "description": "Synthetic and pseudo-vocalization resources used in ROOTS training.",
       "encodingFormat": "application/x-parquet",
-      "contentUrl": "https://hf.co/datasets/EarthSpeciesProject/animalspeak-pseudovox"
+      "contentUrl": "https://huggingface.co/datasets/EarthSpeciesProject/animalspeak-pseudovox/tree/neurips2026"
     }
   ],
   "citation": "To be added (paper citation)",
@@ -154,6 +155,78 @@
   "rai:dataUseCases": "ROOTS is intended for training and fine-tuning bioacoustic audio-language models. Supported use cases include species recognition, taxonomic prediction, call-type recognition, life-stage classification, acoustic description, event counting, temporal reasoning, multi-audio reasoning, and in-context learning for bioacoustic research.",
   "rai:dataSocialImpact": "ROOTS supports ethology, biodiversity monitoring, conservation, and animal communication research by enabling more capable bioacoustic audio-language models. Potential negative impacts include misuse of trained models to locate endangered species, overreliance on noisy or synthetic labels, incorrect ecological conclusions, and reduced performance for underrepresented taxa.",
   "rai:hasSyntheticData": true,
+  "prov:wasDerivedFrom": [
+    {
+      "@type": "sc:Dataset",
+      "@id": "https://xeno-canto.org/",
+      "name": "Xeno-canto"
+    },
+    {
+      "@type": "sc:Dataset",
+      "@id": "https://www.inaturalist.org/",
+      "name": "iNaturalist"
+    },
+    {
+      "@type": "sc:Dataset",
+      "@id": "https://research.google.com/audioset/",
+      "name": "AudioSet"
+    },
+    {
+      "@type": "sc:Dataset",
+      "@id": "https://huggingface.co/datasets/DBD-research-group/BirdSet",
+      "name": "BirdSet"
+    },
+    {
+      "@type": "sc:Dataset",
+      "@id": "https://www.animalsoundarchive.org/",
+      "name": "Animal Sound Archive"
+    },
+    {
+      "@type": "sc:Dataset",
+      "@id": "https://huggingface.co/datasets/DBD-research-group/WABAD",
+      "name": "WABAD"
+    },
+    {
+      "@type": "sc:Dataset",
+      "@id": "https://huggingface.co/datasets/EarthSpeciesProject/animalspeak-pseudovox/tree/neurips2026",
+      "name": "AnimalSpeak Pseudovox"
+    },
+    {
+      "@type": "sc:Dataset",
+      "@id": "https://huggingface.co/datasets/EarthSpeciesProject/synthetic-strong-detection/tree/neurips2026",
+      "name": "Synthetic Strong Detection"
+    },
+    {
+      "@type": "sc:Dataset",
+      "@id": "https://huggingface.co/datasets/EarthSpeciesProject/synthetic-detect-diarize/tree/neurips2026",
+      "name": "Synthetic Detect-Diarize"
+    },
+    {
+      "@type": "sc:Dataset",
+      "@id": "https://www.bioacoustics.info/article/bioacoustic-fundamental-frequency-estimation-cross-species-dataset-and-deep-learning",
+      "name": "Bioacoustic fundamental frequency estimation dataset"
+    }
+  ],
+  "prov:wasGeneratedBy": [
+    {
+      "@type": "prov:Activity",
+      "@id": "activity-roots-source-assembly",
+      "name": "Collection and source assembly",
+      "description": "ROOTS was assembled from existing public bioacoustic datasets, public audio datasets, AnimalSpeak Pseudovox, and internally generated synthetic bioacoustic task sources. The released export summary lists source slugs including xeno-canto, inaturalist, audioset, birdset, animal-sound-archive, wabad, f0-bioacoustic, animalspeak-pseudovox, synthetic-sed, and synthetic-sed-diarization."
+    },
+    {
+      "@type": "prov:Activity",
+      "@id": "activity-roots-task-generation",
+      "name": "Preprocessing, task generation, and annotation transformation",
+      "description": "Source metadata, labels, synthetic selection tables, and audio references were converted into instruction-response examples using deterministic templates, rule-based task generators, and LLM-assisted language generation. Tasks cover captioning, signal quality, taxonomy, call type, behavior, counting, temporal reasoning, and few-shot multi-audio prompts."
+    },
+    {
+      "@type": "prov:Activity",
+      "@id": "activity-roots-export-validation",
+      "name": "Export, cleaning, and validation",
+      "description": "Examples from tiers 1 through 4 were merged into one train split with deterministic ids. Private cloud storage URIs were stripped or converted to public-oriented relative audio references; audio paths, source ids, source URLs, and timing metadata were aligned and validated for non-empty messages, list alignment, unique ids, and absence of non-public storage paths."
+    }
+  ],
   "http://purl.org/dc/terms/conformsTo": "http://mlcommons.org/croissant/1.0",
   "isLiveDataset": true
 }

@@ -7,6 +7,7 @@
     "conformsTo": "dct:conformsTo",
     "cr": "http://mlcommons.org/croissant/",
     "rai": "http://mlcommons.org/croissant/RAI/",
+    "prov": "http://www.w3.org/ns/prov#",
     "data": {
       "@id": "cr:data",
       "@type": "@json"
@@ -49,7 +50,7 @@
   },
   "@type": "sc:Dataset",
   "name": "BEANS-Next: Bioacoustic Audio-Language Benchmark",
-  "description": "BEANS-Next is a benchmark intended to evaluate bioacoustic audio-language models across a taxonomy of tasks including acoustic perception, semantic recognition, structural and temporal reasoning, and in-context learning. It builds on prior benchmarks (e.g., BEANS-Zero and BirdSet) and includes additional task families aligned with ethological workflows.",
+  "description": "BEANS-Next is a benchmark intended to evaluate bioacoustic audio-language models across a taxonomy of tasks including acoustic perception, semantic recognition, structural and temporal reasoning, and in-context learning. It is constructed from component bioacoustic datasets and derived task sources including Xeno-canto, iNaturalist, BIRDeep, Powdermill, Nocturnal Bird Migration, BirdVox-full-night, and DCASE few-shot bioacoustic event detection resources.",
   "url": "https://earthspecies.github.io/beans-next/",
   "version": "1.0.0",
   "datePublished": "2026-01-01",
@@ -76,7 +77,7 @@
       "name": "Benchmark tasks and metadata",
       "description": "Hugging Face Hub Parquet bundle for BEANS-Next benchmark tasks, prompts, and evaluation metadata.",
       "encodingFormat": "application/x-parquet",
-      "contentUrl": "https://hf.co/datasets/EarthSpeciesProject/BEANS-Next"
+      "contentUrl": "https://huggingface.co/datasets/EarthSpeciesProject/BEANS-Next/tree/neurips2026"
     }
   ],
   "citation": "To be added (paper citation)",
@@ -126,6 +127,43 @@
   "rai:dataUseCases": "The benchmark is intended for evaluating bioacoustic audio-language models across acoustic perception, semantic recognition, structural and temporal reasoning, and in-context learning. It can be used for research model comparison, diagnostic evaluation, and analysis of model strengths and weaknesses across biologically relevant capabilities.",
   "rai:dataSocialImpact": "The benchmark may support bioacoustic research, biodiversity monitoring, and ethology by enabling more systematic evaluation of audio-language models. Potential negative impacts include overinterpretation of benchmark scores, inappropriate deployment in ecological decision-making, or misuse of species detection capabilities for harmful activities such as locating endangered species.",
   "rai:hasSyntheticData": false,
+  "prov:wasDerivedFrom": [
+    {
+      "@id": "https://xeno-canto.org/"
+    },
+    {
+      "@id": "https://www.inaturalist.org/"
+    },
+    {
+      "@id": "https://huggingface.co/datasets/TenzinL/BIRDeep_AudioAnnotations"
+    },
+    {
+      "@id": "https://doi.org/10.1002/ecy.3329"
+    },
+    {
+      "@id": "https://doi.org/10.5281/zenodo.17573913"
+    }
+  ],
+  "prov:wasGeneratedBy": [
+    {
+      "@type": "prov:Activity",
+      "@id": "activity-source-integration",
+      "name": "Collection and source integration",
+      "description": "Existing annotated bioacoustic datasets and derived task sources were integrated as the source pool for BEANS-Next. The released metadata includes source labels such as xeno-canto, iNaturalist, xeno-canto+inaturalist new unseen holdouts, BirdeepCropped, PowdermillCropped, NocturnalBirdMigration, BirdVoxFullNightCropped, and DCASE-2021-Task-5."
+    },
+    {
+      "@type": "prov:Activity",
+      "@id": "activity-benchmark-preprocessing",
+      "name": "Preprocessing and metadata normalization",
+      "description": "Source metadata and labels were parsed, normalized, and converted into benchmark rows. Audio was segmented, cropped, resampled, or referenced as required by each task while preserving source-derived labels and source identifiers."
+    },
+    {
+      "@type": "prov:Activity",
+      "@id": "activity-task-formatting",
+      "name": "Task construction and benchmark formatting",
+      "description": "Ground-truth annotations were transformed into instruction-following evaluation examples across the BEANS-Next tiers: acoustic perception, semantic recognition, structural and temporal reasoning, and multi-audio or in-context learning."
+    }
+  ],
   "http://purl.org/dc/terms/conformsTo": "http://mlcommons.org/croissant/1.0",
   "isLiveDataset": true
 }
