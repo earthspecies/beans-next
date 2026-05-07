@@ -1,8 +1,15 @@
 # BEANS-Next
 
+[![Hugging Face: BEANS-Next](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-BEANS--Next-yellow)](https://hf.co/datasets/EarthSpeciesProject/BEANS-Next)
+[![Hugging Face: ROOTS](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-ROOTS-yellow)](https://hf.co/datasets/EarthSpeciesProject/ROOTS)
+![CI status](https://github.com/earthspecies/beans-next/actions/workflows/ci.yml/badge.svg?branch=main)
+![Pre-commit status](https://github.com/earthspecies/beans-next/actions/workflows/pre-commit.yml/badge.svg?branch=main)
+
 Earth Species Project's bioacoustics benchmark library for audio language models.
 
 The core package (`beans_next`) is **dependency-light**: no torch, transformers, or vLLM. Models are always reached over **HTTP** via the `predictions_v1` contract. Heavy inference lives in per-launcher virtual environments under `examples/servers/`.
+
+![Overview diagram](docs/img/overview.png)
 
 ## Documentation
 

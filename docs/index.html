@@ -1,6 +1,3 @@
-# BEANS-Next and ROOTS — Project Website
-
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -50,6 +47,64 @@ p, li, a, button {
   max-width: 1100px;
   margin: 0 auto;
   padding: 0 24px;
+}
+
+.title {
+  font-size: 3.4rem;
+  line-height: 1.05;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--pine);
+}
+
+.subtitle {
+  margin-top: 18px;
+  font-size: 1.15rem;
+  max-width: 820px;
+  color: #444;
+}
+
+.links {
+  margin-top: 28px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.main-diagram {
+  margin-top: 28px;
+  display: flex;
+  justify-content: center;
+}
+
+.main-diagram img {
+  width: min(920px, 100%);
+  height: auto;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: #ffffff;
+}
+
+.workflow-diagram {
+  margin: 28px 0 6px;
+  display: flex;
+  justify-content: center;
+}
+
+.workflow-diagram img {
+  width: min(980px, 100%);
+  height: auto;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: #ffffff;
+}
+
+.figure-caption {
+  margin-top: 10px;
+  text-align: center;
+  color: #555;
+  font-family: "Inter", sans-serif;
+  font-size: 0.95rem;
 }
 
 .hero {
@@ -238,18 +293,24 @@ footer {
     </div>
 
     <div class="subtitle">
-      A benchmark and training dataset for generalist bioacoustic audio-language models.
-      BEANS-Next evaluates broad bioacoustic reasoning abilities, while ROOTS provides large-scale instruction-following supervision aligned with ethology workflows.
+        Bioacoustics and ethology encompass a wide range of audio understanding tasks, many of which stand to benefit from recent advances in large audio-language models. However, progress in the field has so far been assessed on a narrow set of tasks, primarily centered on label-centric biological category recognition, such as species and call-type classification. In this work, we introduce BEANS-Next, a benchmark grounded in a taxonomy of bioacoustics tasks spanning acoustic perception, biological category recognition, structural and temporal reasoning, and in-context learning. Using BEANS-Next, we show that existing models exhibit limited performance beyond the task families emphasized by existing evaluations, constraining their usefulness for broader bioacoustic applications. To support progress on this broader task space, we also introduce ROOTS, a large-scale training resource built from expanded curated real-world data and previously underused behavioral and acoustic metadata, supplemented by audio-derived information and scalable synthetic generation where labeling is insufficient. We demonstrate that training on this dataset yields substantial progress across all task groups of BEANS-Next, moving audio-language models closer to their potential as general-purpose assistants for bioacoustics and ethology. To accelerate progress in the field, we open-source our benchmark, dataset, and data pipelines.
     </div>
 
     <div class="authors">
       Anonymous Authors · NeurIPS 2026 Submission
     </div>
 
+    <div class="main-diagram" aria-label="Main diagram">
+      <img
+        src="img/overview.png"
+        alt="Overview diagram of BEANS-Next benchmark and ROOTS training dataset."
+      />
+    </div>
+
     <div class="links">
       <a class="button" href="#">📄 Paper</a>
       <a class="button" href="https://github.com/earthspecies/beans-next">💻 GitHub</a>
-      <a class="button" href="https://hf.co/datasets/EarthSpeciesProject/BEANS-Next">🧪 BEANS-Next</a>
+      <a class="button" href="https://hf.co/datasets/EarthSpeciesProject/BEANS-Next">🫘 BEANS-Next</a>
       <a class="button" href="https://hf.co/datasets/EarthSpeciesProject/ROOTS">🌱 ROOTS</a>
       <a class="button" href="#citation">📚 Citation</a>
     </div>
@@ -336,6 +397,18 @@ footer {
 <section>
   <div class="container">
     <h2>Datasets and Resources</h2>
+
+    <div class="workflow-diagram" aria-label="Dataset creation workflow">
+      <div>
+        <img
+          src="img/flow.png"
+          alt="Workflow diagram showing how BEANS-Next and ROOTS datasets are created."
+        />
+        <div class="figure-caption">
+          Dataset creation workflow used to build BEANS-Next and ROOTS.
+        </div>
+      </div>
+    </div>
 
     <div class="grid">
       <div class="card">
@@ -488,4 +561,3 @@ results = evaluate(
 
 </body>
 </html>
-```
