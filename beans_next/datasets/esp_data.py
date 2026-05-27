@@ -517,9 +517,10 @@ def _audio_path_candidates_from_row(row: Mapping[str, object]) -> list[str]:
     """Return audio-path candidates from a row, in preference order.
 
     This is defensive against partially-populated schemas: different esp_data
-    versions and datasets (e.g. BirdSet) may expose multiple audio-path columns.
-    Callers should attempt candidates in order rather than bailing on the first
-    missing/broken path.
+    versions and datasets (e.g. BirdSet, T3 JSONL) may expose audio paths under
+    different column names (``audio_paths`` list, ``audio_path``, ``gcs_path``,
+    etc.). Callers should attempt candidates in order rather than bailing on the
+    first missing/broken path.
 
     Returns
     -------
@@ -536,6 +537,11 @@ def _audio_path_candidates_from_row(row: Mapping[str, object]) -> list[str]:
         out.append(s)
 
     out: list[str] = []
+
+    # T3 rows carry audio_paths (list of absolute GCS URIs); use the first entry.
+    audio_paths_list = row.get("audio_paths")
+    if isinstance(audio_paths_list, list) and audio_paths_list:
+        _add(out, audio_paths_list[0] if isinstance(audio_paths_list[0], str) else None)
 
     # T3 rows may store audio as audio_ids + source_dataset (cropped clips).
     _add(out, _cropped_audio_path_from_row(row))
