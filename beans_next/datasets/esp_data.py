@@ -46,6 +46,43 @@ _WORKERS_ENV_COMPAT = "BEANS_PRO_ESP_DATA_WORKERS"
 # Sentinel key injected into rows when we bypass _process (no GCS audio download yet).
 _DATA_ROOT_KEY = "_beans_next_data_root"
 
+# GCS roots for T3 cropped-clip audio, keyed by source_dataset field in row metadata.
+_CROPPED_AUDIO_ROOTS: dict[str, str] = {
+    "birdeep_cropped": "gs://foundation-model-data/synthetic/cropped/birdeep/audio",
+    "BirdeepCropped": "gs://foundation-model-data/synthetic/cropped/birdeep/audio",
+    "powdermill_cropped": "gs://foundation-model-data/synthetic/cropped/powdermill/audio",
+    "PowdermillCropped": "gs://foundation-model-data/synthetic/cropped/powdermill/audio",
+    "birdvox_full_night_cropped": "gs://foundation-model-data/synthetic/cropped/birdvox_full_night/audio",
+    "BirdVoxFullNightCropped": "gs://foundation-model-data/synthetic/cropped/birdvox_full_night/audio",
+    "wabad_cropped": "gs://foundation-model-data/synthetic/cropped/wabad/audio",
+    "WABADCropped": "gs://foundation-model-data/synthetic/cropped/wabad/audio",
+}
+
+# GCS JSONL paths for all T3 splits (audio paths inside are absolute GCS URIs).
+_BEANS_NEXT_T3_SPLIT_JSONL: dict[str, str] = {
+    "t3-frequency-range-description": "gs://foundation-model-data/synthetic/beanspro/t3/frequency_range_description_oe.jsonl",
+    "t3-ordered-species-summary": "gs://foundation-model-data/synthetic/beanspro/t3/ordered_species_summary_oe.jsonl",
+    "t3-species-by-highest-pitch-mcq": "gs://foundation-model-data/synthetic/beanspro/t3/species_by_highest_pitch_mcq.jsonl",
+    "t3-species-by-highest-pitch-oe": "gs://foundation-model-data/synthetic/beanspro/t3/species_by_highest_pitch_oe.jsonl",
+    "t3-species-by-longest-vocalization-mcq": "gs://foundation-model-data/synthetic/beanspro/t3/species_by_longest_vocalization_mcq.jsonl",
+    "t3-species-by-longest-vocalization-oe": "gs://foundation-model-data/synthetic/beanspro/t3/species_by_longest_vocalization_oe.jsonl",
+    "t3-species-by-lowest-pitch-mcq": "gs://foundation-model-data/synthetic/beanspro/t3/species_by_lowest_pitch_mcq.jsonl",
+    "t3-species-by-lowest-pitch-oe": "gs://foundation-model-data/synthetic/beanspro/t3/species_by_lowest_pitch_oe.jsonl",
+    "t3-species-by-vocalization-frequency-mcq": "gs://foundation-model-data/synthetic/beanspro/t3/species_by_vocalization_frequency_mcq.jsonl",
+    "t3-species-by-vocalization-frequency-oe": "gs://foundation-model-data/synthetic/beanspro/t3/species_by_vocalization_frequency_oe.jsonl",
+    "t3-species-by-vocalization-order-mcq": "gs://foundation-model-data/synthetic/beanspro/t3/species_by_vocalization_order_mcq.jsonl",
+    "t3-species-by-vocalization-order-oe": "gs://foundation-model-data/synthetic/beanspro/t3/species_by_vocalization_order_oe.jsonl",
+    "t3-species-count-oe": "gs://foundation-model-data/synthetic/beanspro/t3/species_count_oe.jsonl",
+    "t3-species-listing-open-list": "gs://foundation-model-data/synthetic/beanspro/t3/species_listing_open_list.jsonl",
+    "t3-structural-captioning": "gs://foundation-model-data/synthetic/beanspro/t3/structural_captioning_caption.jsonl",
+    "t3-vocalization-cooccurrence-binary": "gs://foundation-model-data/synthetic/beanspro/t3/vocalization_cooccurrence_binary.jsonl",
+    "t3-vocalization-count-per-species-oe": "gs://foundation-model-data/synthetic/beanspro/t3/vocalization_count_per_species_oe.jsonl",
+    "t3-vocalization-count-total-mcq": "gs://foundation-model-data/synthetic/beanspro/t3/vocalization_count_total_mcq.jsonl",
+    "t3-vocalization-count-total-oe": "gs://foundation-model-data/synthetic/beanspro/t3/vocalization_count_total_oe.jsonl",
+    "t3-vocalization-presence-binary": "gs://foundation-model-data/synthetic/beanspro/t3/vocalization_presence_binary.jsonl",
+    "t3-vocalization-referring-mcq": "gs://foundation-model-data/synthetic/beanspro/t3/vocalization_referring_mcq.jsonl",
+}
+
 _LOG = logging.getLogger(__name__)
 
 
@@ -407,6 +444,75 @@ def _audio_path_from_row(row: Mapping[str, object]) -> str | None:
     return candidates[0] if candidates else None
 
 
+def _cropped_audio_path_from_row(row: Mapping[str, object]) -> str | None:
+    """Return the canonical GCS URI for a T3 cropped-clip row, or ``None``.
+
+    T3 rows store audio in one of two ways:
+
+    - ``audio_path`` already contains an absolute ``gs://.../synthetic/cropped/``
+      URI → returned as-is.
+    - ``audio_ids`` (list) + ``source_dataset`` in row metadata → the cropped URI
+      is constructed from ``_CROPPED_AUDIO_ROOTS``.
+
+    Parameters
+    ----------
+    row
+        Raw metadata row from a T3 JSONL file.
+
+    Returns
+    -------
+    str or None
+        Absolute GCS cropped-clip URI, or ``None`` when the row does not match
+        either pattern.
+    """
+    import json
+
+    # Case 1: row already carries a direct cropped path.
+    direct = row.get("audio_path")
+    if isinstance(direct, str) and "/synthetic/cropped/" in direct:
+        return direct.strip()
+
+    # Case 2: construct from audio_ids + source_dataset.
+    audio_ids = row.get("audio_ids")
+    if isinstance(audio_ids, list) and audio_ids:
+        audio_id = audio_ids[0] if isinstance(audio_ids[0], str) else None
+    elif isinstance(audio_ids, str) and audio_ids.strip():
+        audio_id = audio_ids.strip()
+    else:
+        audio_id = None
+    if not audio_id:
+        return None
+
+    source_dataset: object = row.get("source_dataset")
+    if not isinstance(source_dataset, str) or not source_dataset:
+        metadata = row.get("metadata")
+        if isinstance(metadata, dict):
+            source_dataset = metadata.get("source_dataset")
+        elif isinstance(metadata, str):
+            try:
+                parsed = json.loads(metadata)
+                source_dataset = (
+                    parsed.get("source_dataset") if isinstance(parsed, dict) else None
+                )
+            except (json.JSONDecodeError, ValueError):
+                source_dataset = None
+
+    if not isinstance(source_dataset, str) or not source_dataset:
+        return None
+
+    root = _CROPPED_AUDIO_ROOTS.get(source_dataset)
+    if root is None:
+        return None
+
+    if source_dataset in {"BirdVoxFullNightCropped", "birdvox_full_night_cropped"}:
+        if not audio_id.startswith("BirdVox-full-night_"):
+            return None
+    elif "__crop_" not in audio_id:
+        return None
+
+    return f"{root}/{audio_id}.wav"
+
+
 def _audio_path_candidates_from_row(row: Mapping[str, object]) -> list[str]:
     """Return audio-path candidates from a row, in preference order.
 
@@ -414,6 +520,11 @@ def _audio_path_candidates_from_row(row: Mapping[str, object]) -> list[str]:
     versions and datasets (e.g. BirdSet) may expose multiple audio-path columns.
     Callers should attempt candidates in order rather than bailing on the first
     missing/broken path.
+
+    Returns
+    -------
+    list[str]
+        Non-empty, deduplicated candidate paths in preference order.
     """
 
     def _add(out: list[str], val: object) -> None:
@@ -425,6 +536,9 @@ def _audio_path_candidates_from_row(row: Mapping[str, object]) -> list[str]:
         out.append(s)
 
     out: list[str] = []
+
+    # T3 rows may store audio as audio_ids + source_dataset (cropped clips).
+    _add(out, _cropped_audio_path_from_row(row))
 
     # Prefer consistent resampled paths when present.
     for key in (
@@ -602,6 +716,12 @@ def _load_beans_next_rows_via_reflection(
         If `esp_data.BeansPro` is unavailable or the installed API does not match
         expected access patterns.
     """
+    # T3 rows use cropped-clip audio paths that are best resolved via the GCS
+    # JSONL loader; always bypass the BeansPro class for these splits.
+    if split in _BEANS_NEXT_T3_SPLIT_JSONL:
+        yield from _load_beans_next_rows_from_gcs_jsonl(split=split)
+        return
+
     beans_next_cls = getattr(esp_data, "BeansPro", None)
     if not callable(beans_next_cls):
         yield from _load_beans_next_rows_from_gcs_jsonl(split=split)
@@ -615,6 +735,9 @@ def _load_beans_next_rows_via_reflection(
             "Fix: update this loader to match your esp_data version, or switch to "
             "HuggingFace loading (`data_source: hf`)."
         ) from exc
+    except (KeyError, LookupError, ValueError):
+        yield from _load_beans_next_rows_from_gcs_jsonl(split=split)
+        return
 
     data_root = str(getattr(ds, "data_root", ""))
     backend_df = getattr(getattr(ds, "_data", None), "_df", None)
@@ -726,6 +849,8 @@ def _load_beans_next_rows_from_gcs_jsonl(
             "gs://esp-data-ingestion/beans-pro/v0.1.0/raw/call_type_fixed_vocab/test.jsonl",
             "gs://esp-data-ingestion/xeno-canto/v0.1.0/raw/",
         ),
+        # Tier-3 multi-species reasoning (audio paths in rows are absolute GCS URIs).
+        **{split: (jsonl, "") for split, jsonl in _BEANS_NEXT_T3_SPLIT_JSONL.items()},
     }
 
     cfg = split_to_jsonl_and_root.get(split)
@@ -889,6 +1014,9 @@ def _build_dataset_example(
 ) -> DatasetExample:
     """Assemble a `DatasetExample` from a metadata row and a resolved audio path.
 
+    Falls back to extracting ``instruction`` and ``labels`` from a ``messages``
+    column (T3 HF Hub rows use this format instead of dedicated columns).
+
     Parameters
     ----------
     row
@@ -911,8 +1039,6 @@ def _build_dataset_example(
     if isinstance(audio_path, str) and audio_path.strip():
         meta["audio_path"] = audio_path
     for key in (
-        "instruction",
-        "instruction_text",
         "file_name",
         "source_dataset",
         "dataset_name",
@@ -923,17 +1049,47 @@ def _build_dataset_example(
         val = row.get(key)
         if isinstance(val, str | int | float | bool):
             meta[key] = val
-    instruction = row.get("instruction")
-    instruction_text = row.get("instruction_text")
-    if isinstance(instruction, str) and instruction.strip():
-        meta.setdefault("instruction", instruction.strip())
-    elif isinstance(instruction_text, str) and instruction_text.strip():
-        meta.setdefault("instruction", instruction_text.strip())
+
+    instruction_raw = row.get("instruction") or row.get("instruction_text")
+    instruction: str | None = (
+        instruction_raw.strip()
+        if isinstance(instruction_raw, str) and instruction_raw.strip()
+        else None
+    )
+    labels = _labels_from_row(row)
+
+    # T3 HF Hub rows store prompts and answers in a ``messages`` column.
+    if instruction is None or labels is None:
+        messages_raw = row.get("messages")
+        if isinstance(messages_raw, list):
+            for msg in messages_raw:
+                if not isinstance(msg, dict):
+                    continue
+                role = msg.get("role")
+                content = msg.get("content")
+                if (
+                    role == "user"
+                    and instruction is None
+                    and isinstance(content, str)
+                    and content.strip()
+                ):
+                    instruction = content.strip()
+                elif (
+                    role == "assistant"
+                    and labels is None
+                    and isinstance(content, str)
+                    and content.strip()
+                ):
+                    labels = content.strip()
+
+    if instruction is not None:
+        meta["instruction"] = instruction
+
     return DatasetExample(
         sample_id=sample_id,
         task_id=task_id,
         split=split,
-        labels=_labels_from_row(row),
+        labels=labels,
         metadata=meta,
     )
 
