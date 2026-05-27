@@ -1,0 +1,1 @@
+{"audio_payload_types":["base64_wav","file_path","file_url"],"last_error":null,"load_status":"ready","loading_elapsed_sec":null,"loading_stage":null,"max_batch_size":1,"model":"Qwen/Qwen3-Omni-30B-A3B-Instruct","model_revision":"unknown","name":"beans-next-vllm-adapter","schema_versions":["predictions_v1"],"supports_batching":true}

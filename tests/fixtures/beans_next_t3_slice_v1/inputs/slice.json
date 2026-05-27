@@ -1,0 +1,241 @@
+{
+  "audio_strategy": {
+    "type": "vendored_base64_wav"
+  },
+  "dataset_id": "beans_next_t3",
+  "samples": [
+    {
+      "labels": "Yes",
+      "sample_id": "fixture:beans_next_t3_slice_v1:t3-vocalization-presence-binary:0000",
+      "source": {
+        "synthetic": true,
+        "task_id": "beans_next_t3_vocalization_presence_binary"
+      },
+      "task": {
+        "eval_task_id": "beans_next_t3_vocalization_presence_binary"
+      }
+    },
+    {
+      "labels": "No",
+      "sample_id": "fixture:beans_next_t3_slice_v1:t3-vocalization-cooccurrence-binary:0000",
+      "source": {
+        "synthetic": true,
+        "task_id": "beans_next_t3_vocalization_cooccurrence_binary"
+      },
+      "task": {
+        "eval_task_id": "beans_next_t3_vocalization_cooccurrence_binary"
+      }
+    },
+    {
+      "labels": "2",
+      "sample_id": "fixture:beans_next_t3_slice_v1:t3-species-count-oe:0000",
+      "source": {
+        "synthetic": true,
+        "task_id": "beans_next_t3_species_count_oe"
+      },
+      "task": {
+        "eval_task_id": "beans_next_t3_species_count_oe"
+      }
+    },
+    {
+      "labels": "5",
+      "sample_id": "fixture:beans_next_t3_slice_v1:t3-vocalization-count-total-oe:0000",
+      "source": {
+        "synthetic": true,
+        "task_id": "beans_next_t3_vocalization_count_total_oe"
+      },
+      "task": {
+        "eval_task_id": "beans_next_t3_vocalization_count_total_oe"
+      }
+    },
+    {
+      "labels": "(A) 3",
+      "sample_id": "fixture:beans_next_t3_slice_v1:t3-vocalization-count-total-mcq:0000",
+      "source": {
+        "synthetic": true,
+        "task_id": "beans_next_t3_vocalization_count_total_mcq"
+      },
+      "task": {
+        "eval_task_id": "beans_next_t3_vocalization_count_total_mcq"
+      }
+    },
+    {
+      "labels": "Thrush nightingale: 3, Common chaffinch: 2",
+      "sample_id": "fixture:beans_next_t3_slice_v1:t3-vocalization-count-per-species-oe:0000",
+      "source": {
+        "synthetic": true,
+        "task_id": "beans_next_t3_vocalization_count_per_species_oe"
+      },
+      "task": {
+        "eval_task_id": "beans_next_t3_vocalization_count_per_species_oe"
+      }
+    },
+    {
+      "labels": "(B) Common chaffinch",
+      "sample_id": "fixture:beans_next_t3_slice_v1:t3-vocalization-referring-mcq:0000",
+      "source": {
+        "synthetic": true,
+        "task_id": "beans_next_t3_vocalization_referring_mcq"
+      },
+      "task": {
+        "eval_task_id": "beans_next_t3_vocalization_referring_mcq"
+      }
+    },
+    {
+      "labels": "Thrush nightingale, Common chaffinch",
+      "sample_id": "fixture:beans_next_t3_slice_v1:t3-species-by-vocalization-order-oe:0000",
+      "source": {
+        "synthetic": true,
+        "task_id": "beans_next_t3_species_by_vocalization_order_oe"
+      },
+      "task": {
+        "eval_task_id": "beans_next_t3_species_by_vocalization_order_oe"
+      }
+    },
+    {
+      "labels": "(A) Thrush nightingale, Common chaffinch",
+      "sample_id": "fixture:beans_next_t3_slice_v1:t3-species-by-vocalization-order-mcq:0000",
+      "source": {
+        "synthetic": true,
+        "task_id": "beans_next_t3_species_by_vocalization_order_mcq"
+      },
+      "task": {
+        "eval_task_id": "beans_next_t3_species_by_vocalization_order_mcq"
+      }
+    },
+    {
+      "labels": "Thrush nightingale",
+      "sample_id": "fixture:beans_next_t3_slice_v1:t3-species-by-highest-pitch-oe:0000",
+      "source": {
+        "synthetic": true,
+        "task_id": "beans_next_t3_species_by_highest_pitch_oe"
+      },
+      "task": {
+        "eval_task_id": "beans_next_t3_species_by_highest_pitch_oe"
+      }
+    },
+    {
+      "labels": "(A) Thrush nightingale",
+      "sample_id": "fixture:beans_next_t3_slice_v1:t3-species-by-highest-pitch-mcq:0000",
+      "source": {
+        "synthetic": true,
+        "task_id": "beans_next_t3_species_by_highest_pitch_mcq"
+      },
+      "task": {
+        "eval_task_id": "beans_next_t3_species_by_highest_pitch_mcq"
+      }
+    },
+    {
+      "labels": "Common chaffinch",
+      "sample_id": "fixture:beans_next_t3_slice_v1:t3-species-by-lowest-pitch-oe:0000",
+      "source": {
+        "synthetic": true,
+        "task_id": "beans_next_t3_species_by_lowest_pitch_oe"
+      },
+      "task": {
+        "eval_task_id": "beans_next_t3_species_by_lowest_pitch_oe"
+      }
+    },
+    {
+      "labels": "(B) Common chaffinch",
+      "sample_id": "fixture:beans_next_t3_slice_v1:t3-species-by-lowest-pitch-mcq:0000",
+      "source": {
+        "synthetic": true,
+        "task_id": "beans_next_t3_species_by_lowest_pitch_mcq"
+      },
+      "task": {
+        "eval_task_id": "beans_next_t3_species_by_lowest_pitch_mcq"
+      }
+    },
+    {
+      "labels": "Thrush nightingale",
+      "sample_id": "fixture:beans_next_t3_slice_v1:t3-species-by-longest-vocalization-oe:0000",
+      "source": {
+        "synthetic": true,
+        "task_id": "beans_next_t3_species_by_longest_vocalization_oe"
+      },
+      "task": {
+        "eval_task_id": "beans_next_t3_species_by_longest_vocalization_oe"
+      }
+    },
+    {
+      "labels": "(A) Thrush nightingale",
+      "sample_id": "fixture:beans_next_t3_slice_v1:t3-species-by-longest-vocalization-mcq:0000",
+      "source": {
+        "synthetic": true,
+        "task_id": "beans_next_t3_species_by_longest_vocalization_mcq"
+      },
+      "task": {
+        "eval_task_id": "beans_next_t3_species_by_longest_vocalization_mcq"
+      }
+    },
+    {
+      "labels": "Common chaffinch",
+      "sample_id": "fixture:beans_next_t3_slice_v1:t3-species-by-vocalization-frequency-oe:0000",
+      "source": {
+        "synthetic": true,
+        "task_id": "beans_next_t3_species_by_vocalization_frequency_oe"
+      },
+      "task": {
+        "eval_task_id": "beans_next_t3_species_by_vocalization_frequency_oe"
+      }
+    },
+    {
+      "labels": "(B) Common chaffinch",
+      "sample_id": "fixture:beans_next_t3_slice_v1:t3-species-by-vocalization-frequency-mcq:0000",
+      "source": {
+        "synthetic": true,
+        "task_id": "beans_next_t3_species_by_vocalization_frequency_mcq"
+      },
+      "task": {
+        "eval_task_id": "beans_next_t3_species_by_vocalization_frequency_mcq"
+      }
+    },
+    {
+      "labels": "Two birds vocalize. Thrush nightingale vocalizes first at high pitch.",
+      "sample_id": "fixture:beans_next_t3_slice_v1:t3-structural-captioning:0000",
+      "source": {
+        "synthetic": true,
+        "task_id": "beans_next_t3_structural_captioning"
+      },
+      "task": {
+        "eval_task_id": "beans_next_t3_structural_captioning"
+      }
+    },
+    {
+      "labels": "Thrush nightingale, Common chaffinch",
+      "sample_id": "fixture:beans_next_t3_slice_v1:t3-species-listing-open-list:0000",
+      "source": {
+        "synthetic": true,
+        "task_id": "beans_next_t3_species_listing_open_list"
+      },
+      "task": {
+        "eval_task_id": "beans_next_t3_species_listing_open_list"
+      }
+    },
+    {
+      "labels": "3140 Hz",
+      "sample_id": "fixture:beans_next_t3_slice_v1:t3-frequency-range-description:0000",
+      "source": {
+        "synthetic": true,
+        "task_id": "beans_next_t3_frequency_range_description"
+      },
+      "task": {
+        "eval_task_id": "beans_next_t3_frequency_range_description"
+      }
+    },
+    {
+      "labels": "Thrush nightingale, Common chaffinch",
+      "sample_id": "fixture:beans_next_t3_slice_v1:t3-ordered-species-summary:0000",
+      "source": {
+        "synthetic": true,
+        "task_id": "beans_next_t3_ordered_species_summary"
+      },
+      "task": {
+        "eval_task_id": "beans_next_t3_ordered_species_summary"
+      }
+    }
+  ],
+  "selection_method": "explicit_sample_ids",
+  "split": "test"
+}
