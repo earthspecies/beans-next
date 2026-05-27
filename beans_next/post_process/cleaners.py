@@ -363,10 +363,12 @@ def apply_extract_label_from_text(
         """
         if len(low_lab) <= 2:
             # Accept boundaries like whitespace, punctuation, markdown (**C**), etc.
-            # Disallow letters/digits/underscore adjacent to the label.
+            # Disallow letters/digits/underscore/decimal-point adjacent to the label.
+            # The decimal-point exclusion prevents "10" matching in "10.00s" and
+            # "1" matching in list items like "1. American Crow".
             return (
                 re.search(
-                    rf"(?<![0-9a-z_]){re.escape(low_lab)}(?![0-9a-z_])",
+                    rf"(?<![0-9a-z_.]){re.escape(low_lab)}(?![0-9a-z_.])",
                     seg_lower,
                 )
                 is not None

@@ -15,6 +15,7 @@ import contextlib
 import importlib.metadata
 import json
 import logging
+import re
 from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import Any
@@ -58,6 +59,36 @@ def _read_jsonl(path: Path) -> list[object]:
     return out
 
 
+def _canonical_mcq_vocab(labels: Iterable[str]) -> tuple[str, ...] | None:
+    """Return canonical MCQ letters when all labels are option tokens.
+
+    Parameters
+    ----------
+    labels : iterable of str
+        Candidate label vocabulary.
+
+    Returns
+    -------
+    tuple of str or None
+        Canonical labels, preserving the first-seen target casing, when the
+        vocabulary is MCQ-like; otherwise ``None``.
+    """
+    seen: set[str] = set()
+    out: list[str] = []
+    for label in labels:
+        match = re.fullmatch(r"\s*[\(\[]?\s*([A-Za-z])\s*[\)\]\.:]?\s*", label)
+        if match is None:
+            return None
+        token = match.group(1)
+        key = token.lower()
+        if key not in seen:
+            seen.add(key)
+            out.append(token)
+    if 2 <= len(out) <= 10:
+        return tuple(out)
+    return None
+
+
 def _collect_label_vocab(targets: Iterable[object]) -> list[str]:
     seen: set[str] = set()
     out: list[str] = []
@@ -88,6 +119,11 @@ def _default_postprocess_steps(
     vocab = _collect_label_vocab(targets)
     task_s = (task_type or "").lower()
 
+    # Regression metrics parse numbers from the processed text, so avoid
+    # snapping F0/SNR outputs onto a closed label vocabulary before scoring.
+    if "regression" in task_s:
+        return (), tuple(cleaners)
+
     # Binary tasks ("Yes"/"No") must be treated as single-label extraction, even
     # when task_type is unknown/None (common in score-from-file usage). Comma
     # splitting turns verbose answers like "Yes, ..." into multiple fragments
@@ -101,16 +137,15 @@ def _default_postprocess_steps(
     # even when task_type is unknown/None. Many models enumerate all options
     # ("A: ..., B: ...") and then state a final letter; comma-splitting prose
     # fragments causes repeated letter matches.
-    if vocab and all(isinstance(v, str) and len(v.strip()) == 1 for v in vocab):
-        mcq = {v.strip().lower() for v in vocab}
-        if 2 <= len(mcq) <= 10 and all(t.isalpha() for t in mcq):
-            cleaners.append(
-                StepSpec(
-                    "extract_mcq_choice_from_text",
-                    {"labels": tuple(vocab)},
-                )
+    mcq_vocab = _canonical_mcq_vocab(vocab)
+    if mcq_vocab is not None:
+        cleaners.append(
+            StepSpec(
+                "extract_mcq_choice_from_text",
+                {"labels": mcq_vocab},
             )
-            return (), tuple(cleaners)
+        )
+        return (), tuple(cleaners)
 
     # Hz bucket tasks (e.g. "4010 Hz"): map numeric text to closest bucket and
     # avoid comma-splitting prose (commas appear in normal sentences and in

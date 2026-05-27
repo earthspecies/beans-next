@@ -175,6 +175,17 @@ def test_synthesize_esp_data_sample_id_is_stable_for_beans_next_dataset() -> Non
             },
             "gs://foundation-model-data/synthetic/cropped/birdvox_full_night/audio/BirdVox-full-night_unit07__crop_8522504_8526617.wav",
         ),
+        # Rows whose source_dataset is not in _CROPPED_AUDIO_ROOTS (e.g.
+        # NocturnalBirdMigration) carry only audio_paths with absolute GCS URIs.
+        (
+            {
+                "audio_paths": [
+                    "gs://esp-ml-datasets/nocturnal_bird_migration/audio/NB001.wav"
+                ],
+                "metadata": {"source_dataset": "NocturnalBirdMigration"},
+            },
+            "gs://esp-ml-datasets/nocturnal_bird_migration/audio/NB001.wav",
+        ),
     ],
 )
 def test_t3_rows_use_canonical_cropped_audio_uri(
@@ -191,6 +202,89 @@ def test_t3_gcs_split_dict_covers_all_tier3_hub_subsets() -> None:
     from beans_next.datasets.esp_data import _BEANS_NEXT_T3_SPLIT_JSONL
 
     assert frozenset(_BEANS_NEXT_T3_SPLIT_JSONL) == TIER_3_SUBSETS
+
+
+_T3_AUDIO_TAG = "<Audio><AudioHere></Audio>"
+_T3_INSTR_COUNT = f"{_T3_AUDIO_TAG} How many species? Answer with a number."
+_T3_INSTR_MCQ = f"{_T3_AUDIO_TAG} Which species first? (A) Robin (B) Chaffinch"
+_T3_INSTR_LIST = f"{_T3_AUDIO_TAG} List all species."
+
+
+@pytest.mark.parametrize(
+    ("row", "expected_instruction", "expected_labels"),
+    [
+        # Standard T3 messages row: instruction from user, label from assistant.
+        (
+            {
+                "messages": [
+                    {"role": "user", "content": _T3_INSTR_COUNT},
+                    {"role": "assistant", "content": "2"},
+                ],
+                "audio_paths": ["gs://bucket/audio.wav"],
+            },
+            _T3_INSTR_COUNT,
+            "2",
+        ),
+        # MCQ row: multi-word label preserved verbatim.
+        (
+            {
+                "messages": [
+                    {"role": "user", "content": _T3_INSTR_MCQ},
+                    {"role": "assistant", "content": "(A) Robin"},
+                ],
+                "audio_paths": ["gs://bucket/audio.wav"],
+            },
+            _T3_INSTR_MCQ,
+            "(A) Robin",
+        ),
+        # Row with explicit instruction column takes precedence over messages.
+        (
+            {
+                "instruction": "Is there a bird vocalizing? Answer Yes or No.",
+                "output": "Yes",
+                "messages": [
+                    {"role": "user", "content": "IGNORED"},
+                    {"role": "assistant", "content": "IGNORED"},
+                ],
+                "audio_paths": ["gs://bucket/audio.wav"],
+            },
+            "Is there a bird vocalizing? Answer Yes or No.",
+            "Yes",
+        ),
+        # metadata as JSON string (common in T3 JSONL rows).
+        (
+            {
+                "messages": [
+                    {"role": "user", "content": _T3_INSTR_LIST},
+                    {
+                        "role": "assistant",
+                        "content": "Thrush nightingale, Common chaffinch",
+                    },
+                ],
+                "audio_ids": ["AM10_20230718_071000.WAV__crop_0015683_0032419"],
+                "metadata": '{"source_dataset": "BirdeepCropped", "extra": 1}',
+            },
+            _T3_INSTR_LIST,
+            "Thrush nightingale, Common chaffinch",
+        ),
+    ],
+)
+def test_build_dataset_example_t3_messages_parsing(
+    row: dict[str, object],
+    expected_instruction: str,
+    expected_labels: str,
+) -> None:
+    from beans_next.datasets.esp_data import _build_dataset_example
+
+    ex = _build_dataset_example(
+        row,
+        sample_id="test-sample-0",
+        audio_path="/tmp/fake.wav",
+        split="test",
+        task_id="beans_next_t3_species_count_oe",
+    )
+    assert ex.metadata.get("instruction") == expected_instruction
+    assert ex.labels == expected_labels
 
 
 def test_normalize_birdset_row_prefers_scientific_name_fields() -> None:

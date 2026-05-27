@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 
 from beans_next.api.types import DatasetExample
@@ -22,6 +23,13 @@ from beans_next.metrics.classification import (
 )
 from beans_next.metrics.dataset import compute_dataset_map, compute_macro_f1
 from beans_next.metrics.detection import average_precision
+from beans_next.metrics.regression import (
+    extract_numeric_value,
+    mean_absolute_error,
+    mean_absolute_percentage_error,
+    mean_squared_error,
+    root_mean_squared_error,
+)
 from beans_next.post_process.pipeline import PostProcessResult
 
 __all__ = [
@@ -30,12 +38,17 @@ __all__ = [
     "average_precision",
     "compute_dataset_map",
     "compute_macro_f1",
+    "extract_numeric_value",
     "f1",
     "get_scorer",
     "list_scorers",
+    "mean_absolute_error",
+    "mean_absolute_percentage_error",
+    "mean_squared_error",
     "precision",
     "recall",
     "register_scorer",
+    "root_mean_squared_error",
     "score_sample",
     "cider",
     "cider_corpus_mean_normalized",
@@ -47,6 +60,26 @@ __all__ = [
 
 def _normalize_label_token(s: str) -> str:
     return " ".join(s.strip().split())
+
+
+def _normalize_mcq_choice_token(s: str) -> str | None:
+    """Return a canonical single-letter MCQ token when ``s`` is one.
+
+    Parameters
+    ----------
+    s : str
+        Candidate prediction or target text.
+
+    Returns
+    -------
+    str or None
+        Lowercase MCQ letter when ``s`` is a bare option token, otherwise
+        ``None``.
+    """
+    match = re.fullmatch(r"\s*[\(\[]?\s*([A-Za-z])\s*[\)\]\.:]?\s*", s)
+    if match is None:
+        return None
+    return match.group(1).lower()
 
 
 def _parse_label_list(text: str) -> list[str]:
@@ -106,8 +139,37 @@ def score_sample(
     if isinstance(labels, str):
         if "caption" in task_s:
             return {}
+        if "regression" in task_s:
+            try:
+                y_true_num = extract_numeric_value(labels)
+                target_unit = (
+                    "hz"
+                    if "hz" in labels.lower()
+                    else "db"
+                    if "db" in labels.lower()
+                    else None
+                )
+                y_pred_num = extract_numeric_value(
+                    processed,
+                    target_value=y_true_num,
+                    unit=target_unit,
+                )
+            except MetricsError:
+                return {"numeric_parse_success": 0.0}
+            err = y_pred_num - y_true_num
+            return {
+                "numeric_parse_success": 1.0,
+                "signed_error": float(err),
+                "absolute_error": float(abs(err)),
+                "squared_error": float(err * err),
+            }
         y_pred = _normalize_label_token(processed)
         y_true = _normalize_label_token(labels)
+        pred_mcq = _normalize_mcq_choice_token(y_pred)
+        true_mcq = _normalize_mcq_choice_token(y_true)
+        if pred_mcq is not None and true_mcq is not None:
+            y_pred = pred_mcq
+            y_true = true_mcq
         acc = 1.0 if (y_pred == y_true and y_true) else 0.0
         return {
             "accuracy": acc,

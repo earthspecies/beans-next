@@ -538,13 +538,17 @@ def _audio_path_candidates_from_row(row: Mapping[str, object]) -> list[str]:
 
     out: list[str] = []
 
-    # T3 rows carry audio_paths (list of absolute GCS URIs); use the first entry.
+    # T3 rows may store audio as audio_ids + source_dataset (cropped clips).
+    # Prefer the canonical cropped URI when available (e.g. BirdeepCropped,
+    # PowdermillCropped): audio_paths in those rows points to the full recording,
+    # not the cropped segment used for the T3 task.
+    _add(out, _cropped_audio_path_from_row(row))
+
+    # Fallback: T3 rows whose source_dataset is not in _CROPPED_AUDIO_ROOTS
+    # (e.g. NocturnalBirdMigration) carry audio_paths with absolute GCS URIs.
     audio_paths_list = row.get("audio_paths")
     if isinstance(audio_paths_list, list) and audio_paths_list:
         _add(out, audio_paths_list[0] if isinstance(audio_paths_list[0], str) else None)
-
-    # T3 rows may store audio as audio_ids + source_dataset (cropped clips).
-    _add(out, _cropped_audio_path_from_row(row))
 
     # Prefer consistent resampled paths when present.
     for key in (
