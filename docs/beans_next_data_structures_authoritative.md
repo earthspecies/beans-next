@@ -3,17 +3,17 @@
 This document defines the **authoritative, implementation-aligned** row contracts for the
 two BEANS-Next datasets implemented in this repo:
 
-- `beans_next/datasets/beans_next.py` → `BeansPro` (**single audio**)
-- `beans_next/datasets/beans_next_multiaudio.py` → `BeansProMultiAudio` (**multi audio**)
+- `beans_next/datasets/beans_next.py` → `BEANSNext` (**single audio**)
+- `beans_next/datasets/beans_next_multiaudio.py` → `BEANSNextMultiAudio` (**multi audio**)
 
 The intent is that benchmark loaders, prompt renderers, and scorers can rely on these
 contracts without depending on undocumented behavior of upstream sources.
 
-## `BeansPro` (single-audio)
+## `BEANSNext` (single-audio)
 
 ### Split inventory
 
-`BeansPro.info.split_paths` defines the split ids. At time of writing:
+`BEANSNext.info.split_paths` defines the split ids. At time of writing:
 
 - `crow-description`
 - `zebra-description`
@@ -28,7 +28,7 @@ contracts without depending on undocumented behavior of upstream sources.
 - `call-type-fixed-vocab`
 
 Each split is backed by a JSONL file (one JSON object per line) and a corresponding audio
-root. `BeansPro` resolves each row’s audio path as:
+root. `BEANSNext` resolves each row’s audio path as:
 
 `anypath(data_root) / row["audio_path_original_sample_rate"]`
 
@@ -46,7 +46,7 @@ The loader expects the following **minimum** fields in each JSON object:
 
 In practice, upstream JSONL rows also include extra bookkeeping keys (examples include
 `id`, `task`, `dataset_name`, `source_dataset`, `license`, `file_name`, `instruction_text`).
-`BeansPro` passes these through unchanged unless `output_take_and_give` is used.
+`BEANSNext` passes these through unchanged unless `output_take_and_give` is used.
 
 ### Output row schema (Python dict)
 
@@ -59,7 +59,7 @@ If `output_take_and_give` is provided, the returned dict contains only the mappe
 
 ### Task-specific `output` conventions
 
-`BeansPro` does not itself parse targets; it returns raw strings.
+`BEANSNext` does not itself parse targets; it returns raw strings.
 
 Observed conventions (from existing BEANS-Next JSONL docs in this repo):
 
@@ -91,11 +91,11 @@ Observed conventions (from existing BEANS-Next JSONL docs in this repo):
   metrics: `species_f1`, `count_mae`, `freq_mae_low`, `freq_mae_high`, `freq_mean_iou` over matched species.
   `None` label when no identifiable species present; `Unknown` excluded.
 
-## `BeansProMultiAudio` (multi-audio)
+## `BEANSNextMultiAudio` (multi-audio)
 
 ### Split inventory
 
-`BeansProMultiAudio` defines split ids in the module-level `_SPLITS` mapping. At time of
+`BEANSNextMultiAudio` defines split ids in the module-level `_SPLITS` mapping. At time of
 writing it includes (non-exhaustive):
 
 - `gibbon-fewshot-detection`
@@ -145,7 +145,7 @@ Consumers must preserve ordering:
 
 ## Serving note (authoritative): audio clipping is a launcher concern
 
-BEANS-Next datasets (`BeansPro`, `BeansProMultiAudio`) return full audio waveforms by design. Any
+BEANS-Next datasets (`BEANSNext`, `BEANSNextMultiAudio`) return full audio waveforms by design. Any
 audio **clipping/capping** (e.g., “first 30 seconds only”) is intentionally handled at the **launcher**
 layer (model server / adapter), not in the dataset contract.
 

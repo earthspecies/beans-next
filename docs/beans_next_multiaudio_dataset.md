@@ -1,6 +1,6 @@
-## BeansProMultiAudio dataset (esp-data `beans-next` branch) — split inventory + stats
+## BEANSNextMultiAudio dataset (esp-data `beans-next` branch) — split inventory + stats
 
-This doc describes the **BeansProMultiAudio** dataset splits as stored under:
+This doc describes the **BEANSNextMultiAudio** dataset splits as stored under:
 
 - **JSONL root**: `gs://esp-data-ingestion/beans-next/v0.1.0/raw/`
 - **Audio paths**: rows contain relative paths like `audio/...` which resolve under the same root.

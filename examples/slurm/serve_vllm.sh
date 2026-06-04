@@ -36,8 +36,8 @@ fi
 #
 # D3 requirement: fixed port ONLY at 19082.
 ADAPTER_PORT="19082"
-if [[ -n "${BEANS_NEXT_PORT:-${BEANS_PRO_PORT:-}}" && "${BEANS_NEXT_PORT:-${BEANS_PRO_PORT}}" != "${ADAPTER_PORT}" ]]; then
-  echo "ERROR: BEANS_NEXT_PORT must be ${ADAPTER_PORT} (got: ${BEANS_NEXT_PORT:-${BEANS_PRO_PORT}})." >&2
+if [[ -n "${BEANS_NEXT_PORT:-}" && "${BEANS_NEXT_PORT:-}" != "${ADAPTER_PORT}" ]]; then
+  echo "ERROR: BEANS_NEXT_PORT must be ${ADAPTER_PORT} (got: ${BEANS_NEXT_PORT:-})." >&2
   exit 2
 fi
 export BEANS_NEXT_PORT="${ADAPTER_PORT}"
@@ -48,20 +48,20 @@ VLLM_PORT="${VLLM_PORT:-19083}"
 # via `uv pip` into this environment, which does not require `pip` to be present.
 export UV_PROJECT_ENVIRONMENT="${UV_PROJECT_ENVIRONMENT:-/scratch/$USER/venvs/${SLURM_JOB_ID}}"
 
-URL_DIR="${BEANS_NEXT_URL_DIR:-${BEANS_PRO_URL_DIR:-$HOME/beans-next-launchers}}"
+URL_DIR="${BEANS_NEXT_URL_DIR:-$HOME/beans-next-launchers}"
 mkdir -p "$URL_DIR"
 URL_FILE="$URL_DIR/${SLURM_JOB_ID}.url"
 rm -f "$URL_FILE"
 
-# NOTE: Use BEANS_NEXT_* overrides (compat: BEANS_PRO_*) so callers can safely force caches away from
+# NOTE: Use BEANS_NEXT_* overrides so callers can safely force caches away from
 # `/scratch/.cache` (which is often full on shared nodes) without having to
 # stomp cluster-wide HF_* environment variables.
-export HF_HOME="${BEANS_NEXT_HF_HOME:-${BEANS_PRO_HF_HOME:-/scratch/shared/hf_cache}}"
-export HF_HUB_CACHE="${BEANS_NEXT_HF_HUB_CACHE:-${BEANS_PRO_HF_HUB_CACHE:-$HF_HOME/hub}}"
-export HUGGINGFACE_HUB_CACHE="${BEANS_NEXT_HUGGINGFACE_HUB_CACHE:-${BEANS_PRO_HUGGINGFACE_HUB_CACHE:-$HF_HUB_CACHE}}"
-export TRANSFORMERS_CACHE="${BEANS_NEXT_TRANSFORMERS_CACHE:-${BEANS_PRO_TRANSFORMERS_CACHE:-$HF_HOME/transformers}}"
-export HF_XET_CACHE="${BEANS_NEXT_HF_XET_CACHE:-${BEANS_PRO_HF_XET_CACHE:-$HF_HOME/xet}}"
-export XDG_CACHE_HOME="${BEANS_NEXT_XDG_CACHE_HOME:-${BEANS_PRO_XDG_CACHE_HOME:-$HF_HOME/xdg}}"
+export HF_HOME="${BEANS_NEXT_HF_HOME:-/scratch/shared/hf_cache}"
+export HF_HUB_CACHE="${BEANS_NEXT_HF_HUB_CACHE:-$HF_HOME/hub}"
+export HUGGINGFACE_HUB_CACHE="${BEANS_NEXT_HUGGINGFACE_HUB_CACHE:-$HF_HUB_CACHE}"
+export TRANSFORMERS_CACHE="${BEANS_NEXT_TRANSFORMERS_CACHE:-$HF_HOME/transformers}"
+export HF_XET_CACHE="${BEANS_NEXT_HF_XET_CACHE:-$HF_HOME/xet}"
+export XDG_CACHE_HOME="${BEANS_NEXT_XDG_CACHE_HOME:-$HF_HOME/xdg}"
 mkdir -p "$HF_HUB_CACHE" "$TRANSFORMERS_CACHE" "$HF_XET_CACHE" "$XDG_CACHE_HOME"
 
 # Some downstream libraries (notably huggingface_hub) may see unexpanded `$USER`
@@ -145,9 +145,9 @@ mkdir -p "$VOICE_SAMPLES_BACKING" 2>/dev/null || true
 if ! ln -s "$VOICE_SAMPLES_BACKING" /tmp/voice_samples 2>/dev/null; then
   # If symlink fails (e.g. /tmp full), try a plain directory as a fallback.
   if ! mkdir -p /tmp/voice_samples 2>/dev/null; then
-    echo "BEANS_PRO_TMP_BLOCKER: cannot create /tmp/voice_samples (disk full?)." >&2
-    echo "BEANS_PRO_TMP_BLOCKER: TMPDIR=$TMPDIR" >&2
-    echo "BEANS_PRO_TMP_BLOCKER: VOICE_SAMPLES_BACKING=$VOICE_SAMPLES_BACKING" >&2
+    echo "BEANS_NEXT_TMP_BLOCKER: cannot create /tmp/voice_samples (disk full?)." >&2
+    echo "BEANS_NEXT_TMP_BLOCKER: TMPDIR=$TMPDIR" >&2
+    echo "BEANS_NEXT_TMP_BLOCKER: VOICE_SAMPLES_BACKING=$VOICE_SAMPLES_BACKING" >&2
     df -h /tmp 2>/dev/null || true
     [[ -d /scratch ]] && df -h /scratch 2>/dev/null || true
     exit 86
@@ -174,10 +174,10 @@ fi
 # Prefer Python 3.11+ for this project. Some compute nodes may not have a compatible system
 # interpreter, so allow uv to download a managed Python when needed.
 export UV_PYTHON_DOWNLOADS="${UV_PYTHON_DOWNLOADS:-auto}"
-export UV_PYTHON="${BEANS_PRO_UV_PYTHON:-3.11}"
+export UV_PYTHON="${BEANS_NEXT_UV_PYTHON:-3.11}"
 
 # On clusters where compute nodes cannot reach PyPI, installs inside the job may fail.
-# Set `BEANS_PRO_SKIP_UV_SYNC=1` if you have pre-built the environment on a shared filesystem.
+# Set `BEANS_NEXT_SKIP_UV_SYNC=1` if you have pre-built the environment on a shared filesystem.
 if [[ "$VLLM_OMNI_INSTALL" == "1" ]]; then
   uv venv --python 3.12 --seed "$UV_PROJECT_ENVIRONMENT"
   uv pip install --python "${UV_PROJECT_ENVIRONMENT%/}/bin/python" \
@@ -189,10 +189,10 @@ if [[ "$VLLM_OMNI_INSTALL" == "1" ]]; then
     "vllm==${VLLM_INSTALL_VERSION}" --torch-backend=auto
   uv pip install --python "${UV_PROJECT_ENVIRONMENT%/}/bin/python" \
     "vllm-omni==${VLLM_OMNI_VERSION:-0.18.0}" qwen-omni-utils
-elif [[ "${BEANS_PRO_SKIP_UV_SYNC:-0}" != "1" ]]; then
+elif [[ "${BEANS_NEXT_SKIP_UV_SYNC:-0}" != "1" ]]; then
   uv sync --group upstream
 else
-  echo "BEANS_PRO_SKIP_UV_SYNC=1 set; skipping 'uv sync'"
+  echo "BEANS_NEXT_SKIP_UV_SYNC=1 set; skipping 'uv sync'"
 fi
 
 PYTHON_EXE="${UV_PROJECT_ENVIRONMENT%/}/bin/python"
@@ -290,7 +290,7 @@ def main() -> int:
     }
     job_id = os.environ.get("SLURM_JOB_ID", "unknown")
 
-    hostname = os.environ.get("BEANS_PRO_HOSTNAME") or _gcp_internal_ip() or socket.gethostname()
+    hostname = os.environ.get("BEANS_NEXT_HOSTNAME") or _gcp_internal_ip() or socket.gethostname()
     adapter_base = f"http://127.0.0.1:{adapter_port}"
     vllm_base = f"http://127.0.0.1:{vllm_port}"
     predict_url = f"http://{hostname}:{adapter_port}/predict"
@@ -373,7 +373,7 @@ def main() -> int:
     # Wait for vLLM health first (load can take a long time).
     vllm_health = f"{vllm_base}/health"
     vllm_deadline = time.time() + 30 * 60
-    vllm_interval_sec = float(os.environ.get("BEANS_PRO_HEALTH_INTERVAL_SEC", "5"))
+    vllm_interval_sec = float(os.environ.get("BEANS_NEXT_HEALTH_INTERVAL_SEC", "5"))
     while time.time() < vllm_deadline:
         if vllm_proc.poll() is not None:
             _cleanup()
@@ -404,7 +404,7 @@ def main() -> int:
 
     adapter_health = f"{adapter_base}/health"
     adapter_deadline = time.time() + 2 * 60
-    adapter_interval_sec = float(os.environ.get("BEANS_PRO_HEALTH_INTERVAL_SEC", "2"))
+    adapter_interval_sec = float(os.environ.get("BEANS_NEXT_HEALTH_INTERVAL_SEC", "2"))
     while time.time() < adapter_deadline:
         if adapter_proc.poll() is not None:
             _cleanup()

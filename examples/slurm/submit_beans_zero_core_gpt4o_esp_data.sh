@@ -13,14 +13,14 @@
 
 set -euo pipefail
 
-INC="${BEANS_NEXT_INC:-${BEANS_PRO_INC:-adhoc}}"
+INC="${BEANS_NEXT_INC:-adhoc}"
 MODEL_DIR="gpt4o"
 SUBSET_DIR="beans_zero_core"
 TS="$(date +%Y%m%d_%H%M%S)"
 SMOKE_RUN_ID="smoke_${MODEL_DIR}_${SUBSET_DIR}_${TS}"
 FULL_RUN_ID="full_${MODEL_DIR}_${SUBSET_DIR}_${TS}"
-SMOKE_OUT_DIR="${BEANS_NEXT_OUT_DIR_SMOKE:-${BEANS_PRO_OUT_DIR_SMOKE:-/scratch/${USER}/.cache/beans-next-results/${INC}/${MODEL_DIR}/${SUBSET_DIR}/${SMOKE_RUN_ID}}}"
-FULL_OUT_DIR="${BEANS_NEXT_OUT_DIR_FULL:-${BEANS_PRO_OUT_DIR_FULL:-/scratch/${USER}/.cache/beans-next-results/${INC}/${MODEL_DIR}/${SUBSET_DIR}/${FULL_RUN_ID}}}"
+SMOKE_OUT_DIR="${BEANS_NEXT_OUT_DIR_SMOKE:-/scratch/${USER}/.cache/beans-next-results/${INC}/${MODEL_DIR}/${SUBSET_DIR}/${SMOKE_RUN_ID}}"
+FULL_OUT_DIR="${BEANS_NEXT_OUT_DIR_FULL:-/scratch/${USER}/.cache/beans-next-results/${INC}/${MODEL_DIR}/${SUBSET_DIR}/${FULL_RUN_ID}}"
 CONFIG_PATH="configs/benchmarks/beans_zero_core_gpt4o_esp_data.yaml"
 
 echo "Submitting serving job..."
@@ -36,7 +36,7 @@ SMOKE_JOB=$(
   BEANS_NEXT_URL_FILE="$HOME/beans-next-launchers/$SERVE_JOB.url" \
   BEANS_NEXT_DATA_SOURCE="esp_data" \
   BEANS_NEXT_CONFIG="$CONFIG_PATH" \
-  BEANS_NEXT_LIMIT="${BEANS_NEXT_SMOKE_LIMIT:-${BEANS_PRO_SMOKE_LIMIT:-5}}" \
+  BEANS_NEXT_LIMIT="${BEANS_NEXT_SMOKE_LIMIT:-5}" \
   BEANS_NEXT_RUN_ID="$SMOKE_RUN_ID" \
   BEANS_NEXT_OUT_DIR="$SMOKE_OUT_DIR" \
   sbatch --parsable --dependency=after:"$SERVE_JOB" examples/slurm/test_run_inference.sh

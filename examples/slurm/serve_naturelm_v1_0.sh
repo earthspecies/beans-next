@@ -23,7 +23,7 @@ set -euo pipefail
 # Optional debug mode.
 # Enable with: BEANS_NEXT_DEBUG=1 (or true/yes).
 _debug_enabled() {
-  case "${BEANS_NEXT_DEBUG:-${BEANS_PRO_DEBUG:-0}}" in
+  case "${BEANS_NEXT_DEBUG:-0}" in
     1|true|TRUE|yes|YES) return 0 ;;
     *) return 1 ;;
   esac
@@ -45,22 +45,22 @@ if [[ -z "$REPO" ]]; then
   exit 1
 fi
 
-# Fixed port by default (override via BEANS_NEXT_PORT; compat: BEANS_PRO_PORT).
-PORT="${BEANS_NEXT_PORT:-${BEANS_PRO_PORT:-8000}}"
+# Fixed port by default (override via BEANS_NEXT_PORT).
+PORT="${BEANS_NEXT_PORT:-8000}"
 
 # Ensure all `uv` operations use a job-scoped environment on node-local scratch.
 # This avoids relying on a potentially stale/broken repo-local `.venv/` on the shared filesystem.
 # Ensure all `uv` operations use a job-scoped environment on node-local scratch.
-# Allow override via BEANS_NEXT_UV_PROJECT_ENVIRONMENT (compat: BEANS_PRO_UV_PROJECT_ENVIRONMENT),
+# Allow override via BEANS_NEXT_UV_PROJECT_ENVIRONMENT,
 # but do not inherit random ambient values.
-export UV_PROJECT_ENVIRONMENT="${BEANS_NEXT_UV_PROJECT_ENVIRONMENT:-${BEANS_PRO_UV_PROJECT_ENVIRONMENT:-/scratch/$USER/venvs/beans-next-serve-${SLURM_JOB_ID}}}"
+export UV_PROJECT_ENVIRONMENT="${BEANS_NEXT_UV_PROJECT_ENVIRONMENT:-/scratch/$USER/venvs/beans-next-serve-${SLURM_JOB_ID}}"
 
 # Keep TMPDIR job-scoped to avoid collisions; uv cache remains shared.
 export TMPDIR="${TMPDIR:-/scratch/$USER/.cache/tmp/beans-next-serve-${SLURM_JOB_ID}}"
 mkdir -p "$TMPDIR" 2>/dev/null || true
 
 # URL file written once the server is healthy.
-URL_DIR="${BEANS_NEXT_URL_DIR:-${BEANS_PRO_URL_DIR:-$HOME/beans-next-launchers}}"
+URL_DIR="${BEANS_NEXT_URL_DIR:-$HOME/beans-next-launchers}"
 mkdir -p "$URL_DIR"
 URL_FILE="$URL_DIR/${SLURM_JOB_ID}.url"
 rm -f "$URL_FILE"
@@ -92,7 +92,7 @@ export NATURELM_V1_0_LOAD_MODE="${NATURELM_V1_0_LOAD_MODE:-pipeline}"
 # Prefer Python 3.11+ for this project. Some compute nodes may not have a compatible system
 # interpreter, so allow uv to download a managed Python when needed.
 export UV_PYTHON_DOWNLOADS="${UV_PYTHON_DOWNLOADS:-auto}"
-export UV_PYTHON="${BEANS_NEXT_UV_PYTHON:-${BEANS_PRO_UV_PYTHON:-3.11}}"
+export UV_PYTHON="${BEANS_NEXT_UV_PYTHON:-3.11}"
 
 # ---------------------------------------------------------------------------
 # Scratch disk guard (check → prune safe caches → fail loudly if still low).
@@ -127,13 +127,13 @@ if [[ "${NATURELM_V1_0_STUB:-}" != "1" ]]; then
     echo "  meta-llama/Meta-Llama-3.1-8B-Instruct" >&2
     exit 1
   fi
-  if [[ "${BEANS_PRO_SKIP_REAL_DEPS_INSTALL:-0}" == "1" ]]; then
-    echo "BEANS_PRO_SKIP_REAL_DEPS_INSTALL=1 set; skipping real-mode dependency install"
+  if [[ "${BEANS_NEXT_SKIP_REAL_DEPS_INSTALL:-0}" == "1" ]]; then
+    echo "BEANS_NEXT_SKIP_REAL_DEPS_INSTALL=1 set; skipping real-mode dependency install"
   else
-    if [[ "${BEANS_PRO_SKIP_UV_SYNC:-0}" != "1" ]]; then
+    if [[ "${BEANS_NEXT_SKIP_UV_SYNC:-0}" != "1" ]]; then
       uv sync --group real
     else
-      echo "BEANS_PRO_SKIP_UV_SYNC=1 set; skipping 'uv sync --group real'" >&2
+      echo "BEANS_NEXT_SKIP_UV_SYNC=1 set; skipping 'uv sync --group real'" >&2
       exit 1
     fi
   fi
@@ -170,10 +170,10 @@ if [[ "${NATURELM_V1_0_STUB:-}" != "1" ]]; then
     "beans-zero @ git+https://github.com/earthspecies/beans-zero.git@31d4487ee6452ae6c31853d45fd38b7d4150372d"
 else
   echo "NatureLM v1.0 stub mode selected (NATURELM_V1_0_STUB=1)."
-  if [[ "${BEANS_PRO_SKIP_UV_SYNC:-0}" != "1" ]]; then
+  if [[ "${BEANS_NEXT_SKIP_UV_SYNC:-0}" != "1" ]]; then
     uv sync
   else
-    echo "BEANS_PRO_SKIP_UV_SYNC=1 set; skipping 'uv sync'" >&2
+    echo "BEANS_NEXT_SKIP_UV_SYNC=1 set; skipping 'uv sync'" >&2
     exit 1
   fi
 fi
@@ -218,11 +218,11 @@ def main() -> int:
     url_dir = os.path.dirname(url_file)
     os.makedirs(url_dir, exist_ok=True)
 
-    hostname = os.environ.get("BEANS_PRO_HOSTNAME") or _gcp_internal_ip() or socket.gethostname()
+    hostname = os.environ.get("BEANS_NEXT_HOSTNAME") or _gcp_internal_ip() or socket.gethostname()
     base_url = f"http://127.0.0.1:{port}"
     predict_url = f"http://{hostname}:{port}/predict"
 
-    debug = os.environ.get("BEANS_PRO_DEBUG", "").lower() in {"1", "true", "yes"}
+    debug = os.environ.get("BEANS_NEXT_DEBUG", "").lower() in {"1", "true", "yes"}
     log_level = "debug" if debug else "info"
 
     proc = subprocess.Popen(
@@ -262,10 +262,10 @@ def main() -> int:
     signal.signal(signal.SIGINT, _cleanup)
 
     health_timeout_sec = float(
-        os.environ.get("BEANS_PRO_LAUNCHER_HEALTH_TIMEOUT_SEC", "1800")
+        os.environ.get("BEANS_NEXT_LAUNCHER_HEALTH_TIMEOUT_SEC", "1800")
     )
     deadline = time.time() + health_timeout_sec
-    interval_sec = float(os.environ.get("BEANS_PRO_HEALTH_INTERVAL_SEC", "5"))
+    interval_sec = float(os.environ.get("BEANS_NEXT_HEALTH_INTERVAL_SEC", "5"))
     health_url = f"{base_url}/health"
     info_url = f"{base_url}/info"
     while time.time() < deadline:

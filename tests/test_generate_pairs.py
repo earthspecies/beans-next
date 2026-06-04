@@ -33,7 +33,7 @@ def _write_min_wav(path: Path) -> None:
 class _Handler(BaseHTTPRequestHandler):
     """Minimal predictions_v1 HTTP handler for pair-generation tests."""
 
-    server_version = "BeansProTestHTTP/1.0"
+    server_version = "BEANSNextTestHTTP/1.0"
 
     def _send_json(self, obj: dict[str, Any]) -> None:
         body = json.dumps(obj).encode("utf-8")

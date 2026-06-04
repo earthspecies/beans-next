@@ -43,9 +43,7 @@ _METADATA_PARQUET_LEGACY: Final[str] = "beans_next_metadata.parquet"
 _METADATA_PARQUET_CANONICAL: Final[str] = "metadata.parquet"
 _AUDIO_PARQUET_LEGACY: Final[str] = "beans_next_audio.parquet"
 _METADATA_FILE_ENV: Final[str] = "BEANS_NEXT_HF_BEANS_NEXT_METADATA_FILE"
-_METADATA_FILE_ENV_COMPAT: Final[str] = "BEANS_PRO_HF_BEANS_NEXT_METADATA_FILE"
 _HF_SPLIT_DIRNAME_ENV: Final[str] = "BEANS_NEXT_HF_BEANS_NEXT_SPLIT_DIR"
-_HF_SPLIT_DIRNAME_ENV_COMPAT: Final[str] = "BEANS_PRO_HF_BEANS_NEXT_SPLIT_DIR"
 
 TIER_1_SUBSETS: Final[frozenset[str]] = frozenset(
     {
@@ -325,17 +323,11 @@ def _hub_metadata_filename(repo_id: str, revision: str) -> str:
     RuntimeError
         When no known metadata Parquet is present in the repo revision.
     """
-    env = (
-        os.environ.get(_METADATA_FILE_ENV, "").strip()
-        or os.environ.get(_METADATA_FILE_ENV_COMPAT, "").strip()
-    )
+    env = os.environ.get(_METADATA_FILE_ENV, "").strip()
     if env:
         return env
     files = _hub_dataset_files(repo_id, revision)
-    split_dir = (
-        os.environ.get(_HF_SPLIT_DIRNAME_ENV, "").strip()
-        or os.environ.get(_HF_SPLIT_DIRNAME_ENV_COMPAT, "").strip()
-    )
+    split_dir = os.environ.get(_HF_SPLIT_DIRNAME_ENV, "").strip()
     candidates = [
         _METADATA_PARQUET_CANONICAL,
         _METADATA_PARQUET_LEGACY,

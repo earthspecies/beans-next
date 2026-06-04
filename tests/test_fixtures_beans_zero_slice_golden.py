@@ -5,8 +5,8 @@ test suite fast and CPU-only.
 
 Activation requires:
 - bundle `manifest.yaml` is Phase B (`phase_b_golden_captured`)
-- env `BEANS_PRO_RUN_GOLDEN_TESTS=1`
-- env `BEANS_PRO_GOLDEN_PREDICT_URL` points to a live `POST /predict` endpoint
+- env `BEANS_NEXT_RUN_GOLDEN_TESTS=1`
+- env `BEANS_NEXT_GOLDEN_PREDICT_URL` points to a live `POST /predict` endpoint
 """
 
 from __future__ import annotations
@@ -242,15 +242,15 @@ def test_beans_zero_slice_v1_golden_regression(tmp_path: Path) -> None:
             f"manifest.phase={phase!r} (expected 'phase_b_golden_captured')."
         )
 
-    if os.environ.get("BEANS_PRO_RUN_GOLDEN_TESTS") != "1":
+    if os.environ.get("BEANS_NEXT_RUN_GOLDEN_TESTS") != "1":
         pytest.skip(
-            "Golden regression test is opt-in. Set BEANS_PRO_RUN_GOLDEN_TESTS=1 to run."
+            "Golden regression test is opt-in. Set BEANS_NEXT_RUN_GOLDEN_TESTS=1 to run."
         )
 
-    predict_url = os.environ.get("BEANS_PRO_GOLDEN_PREDICT_URL")
+    predict_url = os.environ.get("BEANS_NEXT_GOLDEN_PREDICT_URL")
     if not predict_url:
         pytest.skip(
-            "Golden regression test requires BEANS_PRO_GOLDEN_PREDICT_URL "
+            "Golden regression test requires BEANS_NEXT_GOLDEN_PREDICT_URL "
             "(full URL to POST /predict)."
         )
 

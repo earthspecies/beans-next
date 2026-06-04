@@ -8,7 +8,7 @@ Rows from ``EarthSpeciesProject/BEANS-Zero`` expose a stable string ``id``
 
 When no stable id is present, loaders synthesize::
 
-    beanspro:hf:<64-char lower-case hex sha256>
+    beans_next:hf:<64-char lower-case hex sha256>
 
 The digest is ``hashlib.sha256`` over UTF-8 segments joined by ``\\0`` in
 order: ``path_or_id``, ``split`` (empty string if missing), ``revision`` (empty
@@ -38,11 +38,9 @@ from typing import Any
 
 from beans_next.api.types import DatasetExample
 
-_SAMPLE_ID_PREFIX = "beanspro:hf:"
+_SAMPLE_ID_PREFIX = "beans_next:hf:"
 _AUDIO_CACHE_ENV = "BEANS_NEXT_HF_AUDIO_CACHE_DIR"
-_AUDIO_CACHE_ENV_COMPAT = "BEANS_PRO_HF_AUDIO_CACHE_DIR"
 _DEFAULT_HF_AUDIO_SAMPLE_RATE_ENV = "BEANS_NEXT_HF_DEFAULT_SAMPLE_RATE_HZ"
-_DEFAULT_HF_AUDIO_SAMPLE_RATE_ENV_COMPAT = "BEANS_PRO_HF_DEFAULT_SAMPLE_RATE_HZ"
 _DEFAULT_HF_AUDIO_SAMPLE_RATE_HZ = 32000
 
 
@@ -55,7 +53,7 @@ def _audio_cache_dir() -> str:
     str
         Absolute path to the cache directory.
     """
-    root = os.environ.get(_AUDIO_CACHE_ENV) or os.environ.get(_AUDIO_CACHE_ENV_COMPAT)
+    root = os.environ.get(_AUDIO_CACHE_ENV)
     if root is None or not root.strip():
         root = tempfile.mkdtemp(prefix="beans-next-hf-audio-")
     os.makedirs(root, exist_ok=True)
@@ -125,7 +123,7 @@ def synthesize_hf_sample_id(
     revision: str | None,
     ordinal: int,
 ) -> str:
-    """Build the fallback ``beanspro:hf:…`` sample id for a Hub row.
+    """Build the fallback ``beans_next:hf:…`` sample id for a Hub row.
 
     Parameters
     ----------
@@ -256,9 +254,8 @@ def _ensure_audio_path_from_array(
     sample_rate
         Explicit sample rate in Hz to use when ``audio_val`` is a bare array
         (``list`` or ``numpy.ndarray``) that carries no embedded rate.
-        Falls back to the ``BEANS_NEXT_HF_DEFAULT_SAMPLE_RATE_HZ`` env var (compat:
-        ``BEANS_PRO_HF_DEFAULT_SAMPLE_RATE_HZ``) and
-        then to the built-in default (32 kHz).
+        Falls back to the ``BEANS_NEXT_HF_DEFAULT_SAMPLE_RATE_HZ`` env var and then
+        to the built-in default (32 kHz).
 
     Returns
     -------
@@ -289,9 +286,7 @@ def _ensure_audio_path_from_array(
         if sample_rate is not None:
             sr = sample_rate
         else:
-            sr_raw = os.environ.get(
-                _DEFAULT_HF_AUDIO_SAMPLE_RATE_ENV
-            ) or os.environ.get(_DEFAULT_HF_AUDIO_SAMPLE_RATE_ENV_COMPAT)
+            sr_raw = os.environ.get(_DEFAULT_HF_AUDIO_SAMPLE_RATE_ENV)
             if sr_raw is not None and sr_raw.strip():
                 try:
                     sr = int(sr_raw)
@@ -309,9 +304,7 @@ def _ensure_audio_path_from_array(
                 if sample_rate is not None:
                     sr = sample_rate
                 else:
-                    sr_raw = os.environ.get(
-                        _DEFAULT_HF_AUDIO_SAMPLE_RATE_ENV
-                    ) or os.environ.get(_DEFAULT_HF_AUDIO_SAMPLE_RATE_ENV_COMPAT)
+                    sr_raw = os.environ.get(_DEFAULT_HF_AUDIO_SAMPLE_RATE_ENV)
                     if sr_raw is not None and sr_raw.strip():
                         try:
                             sr = int(sr_raw)

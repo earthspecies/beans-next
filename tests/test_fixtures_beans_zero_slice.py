@@ -143,9 +143,9 @@ def test_fixture_minimal_end_to_end_against_dummy_launcher(
     out_dir.mkdir(parents=True, exist_ok=True)
 
     env = dict(os.environ)
-    env["BEANS_PRO_FIXTURE_DIR"] = str(beans_zero_slice_bundle)
-    env["BEANS_PRO_OUTPUT_DIR"] = str(out_dir)
-    env["BEANS_PRO_PREDICT_URL"] = "http://127.0.0.1:19091/predict"
+    env["BEANS_NEXT_FIXTURE_DIR"] = str(beans_zero_slice_bundle)
+    env["BEANS_NEXT_OUTPUT_DIR"] = str(out_dir)
+    env["BEANS_NEXT_PREDICT_URL"] = "http://127.0.0.1:19091/predict"
 
     # Own the dummy launcher lifecycle via the wrapper.
     # Run the harness as the child command.
@@ -171,9 +171,9 @@ def test_fixture_minimal_end_to_end_against_dummy_launcher(
         except Exception:  # noqa: BLE001
             score_sample = None
 
-        bundle = Path(os.environ["BEANS_PRO_FIXTURE_DIR"]).resolve()
-        out_dir = Path(os.environ["BEANS_PRO_OUTPUT_DIR"]).resolve()
-        predict_url = os.environ["BEANS_PRO_PREDICT_URL"]
+        bundle = Path(os.environ["BEANS_NEXT_FIXTURE_DIR"]).resolve()
+        out_dir = Path(os.environ["BEANS_NEXT_OUTPUT_DIR"]).resolve()
+        predict_url = os.environ["BEANS_NEXT_PREDICT_URL"]
 
         manifest = yaml.safe_load(
             (bundle / "manifest.yaml").read_text(encoding="utf-8")

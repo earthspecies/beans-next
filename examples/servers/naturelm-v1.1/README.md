@@ -77,7 +77,7 @@ launcher environment (e.g., a Slurm job venv).
 
 The authoritative `esp-research` NatureLM-audio inference environment (`NatureLM-audio-v1.5`) targets
 Python **3.12**. When serving v1.1 on Slurm, prefer Python 3.12 (the Slurm serve script defaults to
-`BEANS_PRO_UV_PYTHON=3.12`).
+`BEANS_NEXT_UV_PYTHON=3.12`).
 
 ### Recommended: local `esp-research` checkout (authoritative inference instructions)
 

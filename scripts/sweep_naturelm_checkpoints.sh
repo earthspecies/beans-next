@@ -8,7 +8,7 @@ set -euo pipefail
 : "${SWEEP_CHECKPOINT_LIST:?SWEEP_CHECKPOINT_LIST is required (newline-delimited GCS URIs)}"
 
 : "${SWEEP_BEANS_ZERO_TASK:=beans_zero_esc50_official}"
-: "${SWEEP_BEANS_PRO_TASK:=beans_next_crow_description}"
+: "${SWEEP_BEANS_NEXT_TASK:=beans_next_crow_description}"
 : "${SWEEP_LIMIT:=10}"
 : "${SWEEP_OUTPUT_DIR:=results/sweep/naturelm_v1.1}"
 : "${SWEEP_SLURM_PARTITION:=a100-40}"
@@ -141,7 +141,7 @@ while IFS= read -r uri; do
 
   current_job_id="$(
     ssh slurm "cd \"${SLURM_REPO_ROOT}\" && \
-      BEANS_PRO_PORT=\"${SWEEP_PORT}\" BEANS_PRO_DEBUG=1 NATURELM_GCS_CHECKPOINT_URI=\"${uri}\" \
+      BEANS_NEXT_PORT=\"${SWEEP_PORT}\" BEANS_NEXT_DEBUG=1 NATURELM_GCS_CHECKPOINT_URI=\"${uri}\" \
       sbatch --partition=\"${SWEEP_SLURM_PARTITION}\" --parsable examples/slurm/serve_naturelm_v1_1.sh"
   )"
   echo "  Serve job: ${current_job_id}"
@@ -175,13 +175,13 @@ while IFS= read -r uri; do
     echo "  WARNING: model_revision mismatch (expected ${checkpoint_basename}, got ${REVISION})"
   fi
 
-  for task_id in "$SWEEP_BEANS_ZERO_TASK" "$SWEEP_BEANS_PRO_TASK"; do
+  for task_id in "$SWEEP_BEANS_ZERO_TASK" "$SWEEP_BEANS_NEXT_TASK"; do
     smoke_dir="${out_dir%/}/smoke_${task_id}"
     echo "  Smoke: task=${task_id} limit=1"
     run_one_task "$checkpoint_basename" "$out_dir" "$task_id" "$predict_url" 1 "$smoke_dir"
   done
 
-  for task_id in "$SWEEP_BEANS_ZERO_TASK" "$SWEEP_BEANS_PRO_TASK"; do
+  for task_id in "$SWEEP_BEANS_ZERO_TASK" "$SWEEP_BEANS_NEXT_TASK"; do
     run_dir="${out_dir%/}/${task_id}_limit${SWEEP_LIMIT}"
     echo "  Run: task=${task_id} limit=${SWEEP_LIMIT}"
     run_one_task "$checkpoint_basename" "$out_dir" "$task_id" "$predict_url" "${SWEEP_LIMIT}" "$run_dir"

@@ -24,7 +24,7 @@
 set -euo pipefail
 
 _debug_enabled() {
-  case "${BEANS_NEXT_DEBUG:-${BEANS_PRO_DEBUG:-0}}" in
+  case "${BEANS_NEXT_DEBUG:-0}" in
     1|true|TRUE|yes|YES) return 0 ;;
     *) return 1 ;;
   esac
@@ -44,21 +44,21 @@ if [[ -z "$REPO" ]]; then
   exit 1
 fi
 
-# Fixed port by default; override with BEANS_NEXT_PORT (compat: BEANS_PRO_PORT).
-PORT="${BEANS_NEXT_PORT:-${BEANS_PRO_PORT:-19086}}"
+# Fixed port by default; override with BEANS_NEXT_PORT.
+PORT="${BEANS_NEXT_PORT:-19086}"
 
 # Job-scoped uv environment on node-local scratch.
-export UV_PROJECT_ENVIRONMENT="${BEANS_NEXT_UV_PROJECT_ENVIRONMENT:-${BEANS_PRO_UV_PROJECT_ENVIRONMENT:-/scratch/$USER/venvs/beans-next-gemini-proxy-${SLURM_JOB_ID}}}"
+export UV_PROJECT_ENVIRONMENT="${BEANS_NEXT_UV_PROJECT_ENVIRONMENT:-/scratch/$USER/venvs/beans-next-gemini-proxy-${SLURM_JOB_ID}}"
 
 # URL file written once healthy + checked.
-URL_DIR="${BEANS_NEXT_URL_DIR:-${BEANS_PRO_URL_DIR:-$HOME/beans-next-launchers}}"
+URL_DIR="${BEANS_NEXT_URL_DIR:-$HOME/beans-next-launchers}"
 mkdir -p "$URL_DIR"
 URL_FILE="$URL_DIR/${SLURM_JOB_ID}.url"
 rm -f "$URL_FILE"
 
 # Prefer Python 3.11+ for this repo.
 export UV_PYTHON_DOWNLOADS="${UV_PYTHON_DOWNLOADS:-auto}"
-export UV_PYTHON="${BEANS_NEXT_UV_PYTHON:-${BEANS_PRO_UV_PYTHON:-3.11}}"
+export UV_PYTHON="${BEANS_NEXT_UV_PYTHON:-3.11}"
 
 if _debug_enabled; then
   export PS4='+[$(_ts)] ${BASH_SOURCE##*/}:${LINENO}: '
@@ -75,7 +75,7 @@ if [[ ! -x "${UV_PROJECT_ENVIRONMENT%/}/bin/python" ]]; then
 fi
 
 # Install minimal deps (FastAPI + Uvicorn + httpx live in the dev group).
-if [[ "${BEANS_NEXT_SKIP_UV_SYNC:-${BEANS_PRO_SKIP_UV_SYNC:-0}}" != "1" ]]; then
+if [[ "${BEANS_NEXT_SKIP_UV_SYNC:-0}" != "1" ]]; then
   (cd "$REPO" && uv sync --group dev)
 else
   _step "BEANS_NEXT_SKIP_UV_SYNC=1 set; skipping 'uv sync --group dev'"
@@ -224,7 +224,7 @@ def main() -> int:
     os.makedirs(os.path.dirname(url_file), exist_ok=True)
 
     hostname = (
-        os.environ.get("BEANS_PRO_HOSTNAME")
+        os.environ.get("BEANS_NEXT_HOSTNAME")
         or _gcp_internal_ip()
         or socket.gethostname()
     )
@@ -294,7 +294,7 @@ def main() -> int:
         wf.writeframes(b"\x00\x00" * 16)
     good_wav_b64 = base64.b64encode(buf.getvalue()).decode("ascii")
 
-    smoke_timeout = float(os.environ.get("BEANS_PRO_SMOKE_TIMEOUT_SEC", "300"))
+    smoke_timeout = float(os.environ.get("BEANS_NEXT_SMOKE_TIMEOUT_SEC", "300"))
     predict_body = {
         "schema_version": "predictions_v1",
         "requests": [

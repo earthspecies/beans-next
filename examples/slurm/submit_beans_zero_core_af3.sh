@@ -13,7 +13,7 @@
 set -euo pipefail
 
 RUN_TAG="af3_$(date +%Y%m%d_%H%M%S)"
-OUT_DIR="${BEANS_PRO_OUT_DIR:-${SCRATCH:-$HOME}/beans-next-results/$RUN_TAG}"
+OUT_DIR="${BEANS_NEXT_OUT_DIR:-${SCRATCH:-$HOME}/beans-next-results/$RUN_TAG}"
 
 echo "Submitting serving job..."
 SERVE_JOB=$(sbatch --parsable examples/slurm/serve_af3.sh)
@@ -23,10 +23,10 @@ echo "  Note: AF3 takes up to 15 min to load weights."
 
 echo "Submitting inference job (depends on serve job $SERVE_JOB)..."
 INFER_JOB=$(
-  BEANS_PRO_URL_FILE="$HOME/beans-next-launchers/$SERVE_JOB.url" \
-  BEANS_PRO_SUITE=beans_zero_core \
-  BEANS_PRO_RUN_ID="$RUN_TAG" \
-  BEANS_PRO_OUT_DIR="$OUT_DIR" \
+  BEANS_NEXT_URL_FILE="$HOME/beans-next-launchers/$SERVE_JOB.url" \
+  BEANS_NEXT_SUITE=beans_zero_core \
+  BEANS_NEXT_RUN_ID="$RUN_TAG" \
+  BEANS_NEXT_OUT_DIR="$OUT_DIR" \
   sbatch --parsable --dependency=after:"$SERVE_JOB" examples/slurm/run_inference.sh
 )
 echo "  Inference job: $INFER_JOB"

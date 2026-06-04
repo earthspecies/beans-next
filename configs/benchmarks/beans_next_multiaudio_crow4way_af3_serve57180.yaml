@@ -1,11 +1,11 @@
-# Beans-Pro MultiAudio crow 4-way — Audio Flamingo Next (served on Slurm)
+# BEANS-Next MultiAudio crow 4-way — Audio Flamingo Next (served on Slurm)
 #
 # This config is meant to be used with the Slurm two-job (serve -> inference) pattern.
 # Serve AF3 with:
 #   sbatch examples/slurm/serve_af3.sh
 # and run inference with:
-#   BEANS_PRO_URL_FILE="$HOME/beans-next-launchers/<SERVE_JOB_ID>.url" \
-#   BEANS_PRO_CONFIG=configs/benchmarks/beans_next_multiaudio_crow4way_af3_serve57180.yaml \
+#   BEANS_NEXT_URL_FILE="$HOME/beans-next-launchers/<SERVE_JOB_ID>.url" \
+#   BEANS_NEXT_CONFIG=configs/benchmarks/beans_next_multiaudio_crow4way_af3_serve57180.yaml \
 #   sbatch --dependency=after:<SERVE_JOB_ID> examples/slurm/run_inference.sh
 #
 # Note: `models.inline.predict_url` must match the server written into the URL file.

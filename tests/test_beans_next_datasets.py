@@ -1,8 +1,8 @@
 """Unit tests for custom BEANS-Next dataset classes.
 
 These tests validate the offline, local-file behavior of:
-- `beans_next.datasets.beans_next.BeansPro` (single-audio rows)
-- `beans_next.datasets.beans_next_multiaudio.BeansProMultiAudio` (multi-audio rows)
+- `beans_next.datasets.beans_next.BEANSNext` (single-audio rows)
+- `beans_next.datasets.beans_next_multiaudio.BEANSNextMultiAudio` (multi-audio rows)
 
 The goal is to lock down the per-row contract (required keys, audio decoding,
 and `output_take_and_give` mapping) without depending on GCS availability.
@@ -40,7 +40,7 @@ def _write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
 
 
 def test_beans_next_single_audio_row_contract(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    from beans_next.datasets.beans_next import BeansPro
+    from beans_next.datasets.beans_next import BEANSNext
 
     audio_rel = Path("audio") / "example.wav"
     _write_wav(tmp_path / audio_rel, sample_rate=16_000, n_frames=400)
@@ -66,13 +66,13 @@ def test_beans_next_single_audio_row_contract(monkeypatch: pytest.MonkeyPatch, t
     )
 
     monkeypatch.setattr(
-        BeansPro,
+        BEANSNext,
         "info",
-        BeansPro.info.model_copy(update={"split_paths": {"unit": str(jsonl_path)}}),
+        BEANSNext.info.model_copy(update={"split_paths": {"unit": str(jsonl_path)}}),
     )
-    monkeypatch.setattr(BeansPro, "_default_data_roots", {"unit": str(tmp_path)})
+    monkeypatch.setattr(BEANSNext, "_default_data_roots", {"unit": str(tmp_path)})
 
-    ds = BeansPro(split="unit", sample_rate=16_000, data_root=str(tmp_path), backend="polars")
+    ds = BEANSNext(split="unit", sample_rate=16_000, data_root=str(tmp_path), backend="polars")
     item = ds[0]
 
     assert isinstance(item, dict)
@@ -84,7 +84,7 @@ def test_beans_next_single_audio_row_contract(monkeypatch: pytest.MonkeyPatch, t
 
 
 def test_beans_next_single_audio_take_and_give(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    from beans_next.datasets.beans_next import BeansPro
+    from beans_next.datasets.beans_next import BEANSNext
 
     audio_rel = Path("audio") / "example.wav"
     _write_wav(tmp_path / audio_rel, sample_rate=16_000, n_frames=80)
@@ -103,13 +103,13 @@ def test_beans_next_single_audio_take_and_give(monkeypatch: pytest.MonkeyPatch, 
     )
 
     monkeypatch.setattr(
-        BeansPro,
+        BEANSNext,
         "info",
-        BeansPro.info.model_copy(update={"split_paths": {"unit": str(jsonl_path)}}),
+        BEANSNext.info.model_copy(update={"split_paths": {"unit": str(jsonl_path)}}),
     )
-    monkeypatch.setattr(BeansPro, "_default_data_roots", {"unit": str(tmp_path)})
+    monkeypatch.setattr(BEANSNext, "_default_data_roots", {"unit": str(tmp_path)})
 
-    ds = BeansPro(
+    ds = BEANSNext(
         split="unit",
         data_root=str(tmp_path),
         output_take_and_give={
@@ -162,7 +162,7 @@ def test_beans_next_multiaudio_row_contract(monkeypatch: pytest.MonkeyPatch, tmp
     # Patch split map to point at local JSONL.
     monkeypatch.setattr(mod, "_SPLITS", {"unit": str(jsonl_path)})
 
-    ds = mod.BeansProMultiAudio(split="unit", data_root=str(tmp_path), sample_rate=32_000)
+    ds = mod.BEANSNextMultiAudio(split="unit", data_root=str(tmp_path), sample_rate=32_000)
     item = ds[0]
 
     assert "audios" in item
@@ -191,7 +191,7 @@ def test_beans_next_multiaudio_take_and_give(monkeypatch: pytest.MonkeyPatch, tm
     )
 
     monkeypatch.setattr(mod, "_SPLITS", {"unit": str(jsonl_path)})
-    ds = mod.BeansProMultiAudio(
+    ds = mod.BEANSNextMultiAudio(
         split="unit",
         data_root=str(tmp_path),
         output_take_and_give={"id": "sample_id", "audios": "audios"},

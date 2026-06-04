@@ -432,7 +432,7 @@ def main(argv: list[str] | None = None) -> int:
         {
             "beans_next": {
                 "git_sha": os.environ.get("GIT_SHA"),
-                "package_version": os.environ.get("BEANS_PRO_VERSION"),
+                "package_version": os.environ.get("BEANS_NEXT_VERSION"),
             },
             "schemas": {"predictions_wire_schema": "predictions_v1"},
         },

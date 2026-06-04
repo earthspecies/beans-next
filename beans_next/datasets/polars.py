@@ -8,7 +8,7 @@ Sample identifiers
 ------------------
 Explicit non-empty string values under the configured ``id_field`` (default
 ``\"id\"``) are reused as ``DatasetExample.sample_id``. Otherwise a synthetic id
-is built as ``beanspro:pl:`` followed by a 64-character lower-case hex
+is built as ``beans_next:pl:`` followed by a 64-character lower-case hex
 ``hashlib.sha256`` digest. The digest input is UTF-8 segments joined by ``\\0``
 in order: normalized ``parquet_path``, subset filter string (empty when no
 ``split`` filter is applied), a reserved empty segment (parity with the HF
@@ -36,8 +36,8 @@ from typing import Any
 from beans_next.api.types import DatasetExample
 from beans_next.datasets.base import hf_row_to_dataset_example
 
-_SAMPLE_ID_PREFIX = "beanspro:pl:"
-_ROW_INDEX = "__beanspro_row"
+_SAMPLE_ID_PREFIX = "beans_next:pl:"
+_ROW_INDEX = "__beans_next_row"
 
 
 @lru_cache(maxsize=1)
@@ -72,7 +72,7 @@ def synthesize_polars_sample_id(
     subset: str | None,
     ordinal: int,
 ) -> str:
-    """Build the fallback ``beanspro:pl:…`` sample id for a Parquet row.
+    """Build the fallback ``beans_next:pl:…`` sample id for a Parquet row.
 
     Parameters
     ----------

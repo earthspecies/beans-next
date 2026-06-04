@@ -44,7 +44,7 @@ beans-next run --backend huggingface ...
 data_source: huggingface
 
 # Env var fallback (used when flag and YAML field are both absent)
-BEANS_PRO_DATA_SOURCE=huggingface beans-next run ...
+BEANS_NEXT_DATA_SOURCE=huggingface beans-next run ...
 ```
 
 The `huggingface` backend requires `HF_TOKEN` if the dataset is private:
@@ -297,9 +297,9 @@ SERVE_JOB=$(sbatch --parsable examples/slurm/serve_naturelm_v1_0.sh)
 echo "Serving job: $SERVE_JOB"
 
 # 2. Submit inference job (starts when serving job is running)
-BEANS_PRO_URL_FILE=$HOME/beans-next-launchers/$SERVE_JOB.url \
-BEANS_PRO_SUITE=beans_zero_core \
-BEANS_PRO_OUT_DIR=$SCRATCH/results/naturelm_v1_0_$(date +%Y%m%d) \
+BEANS_NEXT_URL_FILE=$HOME/beans-next-launchers/$SERVE_JOB.url \
+BEANS_NEXT_SUITE=beans_zero_core \
+BEANS_NEXT_OUT_DIR=$SCRATCH/results/naturelm_v1_0_$(date +%Y%m%d) \
 sbatch --dependency=after:$SERVE_JOB examples/slurm/run_inference.sh
 ```
 
@@ -347,9 +347,9 @@ uv run beans-next run \
 ```bash
 SERVE_JOB=$(HF_TOKEN=hf_... sbatch --parsable examples/slurm/serve_naturelm_v1_1.sh)
 
-BEANS_PRO_URL_FILE=$HOME/beans-next-launchers/$SERVE_JOB.url \
-BEANS_PRO_SUITE=beans_zero_core \
-BEANS_PRO_OUT_DIR=$SCRATCH/results/naturelm_v1_1_$(date +%Y%m%d) \
+BEANS_NEXT_URL_FILE=$HOME/beans-next-launchers/$SERVE_JOB.url \
+BEANS_NEXT_SUITE=beans_zero_core \
+BEANS_NEXT_OUT_DIR=$SCRATCH/results/naturelm_v1_1_$(date +%Y%m%d) \
 sbatch --dependency=after:$SERVE_JOB examples/slurm/run_inference.sh
 ```
 
@@ -390,9 +390,9 @@ uv run beans-next run \
 ```bash
 SERVE_JOB=$(sbatch --parsable examples/slurm/serve_af3.sh)
 
-BEANS_PRO_URL_FILE=$HOME/beans-next-launchers/$SERVE_JOB.url \
-BEANS_PRO_SUITE=beans_zero_core \
-BEANS_PRO_OUT_DIR=$SCRATCH/results/af3_$(date +%Y%m%d) \
+BEANS_NEXT_URL_FILE=$HOME/beans-next-launchers/$SERVE_JOB.url \
+BEANS_NEXT_SUITE=beans_zero_core \
+BEANS_NEXT_OUT_DIR=$SCRATCH/results/af3_$(date +%Y%m%d) \
 sbatch --dependency=after:$SERVE_JOB examples/slurm/run_inference.sh
 ```
 
@@ -447,9 +447,9 @@ uv run beans-next run \
 ```bash
 SERVE_JOB=$(VLLM_MODEL_ID=Qwen/Qwen3-Omni-7B sbatch --parsable examples/slurm/serve_vllm.sh)
 
-BEANS_PRO_URL_FILE=$HOME/beans-next-launchers/$SERVE_JOB.url \
-BEANS_PRO_SUITE=beans_zero_core \
-BEANS_PRO_OUT_DIR=$SCRATCH/results/qwen3_omni_$(date +%Y%m%d) \
+BEANS_NEXT_URL_FILE=$HOME/beans-next-launchers/$SERVE_JOB.url \
+BEANS_NEXT_SUITE=beans_zero_core \
+BEANS_NEXT_OUT_DIR=$SCRATCH/results/qwen3_omni_$(date +%Y%m%d) \
 sbatch --dependency=after:$SERVE_JOB examples/slurm/run_inference.sh
 ```
 
@@ -702,9 +702,9 @@ JOB_QWN=$(VLLM_MODEL_ID=Qwen/Qwen3-Omni-7B sbatch --parsable examples/slurm/serv
 
 # Submit inference jobs for each
 for JOB_ID in $JOB_NLM $JOB_AF3 $JOB_QWN; do
-  BEANS_PRO_URL_FILE=$HOME/beans-next-launchers/$JOB_ID.url \
-  BEANS_PRO_SUITE=beans_zero_core \
-  BEANS_PRO_OUT_DIR=$SCRATCH/results/run_${JOB_ID} \
+  BEANS_NEXT_URL_FILE=$HOME/beans-next-launchers/$JOB_ID.url \
+  BEANS_NEXT_SUITE=beans_zero_core \
+  BEANS_NEXT_OUT_DIR=$SCRATCH/results/run_${JOB_ID} \
   sbatch --dependency=after:$JOB_ID examples/slurm/run_inference.sh
 done
 ```

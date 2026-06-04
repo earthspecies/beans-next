@@ -11,10 +11,10 @@
 #
 # Usage (two-job pattern):
 #   SERVE_JOB_ID=12345
-#   BEANS_PRO_URL_FILE=$HOME/beans-next-launchers/$SERVE_JOB_ID.url \
-#   BEANS_PRO_LIMIT=1 \
-#   BEANS_PRO_OUT_DIR=/scratch/$USER/results/esc50_official_$SERVE_JOB_ID \
-#   BEANS_PRO_RUN_ID=esc50_official_${SERVE_JOB_ID} \
+#   BEANS_NEXT_URL_FILE=$HOME/beans-next-launchers/$SERVE_JOB_ID.url \
+#   BEANS_NEXT_LIMIT=1 \
+#   BEANS_NEXT_OUT_DIR=/scratch/$USER/results/esc50_official_$SERVE_JOB_ID \
+#   BEANS_NEXT_RUN_ID=esc50_official_${SERVE_JOB_ID} \
 #   sbatch --dependency=after:$SERVE_JOB_ID examples/slurm/run_esc50_official_inference.sh
 #
 # Notes:
@@ -22,7 +22,7 @@
 # - Readiness discipline for the serve job is still required:
 #   poll `squeue --me` until the serve job is `R`, then wait for the URL file, then poll `/health`.
 #
-# CPUs: 8 matches the default BEANS_PRO_ESP_DATA_WORKERS=8 set by run_inference.sh.
+# CPUs: 8 matches the default BEANS_NEXT_ESP_DATA_WORKERS=8 set by run_inference.sh.
 #SBATCH --partition=cpu
 #SBATCH --cpus-per-task=8
 #SBATCH --time=4:00:00
@@ -32,9 +32,9 @@
 
 set -euo pipefail
 
-export BEANS_PRO_TASK_ID="${BEANS_PRO_TASK_ID:-beans_zero_esc50_official}"
-export BEANS_PRO_DATASET_NAME="${BEANS_PRO_DATASET_NAME:-esc50}"
-export BEANS_PRO_LIMIT="${BEANS_PRO_LIMIT:-1}"
+export BEANS_NEXT_TASK_ID="${BEANS_NEXT_TASK_ID:-beans_zero_esc50_official}"
+export BEANS_NEXT_DATASET_NAME="${BEANS_NEXT_DATASET_NAME:-esc50}"
+export BEANS_NEXT_LIMIT="${BEANS_NEXT_LIMIT:-1}"
 
 exec "${SLURM_SUBMIT_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}/examples/slurm/run_inference.sh"
 

@@ -10,13 +10,13 @@
 #   # After submitting a serving job (e.g. serve_af3.sh), note its job id:
 #   SERVE_JOB_ID=12345
 #
-#   BEANS_PRO_URL_FILE=$HOME/beans-next-launchers/$SERVE_JOB_ID.url \
-#   BEANS_PRO_SUITE=beans_zero_core \
-#   BEANS_PRO_LIMIT=1 \
-#   BEANS_PRO_OUT_DIR=/scratch/$USER/results/af3_run \
+#   BEANS_NEXT_URL_FILE=$HOME/beans-next-launchers/$SERVE_JOB_ID.url \
+#   BEANS_NEXT_SUITE=beans_zero_core \
+#   BEANS_NEXT_LIMIT=1 \
+#   BEANS_NEXT_OUT_DIR=/scratch/$USER/results/af3_run \
 #   sbatch --dependency=after:$SERVE_JOB_ID examples/slurm/run_inference.sh
 #
-# Keep BEANS_PRO_LIMIT in the 1–5 range while debugging wiring or launcher issues.
+# Keep BEANS_NEXT_LIMIT in the 1–5 range while debugging wiring or launcher issues.
 #
 # The job waits for the URL file to appear (written by the serving job), then polls
 # `GET /health` before starting inference.
@@ -26,7 +26,7 @@
 # Override partition at submit time if needed:
 #   sbatch --partition=cpu examples/slurm/run_inference.sh
 #
-# CPUs: 8 supports BEANS_PRO_ESP_DATA_WORKERS=8 parallel GCS downloads (3× speedup
+# CPUs: 8 supports BEANS_NEXT_ESP_DATA_WORKERS=8 parallel GCS downloads (3× speedup
 # vs sequential; see scripts/bench/bench_beans_zero_load.py --full-audio --workers 8).
 # Raise to 16+ if the node has enough CPUs and GCS throughput still bottlenecks.
 #SBATCH --partition=cpu
@@ -39,73 +39,46 @@
 set -euo pipefail
 
 # ---------------------------------------------------------------------------
-# BEANS_NEXT_* environment variables (preferred) + BEANS_PRO_* compatibility.
+# BEANS_NEXT_* environment variables.
 #
-# Policy:
-# - All new workflows should use BEANS_NEXT_*.
-# - Legacy BEANS_PRO_* variables are still accepted as fallbacks.
+# Policy: all workflows use BEANS_NEXT_*.
 # ---------------------------------------------------------------------------
 
-_env_first() {
-  local new_name="$1"
-  local old_name="$2"
-  local default_val="$3"
-  local v="${!new_name:-}"
-  if [[ -n "$v" ]]; then
-    printf '%s' "$v"
-    return 0
-  fi
-  v="${!old_name:-}"
-  if [[ -n "$v" ]]; then
-    printf '%s' "$v"
-    return 0
-  fi
-  printf '%s' "$default_val"
-}
-
-_export_compat() {
-  local new_name="$1"
-  local old_name="$2"
-  local default_val="${3:-}"
-  # shellcheck disable=SC2163
-  export "${new_name}=$(_env_first "$new_name" "$old_name" "$default_val")"
-}
-
 # Canonical knobs (exported so subprocesses inherit them).
-_export_compat "BEANS_NEXT_DEBUG" "BEANS_PRO_DEBUG" "0"
-_export_compat "BEANS_NEXT_SKIP_UV_SYNC" "BEANS_PRO_SKIP_UV_SYNC" "0"
-_export_compat "BEANS_NEXT_DATA_SOURCE" "BEANS_PRO_DATA_SOURCE" "esp_data"
-_export_compat "BEANS_NEXT_URL_FILE" "BEANS_PRO_URL_FILE" ""
-_export_compat "BEANS_NEXT_URL_WAIT_TIMEOUT_SEC" "BEANS_PRO_URL_WAIT_TIMEOUT_SEC" "1800"
-_export_compat "BEANS_NEXT_URL_WAIT_INTERVAL_SEC" "BEANS_PRO_URL_WAIT_INTERVAL_SEC" "5"
-_export_compat "BEANS_NEXT_HEALTH_TIMEOUT_SEC" "BEANS_PRO_HEALTH_TIMEOUT_SEC" "1800"
-_export_compat "BEANS_NEXT_HEALTH_INTERVAL_SEC" "BEANS_PRO_HEALTH_INTERVAL_SEC" "5"
-_export_compat "BEANS_NEXT_HEALTH_CONNECT_TIMEOUT_SEC" "BEANS_PRO_HEALTH_CONNECT_TIMEOUT_SEC" "2"
-_export_compat "BEANS_NEXT_HEALTH_MAX_TIME_SEC" "BEANS_PRO_HEALTH_MAX_TIME_SEC" "10"
-_export_compat "BEANS_NEXT_HTTP_TIMEOUT_SEC" "BEANS_PRO_HTTP_TIMEOUT_SEC" ""
-_export_compat "BEANS_NEXT_UV_PYTHON" "BEANS_PRO_UV_PYTHON" "3.11"
-_export_compat "BEANS_NEXT_HARD_EXIT" "BEANS_PRO_HARD_EXIT" "1"
-_export_compat "BEANS_NEXT_COPY_RESULTS_TO_HOME" "BEANS_PRO_COPY_RESULTS_TO_HOME" "1"
-_export_compat "BEANS_NEXT_RESULTS_HOME_DIR" "BEANS_PRO_RESULTS_HOME_DIR" ""
-_export_compat "BEANS_NEXT_UPLOAD_GCS" "BEANS_PRO_UPLOAD_GCS" "1"
-_export_compat "BEANS_NEXT_GCS_PREFIX" "BEANS_PRO_GCS_PREFIX" ""
-_export_compat "BEANS_NEXT_GCS_REL_PATH" "BEANS_PRO_GCS_REL_PATH" ""
-_export_compat "BEANS_NEXT_RUN_KIND" "BEANS_PRO_RUN_KIND" ""
-_export_compat "BEANS_NEXT_CONFIG" "BEANS_PRO_CONFIG" ""
-_export_compat "BEANS_NEXT_TASK_ID" "BEANS_PRO_TASK_ID" ""
-_export_compat "BEANS_NEXT_DATASET_NAME" "BEANS_PRO_DATASET_NAME" ""
-_export_compat "BEANS_NEXT_SUITE" "BEANS_PRO_SUITE" ""
-_export_compat "BEANS_NEXT_SPLIT" "BEANS_PRO_SPLIT" ""
-_export_compat "BEANS_NEXT_HF_PATH" "BEANS_PRO_HF_PATH" ""
-_export_compat "BEANS_NEXT_HF_CONFIG" "BEANS_PRO_HF_CONFIG" ""
-_export_compat "BEANS_NEXT_LIMIT" "BEANS_PRO_LIMIT" ""
-_export_compat "BEANS_NEXT_RUN_ID" "BEANS_PRO_RUN_ID" ""
-_export_compat "BEANS_NEXT_OUT_DIR" "BEANS_PRO_OUT_DIR" ""
-_export_compat "BEANS_NEXT_RESUME" "BEANS_PRO_RESUME" "0"
-_export_compat "BEANS_NEXT_INFERENCE_WORKERS" "BEANS_PRO_INFERENCE_WORKERS" "1"
-_export_compat "BEANS_NEXT_ESP_DATA_WORKERS" "BEANS_PRO_ESP_DATA_WORKERS" ""
-_export_compat "BEANS_NEXT_HF_WORKERS" "BEANS_PRO_HF_WORKERS" ""
-_export_compat "BEANS_NEXT_DEBUG_FAULTHANDLER_SEC" "BEANS_PRO_DEBUG_FAULTHANDLER_SEC" "300"
+export BEANS_NEXT_DEBUG="${BEANS_NEXT_DEBUG:-0}"
+export BEANS_NEXT_SKIP_UV_SYNC="${BEANS_NEXT_SKIP_UV_SYNC:-0}"
+export BEANS_NEXT_DATA_SOURCE="${BEANS_NEXT_DATA_SOURCE:-esp_data}"
+export BEANS_NEXT_URL_FILE="${BEANS_NEXT_URL_FILE:-}"
+export BEANS_NEXT_URL_WAIT_TIMEOUT_SEC="${BEANS_NEXT_URL_WAIT_TIMEOUT_SEC:-1800}"
+export BEANS_NEXT_URL_WAIT_INTERVAL_SEC="${BEANS_NEXT_URL_WAIT_INTERVAL_SEC:-5}"
+export BEANS_NEXT_HEALTH_TIMEOUT_SEC="${BEANS_NEXT_HEALTH_TIMEOUT_SEC:-1800}"
+export BEANS_NEXT_HEALTH_INTERVAL_SEC="${BEANS_NEXT_HEALTH_INTERVAL_SEC:-5}"
+export BEANS_NEXT_HEALTH_CONNECT_TIMEOUT_SEC="${BEANS_NEXT_HEALTH_CONNECT_TIMEOUT_SEC:-2}"
+export BEANS_NEXT_HEALTH_MAX_TIME_SEC="${BEANS_NEXT_HEALTH_MAX_TIME_SEC:-10}"
+export BEANS_NEXT_HTTP_TIMEOUT_SEC="${BEANS_NEXT_HTTP_TIMEOUT_SEC:-}"
+export BEANS_NEXT_UV_PYTHON="${BEANS_NEXT_UV_PYTHON:-3.11}"
+export BEANS_NEXT_HARD_EXIT="${BEANS_NEXT_HARD_EXIT:-1}"
+export BEANS_NEXT_COPY_RESULTS_TO_HOME="${BEANS_NEXT_COPY_RESULTS_TO_HOME:-1}"
+export BEANS_NEXT_RESULTS_HOME_DIR="${BEANS_NEXT_RESULTS_HOME_DIR:-}"
+export BEANS_NEXT_UPLOAD_GCS="${BEANS_NEXT_UPLOAD_GCS:-1}"
+export BEANS_NEXT_GCS_PREFIX="${BEANS_NEXT_GCS_PREFIX:-}"
+export BEANS_NEXT_GCS_REL_PATH="${BEANS_NEXT_GCS_REL_PATH:-}"
+export BEANS_NEXT_RUN_KIND="${BEANS_NEXT_RUN_KIND:-}"
+export BEANS_NEXT_CONFIG="${BEANS_NEXT_CONFIG:-}"
+export BEANS_NEXT_TASK_ID="${BEANS_NEXT_TASK_ID:-}"
+export BEANS_NEXT_DATASET_NAME="${BEANS_NEXT_DATASET_NAME:-}"
+export BEANS_NEXT_SUITE="${BEANS_NEXT_SUITE:-}"
+export BEANS_NEXT_SPLIT="${BEANS_NEXT_SPLIT:-}"
+export BEANS_NEXT_HF_PATH="${BEANS_NEXT_HF_PATH:-}"
+export BEANS_NEXT_HF_CONFIG="${BEANS_NEXT_HF_CONFIG:-}"
+export BEANS_NEXT_LIMIT="${BEANS_NEXT_LIMIT:-}"
+export BEANS_NEXT_RUN_ID="${BEANS_NEXT_RUN_ID:-}"
+export BEANS_NEXT_OUT_DIR="${BEANS_NEXT_OUT_DIR:-}"
+export BEANS_NEXT_RESUME="${BEANS_NEXT_RESUME:-0}"
+export BEANS_NEXT_INFERENCE_WORKERS="${BEANS_NEXT_INFERENCE_WORKERS:-1}"
+export BEANS_NEXT_ESP_DATA_WORKERS="${BEANS_NEXT_ESP_DATA_WORKERS:-}"
+export BEANS_NEXT_HF_WORKERS="${BEANS_NEXT_HF_WORKERS:-}"
+export BEANS_NEXT_DEBUG_FAULTHANDLER_SEC="${BEANS_NEXT_DEBUG_FAULTHANDLER_SEC:-300}"
 
 # Optional debug mode.
 # Enable with: BEANS_NEXT_DEBUG=1 (or true/yes).
@@ -154,8 +127,8 @@ export TMP="${TMP:-$TMPDIR}"
 mkdir -p "$TMPDIR"
 
 # Audio materialization cache (shared, NFS-backed by default).
-export BEANS_NEXT_HF_AUDIO_CACHE_DIR="$(_env_first "BEANS_NEXT_HF_AUDIO_CACHE_DIR" "BEANS_PRO_HF_AUDIO_CACHE_DIR" "$HF_HOME/beans-next-audio")"
-export BEANS_NEXT_ESP_AUDIO_CACHE_DIR="$(_env_first "BEANS_NEXT_ESP_AUDIO_CACHE_DIR" "BEANS_PRO_ESP_AUDIO_CACHE_DIR" "$HF_HOME/beans-next-audio")"
+export BEANS_NEXT_HF_AUDIO_CACHE_DIR="${BEANS_NEXT_HF_AUDIO_CACHE_DIR:-$HF_HOME/beans-next-audio}"
+export BEANS_NEXT_ESP_AUDIO_CACHE_DIR="${BEANS_NEXT_ESP_AUDIO_CACHE_DIR:-$HF_HOME/beans-next-audio}"
 
 # Shell helpers (bash-only; avoid non-portable external deps).
 _pause() {
@@ -277,7 +250,6 @@ URL_FILE_DEFAULT="$HOME/beans-next-launchers/${SLURM_JOB_ID}.url"
 URL_FILE="${BEANS_NEXT_URL_FILE:-$URL_FILE_DEFAULT}"
 if [[ -z "$URL_FILE" ]]; then
   echo "ERROR: BEANS_NEXT_URL_FILE must be set to the serving job URL file." >&2
-  echo "Compat: BEANS_PRO_URL_FILE is also supported." >&2
   exit 1
 fi
 export BEANS_NEXT_URL_FILE="$URL_FILE"
@@ -320,7 +292,6 @@ fi
 # Dataset backend selection:
 # - Default to esp_data everywhere.
 # - Override by exporting BEANS_NEXT_DATA_SOURCE=esp_data|huggingface|hf before `sbatch`.
-# (Compat: BEANS_PRO_DATA_SOURCE is also accepted.)
 
 # Parallel GCS download workers for esp_data (BEANS_NEXT_ESP_DATA_WORKERS).
 # Benchmarks on Slurm CPU nodes show ~3× speedup at workers=8 vs sequential
@@ -501,7 +472,7 @@ PY
 #   /scratch/$USER/.cache/beans-next-results/<INC>/<MODEL_DIR>/<RUN_DEF>/<RUN_ID>
 #
 # Where:
-# - INC defaults to "adhoc" (set BEANS_NEXT_INCREMENT to override; compat: BEANS_PRO_INCREMENT)
+# - INC defaults to "adhoc" (set BEANS_NEXT_INCREMENT to override; BEANS_NEXT_INCREMENT)
 # - RUN_DEF is derived from BEANS_NEXT_CONFIG, BEANS_NEXT_TASK_ID, or BEANS_NEXT_SUITE
 # - RUN_ID is generated if BEANS_NEXT_RUN_ID is unset
 # ---------------------------------------------------------------------------
@@ -535,10 +506,10 @@ model = str(info.get("model") or "")
 
 model_dir = _slug(name) if name else _slug(model)
 
-run_kind = _slug(os.environ.get("BEANS_NEXT_RUN_KIND", os.environ.get("BEANS_PRO_RUN_KIND", "full")))
-suite = os.environ.get("BEANS_NEXT_SUITE", os.environ.get("BEANS_PRO_SUITE", "beans_zero_core"))
-task_id = os.environ.get("BEANS_NEXT_TASK_ID", os.environ.get("BEANS_PRO_TASK_ID", ""))
-config = os.environ.get("BEANS_NEXT_CONFIG", os.environ.get("BEANS_PRO_CONFIG", ""))
+run_kind = _slug(os.environ.get("BEANS_NEXT_RUN_KIND", os.environ.get("BEANS_NEXT_RUN_KIND", "full")))
+suite = os.environ.get("BEANS_NEXT_SUITE", os.environ.get("BEANS_NEXT_SUITE", "beans_zero_core"))
+task_id = os.environ.get("BEANS_NEXT_TASK_ID", os.environ.get("BEANS_NEXT_TASK_ID", ""))
+config = os.environ.get("BEANS_NEXT_CONFIG", os.environ.get("BEANS_NEXT_CONFIG", ""))
 
 run_def = ""
 if config:
@@ -551,13 +522,13 @@ else:
 ts = datetime.now(tz=timezone.utc).strftime("%Y%m%d_%H%M%S")
 job_id = os.environ.get("SLURM_JOB_ID", "nojob")
 
-run_id = os.environ.get("BEANS_NEXT_RUN_ID", os.environ.get("BEANS_PRO_RUN_ID", "")).strip()
+run_id = os.environ.get("BEANS_NEXT_RUN_ID", os.environ.get("BEANS_NEXT_RUN_ID", "")).strip()
 if not run_id:
     run_id = f"{run_kind}_{model_dir}_{run_def}_{ts}_j{job_id}"
 
-out_dir = os.environ.get("BEANS_NEXT_OUT_DIR", os.environ.get("BEANS_PRO_OUT_DIR", "")).strip()
+out_dir = os.environ.get("BEANS_NEXT_OUT_DIR", os.environ.get("BEANS_NEXT_OUT_DIR", "")).strip()
 if not out_dir:
-    inc = _slug(os.environ.get("BEANS_NEXT_INCREMENT", os.environ.get("BEANS_PRO_INCREMENT", "adhoc")))
+    inc = _slug(os.environ.get("BEANS_NEXT_INCREMENT", os.environ.get("BEANS_NEXT_INCREMENT", "adhoc")))
     scratch_root = f"/scratch/{os.environ.get('USER', 'unknown')}/.cache/beans-next-results"
     out_dir = f"{scratch_root}/{inc}/{model_dir}/{run_def}/{run_id}"
 
@@ -671,7 +642,7 @@ fi
 # Run the CLI in-process and hard-exit explicitly.
 #
 # Why: this cluster sometimes triggers interpreter-finalization crashes (PyGILState_Release).
-# The console-script path relies on env propagation (`BEANS_PRO_HARD_EXIT=1`) being honored;
+# The console-script path relies on env propagation (`BEANS_NEXT_HARD_EXIT=1`) being honored;
 # in practice we've seen jobs still crash. This wrapper guarantees `os._exit()` is called
 # after the handler returns.
 ARGS_FILE="/scratch/$USER/beans-next-args-${SLURM_JOB_ID}.txt"
@@ -685,14 +656,14 @@ from pathlib import Path
 
 from beans_next.cli import main
 
-debug = os.environ.get("BEANS_NEXT_DEBUG", os.environ.get("BEANS_PRO_DEBUG", "")).lower() in {"1", "true", "yes"}
+debug = os.environ.get("BEANS_NEXT_DEBUG", os.environ.get("BEANS_NEXT_DEBUG", "")).lower() in {"1", "true", "yes"}
 if debug:
     import faulthandler
 
     faulthandler.enable()
     # Periodic traceback for stuck jobs (default 5 minutes).
     # Keep interval configurable; this emits to stderr (captured by Slurm logs).
-    interval_sec = int(os.environ.get("BEANS_NEXT_DEBUG_FAULTHANDLER_SEC", os.environ.get("BEANS_PRO_DEBUG_FAULTHANDLER_SEC", "300")))
+    interval_sec = int(os.environ.get("BEANS_NEXT_DEBUG_FAULTHANDLER_SEC", os.environ.get("BEANS_NEXT_DEBUG_FAULTHANDLER_SEC", "300")))
     faulthandler.dump_traceback_later(interval_sec, repeat=True)
 
 args_file = Path(os.environ["ARGS_FILE"])

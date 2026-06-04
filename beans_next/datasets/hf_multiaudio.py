@@ -1,4 +1,4 @@
-"""HuggingFace `datasets` loader for multi-audio BeansPro-style rows.
+"""HuggingFace `datasets` loader for multi-audio BEANSNext-style rows.
 
 This module mirrors :mod:`beans_next.datasets.hf_streaming`, but targets datasets
 whose examples contain **multiple** audio slots aligned with multiple

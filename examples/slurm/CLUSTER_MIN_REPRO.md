@@ -11,7 +11,7 @@ Two patterns are documented here:
 - **Two-job (full-scale / production)**: serve job + Slurm inference job, both on the cluster.
   Artifacts land on the cluster filesystem and must be rsynced back.
 
-Start with the **hybrid pattern** and `BEANS_PRO_LIMIT=1` to validate end-to-end wiring.
+Start with the **hybrid pattern** and `BEANS_NEXT_LIMIT=1` to validate end-to-end wiring.
 
 ---
 
@@ -55,7 +55,7 @@ rsync -av --delete --exclude '.venv/' \
   instance metadata API (`http://metadata.google.internal/...`) and write it to the URL file. Since
   this machine is on the same GCP VPC, the internal IP is directly routable — **no SSH tunnel
   needed** in normal operation. If metadata detection fails, the script falls back to
-  `socket.gethostname()`; override with `BEANS_PRO_HOSTNAME=<ip>` if needed.
+  `socket.gethostname()`; override with `BEANS_NEXT_HOSTNAME=<ip>` if needed.
 - **No fixed sleeps**: URL-file coordination + `GET /health` polling; no `&`, no sleep delays.
 - **Partitions**: prefer `a100-40`; fall back to `h100-80`. Check before submitting:
 
@@ -73,13 +73,13 @@ sbatch --partition=h100-80 examples/slurm/serve_naturelm_v1_0.sh
 
 ### 0) Choose URL directory + local results directory
 
-`BEANS_PRO_URL_DIR` defaults to `$HOME/beans-next-launchers` (Slurm-side path). On this host the
+`BEANS_NEXT_URL_DIR` defaults to `$HOME/beans-next-launchers` (Slurm-side path). On this host the
 same directory is visible at `/mnt/home/marius_miron_earthspecies_org/beans-next-launchers`.
 
 ```bash
-export BEANS_PRO_URL_DIR="$HOME/beans-next-launchers"
-export BEANS_PRO_RESULTS_LOCAL="$(pwd)/results/local_inference"
-mkdir -p "$BEANS_PRO_RESULTS_LOCAL"
+export BEANS_NEXT_URL_DIR="$HOME/beans-next-launchers"
+export BEANS_NEXT_RESULTS_LOCAL="$(pwd)/results/local_inference"
+mkdir -p "$BEANS_NEXT_RESULTS_LOCAL"
 ```
 
 ### 1) Check node availability + submit the serve job (GPU)
@@ -108,15 +108,15 @@ echo "SERVE_JOB_ID=$SERVE_JOB_ID"
 # VLLM_MODEL_ID=Qwen/Qwen3-Omni-7B SERVE_JOB_ID=$(sbatch examples/slurm/serve_vllm.sh | awk '{print $NF}')
 ```
 
-If compute nodes can't reach PyPI, add `BEANS_PRO_SKIP_UV_SYNC=1`:
+If compute nodes can't reach PyPI, add `BEANS_NEXT_SKIP_UV_SYNC=1`:
 
 ```bash
-SERVE_JOB_ID=$(BEANS_PRO_SKIP_UV_SYNC=1 sbatch examples/slurm/serve_naturelm_v1_0.sh | awk '{print $NF}')
+SERVE_JOB_ID=$(BEANS_NEXT_SKIP_UV_SYNC=1 sbatch examples/slurm/serve_naturelm_v1_0.sh | awk '{print $NF}')
 ```
 
 The serve job writes once healthy:
 
-- URL file: `${BEANS_PRO_URL_DIR}/${SERVE_JOB_ID}.url`
+- URL file: `${BEANS_NEXT_URL_DIR}/${SERVE_JOB_ID}.url`
 - Contents: one line like `http://<hostname>:<port>/predict`
 
 ### 2) Monitor queue until job is RUNNING
@@ -155,7 +155,7 @@ Once state is `R`, the job is loading model weights. The URL file will appear af
 On this host, poll the URL file via the NFS mount at `/mnt/home`:
 
 ```bash
-URL_FILE="${BEANS_PRO_URL_DIR}/${SERVE_JOB_ID}.url"
+URL_FILE="${BEANS_NEXT_URL_DIR}/${SERVE_JOB_ID}.url"
 
 echo "Polling for URL file: $URL_FILE"
 until [ -s "/mnt${URL_FILE}" ]; do sleep 5; done
@@ -204,7 +204,7 @@ Start with limit 1 to validate wiring before a larger run.
 
 ```bash
 RUN_ID="hybrid_min_repro_${SERVE_JOB_ID}"
-OUT_DIR="${BEANS_PRO_RESULTS_LOCAL}/${RUN_ID}"
+OUT_DIR="${BEANS_NEXT_RESULTS_LOCAL}/${RUN_ID}"
 
 uv run beans-next run \
   --predict-url "$PREDICT_URL" \
@@ -226,7 +226,7 @@ For ESC-50 comparisons, run the official eval task:
 
 ```bash
 RUN_ID="hybrid_esc50_official_limit1_${SERVE_JOB_ID}"
-OUT_DIR="${BEANS_PRO_RESULTS_LOCAL}/${RUN_ID}"
+OUT_DIR="${BEANS_NEXT_RESULTS_LOCAL}/${RUN_ID}"
 
 uv run beans-next run \
   --predict-url "$PREDICT_URL" \
@@ -297,7 +297,7 @@ Once limit-1 is green:
 
 ```bash
 RUN_ID="hybrid_100s_${SERVE_JOB_ID}"
-OUT_DIR="${BEANS_PRO_RESULTS_LOCAL}/${RUN_ID}"
+OUT_DIR="${BEANS_NEXT_RESULTS_LOCAL}/${RUN_ID}"
 
 uv run beans-next run \
   --predict-url "$PREDICT_URL" \
@@ -318,8 +318,8 @@ Use this when inference throughput requires a cluster node (large suites, no loc
 ### 0) Choose shared paths
 
 ```bash
-export BEANS_PRO_URL_DIR="$HOME/beans-next-launchers"
-export BEANS_PRO_RESULTS_ROOT="$SCRATCH/beans-next-results"
+export BEANS_NEXT_URL_DIR="$HOME/beans-next-launchers"
+export BEANS_NEXT_RESULTS_ROOT="$SCRATCH/beans-next-results"
 ```
 
 ### 1) Submit serve job
@@ -329,24 +329,24 @@ SERVE_JOB_ID=$(sbatch examples/slurm/serve_naturelm_v1_0.sh | awk '{print $NF}')
 echo "SERVE_JOB_ID=$SERVE_JOB_ID"
 ```
 
-### 2) Submit inference job (minimal reproducer: `BEANS_PRO_LIMIT=1`)
+### 2) Submit inference job (minimal reproducer: `BEANS_NEXT_LIMIT=1`)
 
 ```bash
-BEANS_PRO_URL_FILE="${BEANS_PRO_URL_DIR}/${SERVE_JOB_ID}.url" \
-BEANS_PRO_SUITE=beans_zero_core \
-BEANS_PRO_LIMIT=1 \
-BEANS_PRO_OUT_DIR="${BEANS_PRO_RESULTS_ROOT}/min_repro_limit1_${SERVE_JOB_ID}" \
-BEANS_PRO_RUN_ID="slurm_min_repro_${SERVE_JOB_ID}" \
-BEANS_PRO_COPY_RESULTS_TO_HOME=1 \
+BEANS_NEXT_URL_FILE="${BEANS_NEXT_URL_DIR}/${SERVE_JOB_ID}.url" \
+BEANS_NEXT_SUITE=beans_zero_core \
+BEANS_NEXT_LIMIT=1 \
+BEANS_NEXT_OUT_DIR="${BEANS_NEXT_RESULTS_ROOT}/min_repro_limit1_${SERVE_JOB_ID}" \
+BEANS_NEXT_RUN_ID="slurm_min_repro_${SERVE_JOB_ID}" \
+BEANS_NEXT_COPY_RESULTS_TO_HOME=1 \
 sbatch --dependency=after:${SERVE_JOB_ID} examples/slurm/run_inference.sh
 ```
 
 ### 3) Copy back + offline inspection
 
-If you set `BEANS_PRO_COPY_RESULTS_TO_HOME=1`, the inference job will copy results into:
+If you set `BEANS_NEXT_COPY_RESULTS_TO_HOME=1`, the inference job will copy results into:
 
-- Slurm view: `$HOME/beans-next-results/ingested/$BEANS_PRO_RUN_ID/`
-- Local host view: `/mnt/home/marius_miron_earthspecies_org/beans-next-results/ingested/$BEANS_PRO_RUN_ID/`
+- Slurm view: `$HOME/beans-next-results/ingested/$BEANS_NEXT_RUN_ID/`
+- Local host view: `/mnt/home/marius_miron_earthspecies_org/beans-next-results/ingested/$BEANS_NEXT_RUN_ID/`
 
 …so you can skip manual rsync and go straight to validation below.
 
@@ -354,7 +354,7 @@ If you set `BEANS_PRO_COPY_RESULTS_TO_HOME=1`, the inference job will copy resul
 RUN_ID="slurm_min_repro_${SERVE_JOB_ID}"
 mkdir -p "results/ingested/${RUN_ID}"
 rsync -av --info=progress2 \
-  "marius_miron_earthspecies_org@slurm:${BEANS_PRO_RESULTS_ROOT}/min_repro_limit1_${SERVE_JOB_ID}/" \
+  "marius_miron_earthspecies_org@slurm:${BEANS_NEXT_RESULTS_ROOT}/min_repro_limit1_${SERVE_JOB_ID}/" \
   "results/ingested/${RUN_ID}/"
 
 bash scripts/validate_run_dir.sh "results/ingested/${RUN_ID}"
@@ -376,7 +376,7 @@ uv run beans-next run \
   --suite beans_zero_core \
   --limit 50 \
   --run-id "hybrid_limit50_${SERVE_JOB_ID}" \
-  -o "${BEANS_PRO_RESULTS_LOCAL}/hybrid_limit50_${SERVE_JOB_ID}"
+  -o "${BEANS_NEXT_RESULTS_LOCAL}/hybrid_limit50_${SERVE_JOB_ID}"
 ```
 
 ### Run a config YAML instead of a suite
@@ -387,5 +387,5 @@ uv run beans-next run \
   --config configs/paper/beans_zero_naturelm_side_by_side.yaml \
   --limit 1 \
   --run-id "hybrid_config_${SERVE_JOB_ID}" \
-  -o "${BEANS_PRO_RESULTS_LOCAL}/hybrid_config_${SERVE_JOB_ID}"
+  -o "${BEANS_NEXT_RESULTS_LOCAL}/hybrid_config_${SERVE_JOB_ID}"
 ```

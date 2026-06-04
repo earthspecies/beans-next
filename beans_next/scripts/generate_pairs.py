@@ -1,4 +1,4 @@
-"""Generate prompt/answer/ground-truth pairs for BeansPro subsets.
+"""Generate prompt/answer/ground-truth pairs for BEANSNext subsets.
 
 This script is meant for analysis and debugging: it saves, for each sampled
 dataset row, the rendered prompt messages, the raw model output(s), the
@@ -45,7 +45,7 @@ _PROGRESS_EVERY: Final[int] = 10
 
 @dataclass(frozen=True, slots=True)
 class SubsetTaskSpec:
-    """Resolved eval-task metadata for one BeansPro subset."""
+    """Resolved eval-task metadata for one BEANSNext subset."""
 
     subset: str
     split: str
@@ -63,7 +63,7 @@ def _load_yaml_file(path: Path) -> object:
 
 
 def _load_beans_next_subsets_from_registry() -> list[str]:
-    """Load BeansPro subset ids from the bundled dataset registry YAML."""
+    """Load BEANSNext subset ids from the bundled dataset registry YAML."""
     path = _registry_root() / "dataset" / "beans_next_esp.yaml"
     raw = _load_yaml_file(path)
     if not isinstance(raw, Mapping) or "beans_next_esp" not in raw:
@@ -84,7 +84,7 @@ def _load_beans_next_subsets_from_registry() -> list[str]:
 
 
 def _load_beans_next_eval_task_specs() -> dict[str, Mapping[str, Any]]:
-    """Load eval-task YAML docs for BeansPro into mapping keyed by subset."""
+    """Load eval-task YAML docs for BEANSNext into mapping keyed by subset."""
     root = _registry_root() / "eval_task"
     out: dict[str, Mapping[str, Any]] = {}
     if not root.is_dir():
@@ -291,7 +291,7 @@ def generate_pairs_main(args: argparse.Namespace) -> int:
         subsets = [s for s in subsets_all if s in subset_set]
         missing = sorted(subset_set - set(subsets))
         if missing:
-            raise SystemExit(f"Unknown BeansPro subset(s): {missing!r}")
+            raise SystemExit(f"Unknown BEANSNext subset(s): {missing!r}")
     else:
         subsets = subsets_all
 
@@ -509,7 +509,7 @@ def build_pairs_arg_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--subsets",
         default=None,
-        help="Comma-separated BeansPro subsets to include (default: all).",
+        help="Comma-separated BEANSNext subsets to include (default: all).",
     )
     parser.add_argument(
         "--k",
@@ -549,8 +549,8 @@ def build_pairs_arg_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--http-timeout-sec",
         type=float,
-        default=float(os.environ.get("BEANS_PRO_HTTP_TIMEOUT_SEC", "120") or 120),
-        help="HttpClient timeout seconds (default: env BEANS_PRO_HTTP_TIMEOUT_SEC else 120).",
+        default=float(os.environ.get("BEANS_NEXT_HTTP_TIMEOUT_SEC", "120") or 120),
+        help="HttpClient timeout seconds (default: env BEANS_NEXT_HTTP_TIMEOUT_SEC else 120).",
     )
 
 

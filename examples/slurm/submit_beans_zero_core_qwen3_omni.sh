@@ -21,7 +21,7 @@ set -euo pipefail
 MODEL_ID="${VLLM_MODEL_ID:-Qwen/Qwen3-Omni-7B}"
 TP="${VLLM_TENSOR_PARALLEL_SIZE:-1}"
 RUN_TAG="qwen3_omni_$(date +%Y%m%d_%H%M%S)"
-OUT_DIR="${BEANS_PRO_OUT_DIR:-${SCRATCH:-$HOME}/beans-next-results/$RUN_TAG}"
+OUT_DIR="${BEANS_NEXT_OUT_DIR:-${SCRATCH:-$HOME}/beans-next-results/$RUN_TAG}"
 
 echo "Model: $MODEL_ID (tensor_parallel_size=$TP)"
 echo "Submitting serving job..."
@@ -43,10 +43,10 @@ echo "  Log: ~/logs/$SERVE_JOB.log"
 
 echo "Submitting inference job (depends on serve job $SERVE_JOB)..."
 INFER_JOB=$(
-  BEANS_PRO_URL_FILE="$HOME/beans-next-launchers/$SERVE_JOB.url" \
-  BEANS_PRO_SUITE=beans_zero_core \
-  BEANS_PRO_RUN_ID="$RUN_TAG" \
-  BEANS_PRO_OUT_DIR="$OUT_DIR" \
+  BEANS_NEXT_URL_FILE="$HOME/beans-next-launchers/$SERVE_JOB.url" \
+  BEANS_NEXT_SUITE=beans_zero_core \
+  BEANS_NEXT_RUN_ID="$RUN_TAG" \
+  BEANS_NEXT_OUT_DIR="$OUT_DIR" \
   sbatch --parsable --dependency=after:"$SERVE_JOB" examples/slurm/run_inference.sh
 )
 echo "  Inference job: $INFER_JOB"

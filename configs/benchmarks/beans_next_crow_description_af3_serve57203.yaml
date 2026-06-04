@@ -1,4 +1,4 @@
-# Beans-Pro crow-description (non-multiaudio) — Audio Flamingo Next (served on Slurm)
+# BEANS-Next crow-description (non-multiaudio) — Audio Flamingo Next (served on Slurm)
 models:
   - inline:
       name: af3_serve57203

@@ -11,17 +11,17 @@
 #
 # Typical usage (two-job pattern):
 #   SERVE_JOB_ID=56464
-#   BEANS_PRO_URL_FILE="/mnt/home/$USER/beans-next-launchers/${SERVE_JOB_ID}.url" \
-#   BEANS_PRO_TASK_ID=beans_zero_esc50_official \
-#   BEANS_PRO_DATASET_NAME=esc50 \
-#   BEANS_PRO_LIMIT=5 \
-#   BEANS_PRO_OUT_DIR="$PWD/beans-next-results/local_${SERVE_JOB_ID}" \
-#   BEANS_PRO_RUN_ID="esc50_official_local_${SERVE_JOB_ID}" \
+#   BEANS_NEXT_URL_FILE="/mnt/home/$USER/beans-next-launchers/${SERVE_JOB_ID}.url" \
+#   BEANS_NEXT_TASK_ID=beans_zero_esc50_official \
+#   BEANS_NEXT_DATASET_NAME=esc50 \
+#   BEANS_NEXT_LIMIT=5 \
+#   BEANS_NEXT_OUT_DIR="$PWD/beans-next-results/local_${SERVE_JOB_ID}" \
+#   BEANS_NEXT_RUN_ID="esc50_official_local_${SERVE_JOB_ID}" \
 #   bash examples/local/run_inference_local.sh
 #
 # Notes:
 # - If you want esp_data locally, you must have it installed (and credentials configured)
-#   and run `uv sync --group esp`. Otherwise set: BEANS_PRO_DATA_SOURCE=hf
+#   and run `uv sync --group esp`. Otherwise set: BEANS_NEXT_DATA_SOURCE=hf
 
 set -euo pipefail
 
@@ -133,44 +133,44 @@ if [[ -n "$SERVE_JOB_ID" ]]; then
   DEFAULT_URL_FILE="/mnt/home/$USER/beans-next-launchers/${SERVE_JOB_ID}.url"
 fi
 
-URL_FILE="${BEANS_PRO_URL_FILE:-$DEFAULT_URL_FILE}"
+URL_FILE="${BEANS_NEXT_URL_FILE:-$DEFAULT_URL_FILE}"
 if [[ -z "$URL_FILE" ]]; then
-  echo "ERROR: set BEANS_PRO_URL_FILE (or SERVE_JOB_ID) to the launcher URL file." >&2
+  echo "ERROR: set BEANS_NEXT_URL_FILE (or SERVE_JOB_ID) to the launcher URL file." >&2
   exit 1
 fi
 
-SUITE="${BEANS_PRO_SUITE:-beans_zero_core}"
-LIMIT="${BEANS_PRO_LIMIT:-}"
-OUT_DIR="${BEANS_PRO_OUT_DIR:-$REPO/beans-next-results/local_run}"
-CONFIG="${BEANS_PRO_CONFIG:-}"
-RUN_ID="${BEANS_PRO_RUN_ID:-local_run}"
-TASK_ID="${BEANS_PRO_TASK_ID:-}"
-DATASET_NAME="${BEANS_PRO_DATASET_NAME:-}"
-SPLIT="${BEANS_PRO_SPLIT:-}"
-HF_PATH="${BEANS_PRO_HF_PATH:-}"
-HF_CONFIG="${BEANS_PRO_HF_CONFIG:-}"
+SUITE="${BEANS_NEXT_SUITE:-beans_zero_core}"
+LIMIT="${BEANS_NEXT_LIMIT:-}"
+OUT_DIR="${BEANS_NEXT_OUT_DIR:-$REPO/beans-next-results/local_run}"
+CONFIG="${BEANS_NEXT_CONFIG:-}"
+RUN_ID="${BEANS_NEXT_RUN_ID:-local_run}"
+TASK_ID="${BEANS_NEXT_TASK_ID:-}"
+DATASET_NAME="${BEANS_NEXT_DATASET_NAME:-}"
+SPLIT="${BEANS_NEXT_SPLIT:-}"
+HF_PATH="${BEANS_NEXT_HF_PATH:-}"
+HF_CONFIG="${BEANS_NEXT_HF_CONFIG:-}"
 
 # Local default: prefer HF unless user explicitly chooses esp_data.
-if [[ -z "${BEANS_PRO_DATA_SOURCE:-}" && "$SUITE" =~ ^beans_zero_ ]]; then
-  export BEANS_PRO_DATA_SOURCE="hf"
+if [[ -z "${BEANS_NEXT_DATA_SOURCE:-}" && "$SUITE" =~ ^beans_zero_ ]]; then
+  export BEANS_NEXT_DATA_SOURCE="hf"
 fi
 
 export UV_PYTHON_DOWNLOADS="${UV_PYTHON_DOWNLOADS:-auto}"
-export UV_PYTHON="${BEANS_PRO_UV_PYTHON:-3.11}"
+export UV_PYTHON="${BEANS_NEXT_UV_PYTHON:-3.11}"
 
-if [[ "${BEANS_PRO_SKIP_UV_SYNC:-0}" != "1" ]]; then
-  if [[ "${BEANS_PRO_DATA_SOURCE:-hf}" == "esp_data" ]]; then
+if [[ "${BEANS_NEXT_SKIP_UV_SYNC:-0}" != "1" ]]; then
+  if [[ "${BEANS_NEXT_DATA_SOURCE:-hf}" == "esp_data" ]]; then
     uv sync --group esp
   else
     uv sync
   fi
 else
-  echo "BEANS_PRO_SKIP_UV_SYNC=1 set; skipping 'uv sync'"
+  echo "BEANS_NEXT_SKIP_UV_SYNC=1 set; skipping 'uv sync'"
 fi
 
 echo "Waiting for URL file: $URL_FILE"
-URL_WAIT_TIMEOUT_SEC="${BEANS_PRO_URL_WAIT_TIMEOUT_SEC:-1800}"
-URL_WAIT_INTERVAL_SEC="${BEANS_PRO_URL_WAIT_INTERVAL_SEC:-2}"
+URL_WAIT_TIMEOUT_SEC="${BEANS_NEXT_URL_WAIT_TIMEOUT_SEC:-1800}"
+URL_WAIT_INTERVAL_SEC="${BEANS_NEXT_URL_WAIT_INTERVAL_SEC:-2}"
 deadline=$((SECONDS + URL_WAIT_TIMEOUT_SEC))
 
 while (( SECONDS < deadline )); do
@@ -195,10 +195,10 @@ fi
 echo "Using predict URL: $PREDICT_URL"
 
 BASE_URL="${PREDICT_URL%/predict}"
-HEALTH_TIMEOUT_SEC="${BEANS_PRO_HEALTH_TIMEOUT_SEC:-900}"
-HEALTH_INTERVAL_SEC="${BEANS_PRO_HEALTH_INTERVAL_SEC:-2}"
-HEALTH_CONNECT_TIMEOUT_SEC="${BEANS_PRO_HEALTH_CONNECT_TIMEOUT_SEC:-2}"
-HEALTH_MAX_TIME_SEC="${BEANS_PRO_HEALTH_MAX_TIME_SEC:-5}"
+HEALTH_TIMEOUT_SEC="${BEANS_NEXT_HEALTH_TIMEOUT_SEC:-900}"
+HEALTH_INTERVAL_SEC="${BEANS_NEXT_HEALTH_INTERVAL_SEC:-2}"
+HEALTH_CONNECT_TIMEOUT_SEC="${BEANS_NEXT_HEALTH_CONNECT_TIMEOUT_SEC:-2}"
+HEALTH_MAX_TIME_SEC="${BEANS_NEXT_HEALTH_MAX_TIME_SEC:-5}"
 _poll_health \
   "$BASE_URL" \
   "$HEALTH_TIMEOUT_SEC" \
@@ -220,7 +220,7 @@ if [[ -n "$CONFIG" ]]; then
 elif [[ -n "$TASK_ID" ]]; then
   CLI_ARGS+=(--task-id "$TASK_ID")
   if [[ -z "$DATASET_NAME" ]]; then
-    echo "ERROR: BEANS_PRO_TASK_ID was set but BEANS_PRO_DATASET_NAME is empty." >&2
+    echo "ERROR: BEANS_NEXT_TASK_ID was set but BEANS_NEXT_DATASET_NAME is empty." >&2
     exit 1
   fi
   CLI_ARGS+=(--dataset-name "$DATASET_NAME")

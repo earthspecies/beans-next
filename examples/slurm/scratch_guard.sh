@@ -14,15 +14,15 @@
 # hf_home: path to HF_HOME (may be shared or per-user scratch)
 #
 # Environment:
-# - BEANS_PRO_SCRATCH_MIN_FREE_GB: override required space (int).
+# - BEANS_NEXT_SCRATCH_MIN_FREE_GB: override required space (int).
 #   Use case: if model weights are already cached from a prior run, the job needs far less
 #   free space (mostly venv + runtime overhead, ~15-20 GB). Set this to 20 to bypass the
 #   conservative default when you know the cache is warm:
-#     BEANS_PRO_SCRATCH_MIN_FREE_GB=20 sbatch --exclude=<full_node> serve_<model>.sh
+#     BEANS_NEXT_SCRATCH_MIN_FREE_GB=20 sbatch --exclude=<full_node> serve_<model>.sh
 #   Note: beans_next_scratch_guard() also auto-detects cached weights heuristically (hub dir
 #   exists + >= 10 GB) and lowers the threshold automatically — but the env var forces it
 #   even if the heuristic misses (e.g. weights stored under a non-standard path).
-# - BEANS_PRO_SCRATCH_CLEAN: if "1", allow more aggressive cleanup of old per-user hf_cache dirs
+# - BEANS_NEXT_SCRATCH_CLEAN: if "1", allow more aggressive cleanup of old per-user hf_cache dirs
 set -euo pipefail
 
 _beans_next_df_free_gb() {
@@ -64,14 +64,14 @@ _beans_next_required_scratch_gb() {
   local model_kind="${1:-unknown}"
   local model_id="${2:-}"
 
-  if [[ -n "${BEANS_PRO_SCRATCH_MIN_FREE_GB:-}" ]]; then
-    echo "${BEANS_PRO_SCRATCH_MIN_FREE_GB}"
+  if [[ -n "${BEANS_NEXT_SCRATCH_MIN_FREE_GB:-}" ]]; then
+    echo "${BEANS_NEXT_SCRATCH_MIN_FREE_GB}"
     return 0
   fi
 
   # Defaults should be "pragmatic": enough headroom for common cases without causing
   # needless early failure on moderately full nodes. Operator can override per job via
-  # BEANS_PRO_SCRATCH_MIN_FREE_GB.
+  # BEANS_NEXT_SCRATCH_MIN_FREE_GB.
   #
   # Note: thresholds below are the "baseline" thresholds reduced by 10GB per operator request.
   case "$model_kind" in
@@ -170,9 +170,9 @@ _beans_next_prune_hf_locks() {
 
 _beans_next_prune_old_user_hf_caches() {
   # Aggressive mode: delete *old* per-user hf_cache* dirs on scratch (not shared caches).
-  # Only enabled when BEANS_PRO_SCRATCH_CLEAN=1.
+  # Only enabled when BEANS_NEXT_SCRATCH_CLEAN=1.
   local current_hf_home="${1:-}"
-  [[ "${BEANS_PRO_SCRATCH_CLEAN:-0}" == "1" ]] || return 0
+  [[ "${BEANS_NEXT_SCRATCH_CLEAN:-0}" == "1" ]] || return 0
 
   local user_root="/scratch/${USER}"
   [[ -d "$user_root" ]] || return 0
@@ -248,9 +248,9 @@ beans_next_scratch_guard() {
     return 0
   fi
 
-  echo "BEANS_PRO_DISK_SPACE_BLOCKER: insufficient /scratch after cleanup."
-  echo "BEANS_PRO_DISK_SPACE_BLOCKER: model_kind=${model_kind} model_id=${model_id}"
-  echo "BEANS_PRO_DISK_SPACE_BLOCKER: free_gb=${free_gb} required_gb=${required_gb}"
+  echo "BEANS_NEXT_DISK_SPACE_BLOCKER: insufficient /scratch after cleanup."
+  echo "BEANS_NEXT_DISK_SPACE_BLOCKER: model_kind=${model_kind} model_id=${model_id}"
+  echo "BEANS_NEXT_DISK_SPACE_BLOCKER: free_gb=${free_gb} required_gb=${required_gb}"
   df -h /scratch || true
   exit 86
 }

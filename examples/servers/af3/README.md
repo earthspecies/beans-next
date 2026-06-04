@@ -78,7 +78,7 @@ Submit from the Slurm-visible repo root after syncing local edits:
 # (not on your local machine), and avoid single-quoting VLLM_EXTRA_ARGS so --download-dir
 # does NOT end up as the literal path /scratch/$USER.
 ssh slurm "cd /home/$USER/code/beans-next && \
-  BEANS_PRO_HF_HOME=/scratch/$USER/hf_cache_instruct_lean \
+  BEANS_NEXT_HF_HOME=/scratch/$USER/hf_cache_instruct_lean \
   HF_HUB_DISABLE_XET=1 \
   VLLM_OMNI_INSTALL=1 \
   VLLM_INSTALL_VERSION=0.18.0 \
@@ -90,7 +90,7 @@ ssh slurm "cd /home/$USER/code/beans-next && \
   VLLM_TENSOR_PARALLEL_SIZE=1 \
   VLLM_MAX_MODEL_LEN=8192 \
   VLLM_MAX_BATCH_SIZE=1 \
-  BEANS_PRO_PORT=8216 \
+  BEANS_NEXT_PORT=8216 \
   VLLM_PORT=8116 \
   VLLM_EXTRA_ARGS="--stage-configs-path /home/$USER/code/beans-next/examples/servers/vllm/qwen3_omni_moe_instruct_text_single_h100.yaml --max-num-seqs 1 --download-dir /scratch/$USER/hf_cache_instruct_lean/hub" \
   sbatch --partition=h100-80 --gpus=1 --exclude=slurm-8x-h100-1 examples/slurm/serve_vllm.sh'
@@ -108,7 +108,7 @@ Run from the repo root on a machine that can `ssh slurm`:
 
 ```bash
 ssh slurm "cd /home/\$USER/code/beans-next && \
-  BEANS_PRO_HF_HOME=/home/\$USER/hf_cache_qwen3_omni_instruct_lean \
+  BEANS_NEXT_HF_HOME=/home/\$USER/hf_cache_qwen3_omni_instruct_lean \
   HF_HUB_DISABLE_XET=1 \
   VLLM_OMNI_INSTALL=1 \
   VLLM_INSTALL_VERSION=0.18.0 \
@@ -220,7 +220,7 @@ uv run vllm serve Qwen/Qwen3-Omni-30B-A3B-Instruct \
 For BEANS-Next Slurm runs with a prebuilt vLLM-Omni environment, set:
 
 ```bash
-BEANS_PRO_SKIP_UV_SYNC=1 \
+BEANS_NEXT_SKIP_UV_SYNC=1 \
 UV_PROJECT_ENVIRONMENT="/scratch/$USER/venvs/qwen3_omni_vllm_omni" \
 VLLM_OMNI=1 \
 VLLM_AUDIO_CONTENT_FORMAT=audio_url_data \
@@ -288,7 +288,7 @@ rsync -av --delete --exclude ".venv/" \
 ssh slurm "cd /home/$USER/code/beans-next && \
   VLLM_MODEL_ID=Qwen/Qwen3-Omni-30B-A3B-Instruct \
   VLLM_TENSOR_PARALLEL_SIZE=1 \
-  BEANS_PRO_PORT=8203 \
+  BEANS_NEXT_PORT=8203 \
   sbatch examples/slurm/serve_vllm.sh"
 ```
 
@@ -447,7 +447,7 @@ rsync -av --delete --exclude ".venv/" \
 2. Submit the serve job:
 
 ```bash
-ssh slurm "cd /home/$USER/code/beans-next && BEANS_PRO_PORT=8202 sbatch examples/slurm/serve_af3.sh"
+ssh slurm "cd /home/$USER/code/beans-next && BEANS_NEXT_PORT=8202 sbatch examples/slurm/serve_af3.sh"
 ```
 
 3. Poll until the job is running, then wait for the URL file at `/mnt/home/$USER/beans-next-launchers/<job_id>.url`.

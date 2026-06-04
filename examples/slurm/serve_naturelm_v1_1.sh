@@ -33,7 +33,7 @@ set -euo pipefail
 # Optional debug mode.
 # Enable with: BEANS_NEXT_DEBUG=1 (or true/yes).
 _debug_enabled() {
-  case "${BEANS_NEXT_DEBUG:-${BEANS_PRO_DEBUG:-0}}" in
+  case "${BEANS_NEXT_DEBUG:-0}" in
     1|true|TRUE|yes|YES) return 0 ;;
     *) return 1 ;;
   esac
@@ -58,14 +58,14 @@ fi
 # Default port selection:
 # - avoid fixed-port collisions on shared GPU nodes
 # - keep it deterministic per job for easier debugging
-# Override any time with BEANS_NEXT_PORT (compat: BEANS_PRO_PORT).
-if [[ -n "${BEANS_NEXT_PORT:-${BEANS_PRO_PORT:-}}" ]]; then
-  PORT="${BEANS_NEXT_PORT:-${BEANS_PRO_PORT}}"
+# Override any time with BEANS_NEXT_PORT.
+if [[ -n "${BEANS_NEXT_PORT:-}" ]]; then
+  PORT="${BEANS_NEXT_PORT:-}"
 else
   PORT="$((18000 + (SLURM_JOB_ID % 1000)))"
 fi
 
-URL_DIR="${BEANS_NEXT_URL_DIR:-${BEANS_PRO_URL_DIR:-$HOME/beans-next-launchers}}"
+URL_DIR="${BEANS_NEXT_URL_DIR:-$HOME/beans-next-launchers}"
 mkdir -p "$URL_DIR"
 URL_FILE="$URL_DIR/${SLURM_JOB_ID}.url"
 rm -f "$URL_FILE"
@@ -100,7 +100,7 @@ mkdir -p "$TMPDIR" 2>/dev/null || true
 # Prefer Python 3.11+ for this project. Some compute nodes may not have a compatible system
 # interpreter, so allow uv to download a managed Python when needed.
 export UV_PYTHON_DOWNLOADS="${UV_PYTHON_DOWNLOADS:-auto}"
-export UV_PYTHON="${BEANS_NEXT_UV_PYTHON:-${BEANS_PRO_UV_PYTHON:-3.12}}"
+export UV_PYTHON="${BEANS_NEXT_UV_PYTHON:-3.12}"
 
 # ---------------------------------------------------------------------------
 # Scratch disk guard (check → prune safe caches → fail loudly if still low).
@@ -125,7 +125,7 @@ if [[ ! -x "${UV_PROJECT_ENVIRONMENT%/}/bin/python" ]]; then
 fi
 
 # Fully-uv install: this launcher directory is a uv project (pyproject.toml).
-if [[ "${BEANS_NEXT_SKIP_UV_SYNC:-${BEANS_PRO_SKIP_UV_SYNC:-0}}" != "1" ]]; then
+if [[ "${BEANS_NEXT_SKIP_UV_SYNC:-0}" != "1" ]]; then
   if [[ "${NATURELM_STUB_MODE:-0}" == "1" ]]; then
     uv sync
   else
@@ -153,7 +153,7 @@ if [[ "${NATURELM_STUB_MODE:-0}" != "1" ]]; then
     local url="$1"
     # Allow a more specific token override, but keep GITHUB_TOKEN as the primary pattern
     # (matches serve_naturelm_v1_0.sh guidance).
-    local token="${BEANS_PRO_GITHUB_TOKEN:-${GITHUB_TOKEN:-}}"
+    local token="${BEANS_NEXT_GITHUB_TOKEN:-${GITHUB_TOKEN:-}}"
     if [[ -z "${token}" ]]; then
       printf '%s' "$url"
       return 0
@@ -174,7 +174,7 @@ if [[ "${NATURELM_STUB_MODE:-0}" != "1" ]]; then
   fi
 
   if [[ -n "${ESP_RESEARCH_LOCAL_PATH:-}" ]]; then
-    if [[ "${BEANS_PRO_SKIP_UV_PIP_INSTALL:-0}" != "1" ]]; then
+    if [[ "${BEANS_NEXT_SKIP_UV_PIP_INSTALL:-0}" != "1" ]]; then
       # We need esp-research to be importable *and* to have package metadata
       # available (some modules call importlib.metadata.version("esp-research")).
       # Install it into the job venv without pulling deps (avoid cluster-wide
@@ -183,7 +183,7 @@ if [[ "${NATURELM_STUB_MODE:-0}" != "1" ]]; then
 
       # esp-research frequently imports esp-data. Install the matching packaged
       # version from ESP PyPI (avoid local checkout drift).
-      ESP_PYPI_INDEX_URL="${BEANS_PRO_ESP_PYPI_INDEX_URL:-https://oauth2accesstoken@us-central1-python.pkg.dev/okapi-274503/esp-pypi/simple/}"
+      ESP_PYPI_INDEX_URL="${BEANS_NEXT_ESP_PYPI_INDEX_URL:-https://oauth2accesstoken@us-central1-python.pkg.dev/okapi-274503/esp-pypi/simple/}"
       # esp-data is on esp-pypi, but its transitive deps (e.g. gcsfs) are on PyPI.
       uv pip install --python "$UV_PROJECT_ENVIRONMENT" \
         --index-url "${ESP_PYPI_INDEX_URL}" \
@@ -192,7 +192,7 @@ if [[ "${NATURELM_STUB_MODE:-0}" != "1" ]]; then
 
       # esp-research audio encoders depend on avex (flashbeats branch).
       # Install without deps to avoid pulling tensorflow/CUDA-native stacks.
-      if [[ "${BEANS_PRO_SKIP_UV_PIP_INSTALL_AVEX:-0}" != "1" ]]; then
+      if [[ "${BEANS_NEXT_SKIP_UV_PIP_INSTALL_AVEX:-0}" != "1" ]]; then
         AVEX_URL="git+https://github.com/earthspecies/avex.git@flashbeats"
         uv pip install --python "$UV_PROJECT_ENVIRONMENT" --no-deps "$(_git_url_with_token "$AVEX_URL")"
       fi
@@ -274,11 +274,11 @@ def main() -> int:
     url_dir = os.path.dirname(url_file)
     os.makedirs(url_dir, exist_ok=True)
 
-    hostname = os.environ.get("BEANS_PRO_HOSTNAME") or _gcp_internal_ip() or socket.gethostname()
+    hostname = os.environ.get("BEANS_NEXT_HOSTNAME") or _gcp_internal_ip() or socket.gethostname()
     base_url = f"http://127.0.0.1:{port}"
     predict_url = f"http://{hostname}:{port}/predict"
 
-    debug = os.environ.get("BEANS_PRO_DEBUG", "").lower() in {"1", "true", "yes"}
+    debug = os.environ.get("BEANS_NEXT_DEBUG", "").lower() in {"1", "true", "yes"}
     log_level = "debug" if debug else "info"
 
     proc = subprocess.Popen(
@@ -318,10 +318,10 @@ def main() -> int:
     signal.signal(signal.SIGINT, _cleanup)
 
     health_timeout_sec = float(
-        os.environ.get("BEANS_PRO_LAUNCHER_HEALTH_TIMEOUT_SEC", "1800")
+        os.environ.get("BEANS_NEXT_LAUNCHER_HEALTH_TIMEOUT_SEC", "1800")
     )
     deadline = time.time() + health_timeout_sec
-    interval_sec = float(os.environ.get("BEANS_PRO_HEALTH_INTERVAL_SEC", "5"))
+    interval_sec = float(os.environ.get("BEANS_NEXT_HEALTH_INTERVAL_SEC", "5"))
     health_url = f"{base_url}/health"
     info_url = f"{base_url}/info"
     while time.time() < deadline:

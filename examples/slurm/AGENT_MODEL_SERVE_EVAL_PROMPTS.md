@@ -552,7 +552,7 @@ Prompt:
 You are running the BEANS-Zero benchmarks on Watkins/Lifestage/Calltype subsets with the hybrid pattern:
 `examples/slurm/serve_<model>.sh` on Slurm GPU + local `uv run beans-next run` on this host
 using the server URL from `$HOME/beans-next-launchers/<job>.url`.
-This matches how we executed ESC-50 official / Watkins / Beans-Pro tasks in our earlier
+This matches how we executed ESC-50 official / Watkins / BEANS-Next tasks in our earlier
 runs: serve lifecycle is owned by you, inference runs locally (so artifacts land locally).
 Execution template (NatureLM v1.0 shown as example; adapt `<SERVE_SCRIPT>`, `<PORT>`, and `<MODEL_DIR>`):
 ```bash

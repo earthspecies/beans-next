@@ -61,7 +61,7 @@ BEANS-Next supports two backends for loading evaluation data:
 | `huggingface` | `--backend huggingface` | Loads from HuggingFace Hub Parquet files. No private credentials needed for public datasets. Set `HF_TOKEN` for private repos. |
 | `esp_data` | `--backend esp_data` | Loads from GCS via the `esp_data` library. Requires GCS credentials and the `esp` dependency group. |
 
-The default backend when no flag is provided is `esp_data` (falls back to the `BEANS_PRO_DATA_SOURCE` env var, defaulting to `esp_data`). To use HuggingFace:
+The default backend when no flag is provided is `esp_data` (falls back to the `BEANS_NEXT_DATA_SOURCE` env var, defaulting to `esp_data`). To use HuggingFace:
 
 ```bash
 uv run beans-next run --backend huggingface --suite beans_zero_core ...
@@ -274,8 +274,8 @@ Quick example:
 # Submit serving job (GPU node), then inference job (CPU node)
 SERVE_JOB=$(sbatch --parsable examples/slurm/serve_af3.sh)
 
-BEANS_PRO_URL_FILE=$HOME/beans-next-launchers/$SERVE_JOB.url \
-BEANS_PRO_SUITE=beans_zero_core \
+BEANS_NEXT_URL_FILE=$HOME/beans-next-launchers/$SERVE_JOB.url \
+BEANS_NEXT_SUITE=beans_zero_core \
 sbatch --dependency=after:$SERVE_JOB examples/slurm/run_inference.sh
 ```
 

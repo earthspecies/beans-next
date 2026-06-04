@@ -33,33 +33,32 @@
 set -euo pipefail
 
 # Must be set: path to the URL file written by the serving job.
-export BEANS_NEXT_URL_FILE="${BEANS_NEXT_URL_FILE:-${BEANS_PRO_URL_FILE:-}}"
+export BEANS_NEXT_URL_FILE="${BEANS_NEXT_URL_FILE:-}"
 if [[ -z "${BEANS_NEXT_URL_FILE:-}" ]]; then
   echo "ERROR: BEANS_NEXT_URL_FILE must be set." >&2
-  echo "Compat: BEANS_PRO_URL_FILE is also supported." >&2
   exit 1
 fi
 
 # Safe defaults for a tiny run (override via env before sbatch).
 # Use the smallest bundled suite by default to keep validation fast.
-export BEANS_NEXT_SUITE="${BEANS_NEXT_SUITE:-${BEANS_PRO_SUITE:-beans_zero_smoke}}"
-export BEANS_NEXT_LIMIT="${BEANS_NEXT_LIMIT:-${BEANS_PRO_LIMIT:-1}}"
+export BEANS_NEXT_SUITE="${BEANS_NEXT_SUITE:-beans_zero_smoke}"
+export BEANS_NEXT_LIMIT="${BEANS_NEXT_LIMIT:-1}"
 
 # Mark this run as a smoke validation so the standardized naming policy in
 # examples/slurm/run_inference.sh encodes it in RUN_ID/OUT_DIR.
-export BEANS_NEXT_RUN_KIND="${BEANS_NEXT_RUN_KIND:-${BEANS_PRO_RUN_KIND:-smoke}}"
+export BEANS_NEXT_RUN_KIND="${BEANS_NEXT_RUN_KIND:-smoke}"
 
 # Dataset backend:
 # - Default to esp_data everywhere.
 # - Override: export BEANS_NEXT_DATA_SOURCE=esp_data|huggingface|hf before `sbatch`.
-export BEANS_NEXT_DATA_SOURCE="${BEANS_NEXT_DATA_SOURCE:-${BEANS_PRO_DATA_SOURCE:-esp_data}}"
+export BEANS_NEXT_DATA_SOURCE="${BEANS_NEXT_DATA_SOURCE:-esp_data}"
 
 # Work around rare interpreter-finalization crashes seen on this cluster by hard-exiting
 # the CLI after producing outputs.
-export BEANS_NEXT_HARD_EXIT="${BEANS_NEXT_HARD_EXIT:-${BEANS_PRO_HARD_EXIT:-1}}"
+export BEANS_NEXT_HARD_EXIT="${BEANS_NEXT_HARD_EXIT:-1}"
 
 # Recommended: copy artifacts into $HOME so they're visible on this repo host via /mnt/home.
-export BEANS_NEXT_COPY_RESULTS_TO_HOME="${BEANS_NEXT_COPY_RESULTS_TO_HOME:-${BEANS_PRO_COPY_RESULTS_TO_HOME:-1}}"
+export BEANS_NEXT_COPY_RESULTS_TO_HOME="${BEANS_NEXT_COPY_RESULTS_TO_HOME:-1}"
 
 # Delegate to the main inference script.
 # In Slurm, scripts are copied to a spool dir before execution, so $0 does not point at the repo.

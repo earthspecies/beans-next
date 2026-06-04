@@ -334,13 +334,13 @@ def _run_openai_proxy_live_smoke(
 
 
 @pytest.mark.skipif(
-    os.environ.get("BEANS_PRO_LIVE_OPENAI", "0").strip() != "1",
-    reason="Set BEANS_PRO_LIVE_OPENAI=1 to enable live OpenAI proxy smoke test.",
+    os.environ.get("BEANS_NEXT_LIVE_OPENAI", "0").strip() != "1",
+    reason="Set BEANS_NEXT_LIVE_OPENAI=1 to enable live OpenAI proxy smoke test.",
 )
 def test_openai_compatible_proxy_live_openai_smoke() -> None:
     api_key = os.environ.get("OPENAI_API_KEY", "").strip()
     if not api_key:
-        raise AssertionError("OPENAI_API_KEY must be set when BEANS_PRO_LIVE_OPENAI=1")
+        raise AssertionError("OPENAI_API_KEY must be set when BEANS_NEXT_LIVE_OPENAI=1")
     model = os.environ.get("OPENAI_MODEL", "gpt-4o-audio-preview").strip()
     _run_openai_proxy_live_smoke(
         base_url=os.environ.get("OPENAI_BASE_URL", "https://api.openai.com").strip(),
@@ -350,13 +350,13 @@ def test_openai_compatible_proxy_live_openai_smoke() -> None:
 
 
 @pytest.mark.skipif(
-    os.environ.get("BEANS_PRO_LIVE_GEMINI", "0").strip() != "1",
-    reason="Set BEANS_PRO_LIVE_GEMINI=1 to enable live Gemini proxy smoke test.",
+    os.environ.get("BEANS_NEXT_LIVE_GEMINI", "0").strip() != "1",
+    reason="Set BEANS_NEXT_LIVE_GEMINI=1 to enable live Gemini proxy smoke test.",
 )
 def test_openai_compatible_proxy_live_gemini_smoke() -> None:
     api_key = os.environ.get("OPENAI_API_KEY", "").strip()
     if not api_key:
-        raise AssertionError("OPENAI_API_KEY must be set when BEANS_PRO_LIVE_GEMINI=1")
+        raise AssertionError("OPENAI_API_KEY must be set when BEANS_NEXT_LIVE_GEMINI=1")
     model = os.environ.get("OPENAI_MODEL", "gemini-2.5-flash").strip()
     _run_openai_proxy_live_smoke(
         base_url=os.environ.get(

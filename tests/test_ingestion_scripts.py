@@ -98,7 +98,7 @@ def test_ingest_and_rescore_input_leaf_can_skip_rescore(tmp_path: Path) -> None:
         cwd=str(root),
         text=True,
         capture_output=True,
-        env={**os.environ, "BEANS_PRO_SKIP_RESCORE": "1"},
+        env={**os.environ, "BEANS_NEXT_SKIP_RESCORE": "1"},
     )
     assert res.returncode == 0, (res.stdout, res.stderr)
     assert (

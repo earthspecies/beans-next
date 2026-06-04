@@ -15,7 +15,7 @@ set -euo pipefail
 GCS_URI="${NATURELM_GCS_CHECKPOINT_URI:-gs://foundation-models/naturelm-audio-1.1/base_model/1290000}"
 CKPT_TAG="${GCS_URI##*/}"
 RUN_TAG="naturelm_v1_1_multiaudio_${CKPT_TAG}_$(date +%Y%m%d_%H%M%S)"
-OUT_DIR="${BEANS_NEXT_OUT_DIR:-${BEANS_PRO_OUT_DIR:-${SCRATCH:-$HOME}/beans-next-results/$RUN_TAG}}"
+OUT_DIR="${BEANS_NEXT_OUT_DIR:-${SCRATCH:-$HOME}/beans-next-results/$RUN_TAG}"
 
 echo "Submitting serving job..."
 SERVE_JOB=$(

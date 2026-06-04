@@ -8,10 +8,10 @@
 #   sbatch examples/slurm/run_esc50_official_cpu_inference_naturelm_v1_1.sh
 #
 # Override server URL (optional):
-#   BEANS_PRO_PREDICT_URL=http://... sbatch ...
+#   BEANS_NEXT_PREDICT_URL=http://... sbatch ...
 #
 # Or point at a URL file (optional):
-#   BEANS_PRO_URL_FILE=$HOME/beans-next-launchers/<serve_job_id>.url sbatch ...
+#   BEANS_NEXT_URL_FILE=$HOME/beans-next-launchers/<serve_job_id>.url sbatch ...
 #
 # Defaults assume serve job 56631 wrote:
 #   $HOME/beans-next-launchers/56631.url
@@ -37,9 +37,9 @@ cd "$REPO"
 uv sync --group esp
 
 URL_FILE_DEFAULT="$HOME/beans-next-launchers/56631.url"
-URL_FILE="${BEANS_PRO_URL_FILE:-$URL_FILE_DEFAULT}"
+URL_FILE="${BEANS_NEXT_URL_FILE:-$URL_FILE_DEFAULT}"
 
-PREDICT_URL="${BEANS_PRO_PREDICT_URL:-}"
+PREDICT_URL="${BEANS_NEXT_PREDICT_URL:-}"
 if [[ -z "$PREDICT_URL" ]]; then
   if [[ ! -f "$URL_FILE" ]]; then
     echo "ERROR: URL file not found: $URL_FILE" >&2
@@ -58,13 +58,13 @@ mkdir -p "$OUT"
 
 uv run beans-next run \
   --predict-url "$PREDICT_URL" \
-  --backend "${BEANS_PRO_DATA_SOURCE:-esp_data}" \
+  --backend "${BEANS_NEXT_DATA_SOURCE:-esp_data}" \
   --split esc50 \
   --dataset-name esc50 \
   --task-id beans_zero_esc50_official \
   --prompt-yaml beans_next/registry/prompt/classification_beans_zero_official_v1.yaml \
   --limit 400 \
-  --run-id "esc50_official_v11_full_cpu_${SLURM_JOB_ID}_${BEANS_PRO_DATA_SOURCE:-esp_data}" \
+  --run-id "esc50_official_v11_full_cpu_${SLURM_JOB_ID}_${BEANS_NEXT_DATA_SOURCE:-esp_data}" \
   -o "$OUT"
 
 echo "DONE. Output dir: $OUT"

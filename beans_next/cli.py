@@ -557,7 +557,7 @@ def _cmd_score_from_file(args: argparse.Namespace) -> int:
 
 
 def _cmd_pairs(args: argparse.Namespace) -> int:
-    """Generate prompt/answer/ground-truth pairs for BeansPro subsets.
+    """Generate prompt/answer/ground-truth pairs for BEANSNext subsets.
 
     Returns
     -------
@@ -844,7 +844,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p_pairs = sub.add_parser(
         "pairs",
         help=(
-            "Generate prompt/answer/ground-truth pairs for BeansPro subsets "
+            "Generate prompt/answer/ground-truth pairs for BEANSNext subsets "
             "(stores raw + post-processed predictions)."
         ),
     )
@@ -889,7 +889,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     handler = args._handler
     exit_code = handler(args)
-    if os.environ.get("BEANS_PRO_HARD_EXIT") == "1":
+    if os.environ.get("BEANS_NEXT_HARD_EXIT") == "1":
         os._exit(exit_code)
     return exit_code
 

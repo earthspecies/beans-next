@@ -27,22 +27,15 @@ from types import ModuleType
 
 from beans_next.api.types import DatasetExample
 
-_SAMPLE_ID_PREFIX = "beanspro:esp_data:"
+_SAMPLE_ID_PREFIX = "beans_next:esp_data:"
 _AUDIO_CACHE_ENV = "BEANS_NEXT_ESP_AUDIO_CACHE_DIR"
-_AUDIO_CACHE_ENV_COMPAT = "BEANS_PRO_ESP_AUDIO_CACHE_DIR"
 _DIAGNOSTICS_ENV = "BEANS_NEXT_ESP_DATA_DIAGNOSTICS"
-_DIAGNOSTICS_ENV_COMPAT = "BEANS_PRO_ESP_DATA_DIAGNOSTICS"
 _ROW_TIMEOUT_S_ENV = "BEANS_NEXT_ESP_DATA_ROW_TIMEOUT_S"
-_ROW_TIMEOUT_S_ENV_COMPAT = "BEANS_PRO_ESP_DATA_ROW_TIMEOUT_S"
 _AUDIO_TIMEOUT_S_ENV = "BEANS_NEXT_ESP_DATA_AUDIO_TIMEOUT_S"
-_AUDIO_TIMEOUT_S_ENV_COMPAT = "BEANS_PRO_ESP_DATA_AUDIO_TIMEOUT_S"
 _AUDIO_WRITE_RETRIES_ENV = "BEANS_NEXT_ESP_DATA_AUDIO_WRITE_RETRIES"
-_AUDIO_WRITE_RETRIES_ENV_COMPAT = "BEANS_PRO_ESP_DATA_AUDIO_WRITE_RETRIES"
 _LOG_EVERY_N_ENV = "BEANS_NEXT_ESP_DATA_LOG_EVERY_N"
-_LOG_EVERY_N_ENV_COMPAT = "BEANS_PRO_ESP_DATA_LOG_EVERY_N"
 # Controls parallel GCS download threads.  Set to e.g. 8 on nodes with ample CPUs.
 _WORKERS_ENV = "BEANS_NEXT_ESP_DATA_WORKERS"
-_WORKERS_ENV_COMPAT = "BEANS_PRO_ESP_DATA_WORKERS"
 # Sentinel key injected into rows when we bypass _process (no GCS audio download yet).
 _DATA_ROOT_KEY = "_beans_next_data_root"
 
@@ -95,15 +88,6 @@ def _env_int(name: str, *, default: int) -> int:
     except ValueError:
         return default
 
-
-def _env_int_compat(name: str, compat: str, *, default: int) -> int:
-    raw = os.environ.get(name) or os.environ.get(compat)
-    if raw is None:
-        return default
-    try:
-        return int(raw)
-    except ValueError:
-        return default
 
 
 class _AlarmTimeout:
@@ -261,7 +245,7 @@ def _download_gcs_to_wav(
 
 @lru_cache(maxsize=1)
 def _audio_cache_dir() -> str:
-    root = os.environ.get(_AUDIO_CACHE_ENV) or os.environ.get(_AUDIO_CACHE_ENV_COMPAT)
+    root = os.environ.get(_AUDIO_CACHE_ENV)
     if root is None or not root.strip():
         root = tempfile.mkdtemp(prefix="beans-next-esp-audio-")
     os.makedirs(root, exist_ok=True)
@@ -295,18 +279,14 @@ def _materialize_wav_from_row_audio(
         "False",
     )
     row_timeout_s = float(
-        _env_int_compat(_ROW_TIMEOUT_S_ENV, _ROW_TIMEOUT_S_ENV_COMPAT, default=0)
+        _env_int(_ROW_TIMEOUT_S_ENV, default=0)
     ) or None
     audio_timeout_s = float(
-        _env_int_compat(_AUDIO_TIMEOUT_S_ENV, _AUDIO_TIMEOUT_S_ENV_COMPAT, default=0)
+        _env_int(_AUDIO_TIMEOUT_S_ENV, default=0)
     ) or None
     write_retries = max(
         0,
-        _env_int_compat(
-            _AUDIO_WRITE_RETRIES_ENV,
-            _AUDIO_WRITE_RETRIES_ENV_COMPAT,
-            default=2,
-        ),
+        _env_int(_AUDIO_WRITE_RETRIES_ENV, default=2),
     )
 
     try:
@@ -702,7 +682,7 @@ def _load_beans_next_rows_via_reflection(
     *,
     split: str,
 ) -> Iterator[Mapping[str, object]]:
-    """Load BeansPro rows from esp_data by using the `BeansPro` dataset class.
+    """Load BEANSNext rows from esp_data by using the `BEANSNext` dataset class.
 
     This mirrors the BEANS-Zero fast-path: iterate the polars backend (metadata-only)
     and inject `_DATA_ROOT_KEY` so audio resolution uses the bounded GCS download
@@ -713,7 +693,7 @@ def _load_beans_next_rows_via_reflection(
     esp_data
         Imported `esp_data` module.
     split
-        BeansPro split name (e.g. `"crow-description"`, `"alarm-call-presence"`).
+        BEANSNext split name (e.g. `"crow-description"`, `"alarm-call-presence"`).
 
     Yields
     ------
@@ -723,16 +703,16 @@ def _load_beans_next_rows_via_reflection(
     Raises
     ------
     RuntimeError
-        If `esp_data.BeansPro` is unavailable or the installed API does not match
+        If `esp_data.BEANSNext` is unavailable or the installed API does not match
         expected access patterns.
     """
     # T3 rows use cropped-clip audio paths that are best resolved via the GCS
-    # JSONL loader; always bypass the BeansPro class for these splits.
+    # JSONL loader; always bypass the BEANSNext class for these splits.
     if split in _BEANS_NEXT_T3_SPLIT_JSONL:
         yield from _load_beans_next_rows_from_gcs_jsonl(split=split)
         return
 
-    beans_next_cls = getattr(esp_data, "BeansPro", None)
+    beans_next_cls = getattr(esp_data, "BEANSNext", None)
     if not callable(beans_next_cls):
         yield from _load_beans_next_rows_from_gcs_jsonl(split=split)
         return
@@ -741,7 +721,7 @@ def _load_beans_next_rows_via_reflection(
         ds = beans_next_cls(split=split)
     except TypeError as exc:
         raise RuntimeError(
-            f"Unable to construct `esp_data.BeansPro(split={split!r})` (API mismatch). "
+            f"Unable to construct `esp_data.BEANSNext(split={split!r})` (API mismatch). "
             "Fix: update this loader to match your esp_data version, or switch to "
             "HuggingFace loading (`data_source: hf`)."
         ) from exc
@@ -766,7 +746,7 @@ def _load_beans_next_rows_via_reflection(
         return
 
     raise RuntimeError(
-        "Unable to iterate BeansPro rows from `esp_data.BeansPro`. "
+        "Unable to iterate BEANSNext rows from `esp_data.BEANSNext`. "
         "Fix: update this loader to match your esp_data version, or switch to "
         "HuggingFace loading (`data_source: hf`)."
     )
@@ -775,15 +755,15 @@ def _load_beans_next_rows_via_reflection(
 def _load_beans_next_rows_from_gcs_jsonl(
     *, split: str
 ) -> Iterator[Mapping[str, object]]:
-    """Load BeansPro rows by streaming public GCS JSONL metadata.
+    """Load BEANSNext rows by streaming public GCS JSONL metadata.
 
     This is a compatibility fallback for environments where the installed
-    `esp_data` package does not yet ship the `BeansPro` dataset class.
+    `esp_data` package does not yet ship the `BEANSNext` dataset class.
 
     Parameters
     ----------
     split
-        BeansPro split name (e.g. `"crow-description"`, `"alarm-call-presence"`).
+        BEANSNext split name (e.g. `"crow-description"`, `"alarm-call-presence"`).
 
     Yields
     ------
@@ -804,7 +784,7 @@ def _load_beans_next_rows_from_gcs_jsonl(
         import fsspec  # type: ignore[import-not-found]
     except ImportError as exc:  # pragma: no cover
         raise RuntimeError(
-            "BeansPro fallback loading requires `fsspec` (and `gcsfs` for `gs://`). "
+            "BEANSNext fallback loading requires `fsspec` (and `gcsfs` for `gs://`). "
             "Install them or use a different data source."
         ) from exc
 
@@ -867,7 +847,7 @@ def _load_beans_next_rows_from_gcs_jsonl(
     if cfg is None:
         known = ", ".join(sorted(split_to_jsonl_and_root))
         raise RuntimeError(
-            f"Unknown BeansPro split {split!r} for fallback JSONL loading. "
+            f"Unknown BEANSNext split {split!r} for fallback JSONL loading. "
             f"Known splits: {known}. "
             "Fix: add the split's JSONL path + audio data root mapping."
         )
@@ -888,7 +868,7 @@ def _load_beans_next_rows_from_gcs_jsonl(
                 yield row
     except Exception as exc:
         raise RuntimeError(
-            f"Failed to stream BeansPro split JSONL from GCS: split={split!r} "
+            f"Failed to stream BEANSNext split JSONL from GCS: split={split!r} "
             f"path={jsonl_path!r}. Error: {exc}"
         ) from exc
 
@@ -937,9 +917,7 @@ def _resolve_audio_for_row(
     """
     data_root = row.get(_DATA_ROOT_KEY)
     if isinstance(data_root, str) and data_root:
-        dl_timeout_raw = _env_int_compat(
-            _AUDIO_TIMEOUT_S_ENV, _AUDIO_TIMEOUT_S_ENV_COMPAT, default=60
-        )
+        dl_timeout_raw = _env_int(_AUDIO_TIMEOUT_S_ENV, default=60)
         dl_timeout: float | None = float(dl_timeout_raw) if dl_timeout_raw > 0 else None
 
         for candidate in _audio_path_candidates_from_row(row):
@@ -961,9 +939,7 @@ def _resolve_audio_for_row(
     audio_path: str | None = None
     for candidate in _audio_path_candidates_from_row(row):
         if candidate.startswith("gs://"):
-            dl_timeout_raw = _env_int_compat(
-                _AUDIO_TIMEOUT_S_ENV, _AUDIO_TIMEOUT_S_ENV_COMPAT, default=60
-            )
+            dl_timeout_raw = _env_int(_AUDIO_TIMEOUT_S_ENV, default=60)
             dl_timeout: float | None = (
                 float(dl_timeout_raw) if dl_timeout_raw > 0 else None
             )
@@ -1144,14 +1120,14 @@ def iter_esp_data_beans_zero_examples(
     )
     log_every_n = max(
         1,
-        _env_int_compat(_LOG_EVERY_N_ENV, _LOG_EVERY_N_ENV_COMPAT, default=50),
+        _env_int(_LOG_EVERY_N_ENV, default=50),
     )
-    # Allow env-var override so Slurm jobs can set BEANS_PRO_ESP_DATA_WORKERS=8
+    # Allow env-var override so Slurm jobs can set BEANS_NEXT_ESP_DATA_WORKERS=8
     # without changing CLI args.
     if workers == 1:
         workers = max(
             1,
-            _env_int_compat(_WORKERS_ENV, _WORKERS_ENV_COMPAT, default=1),
+            _env_int(_WORKERS_ENV, default=1),
         )
 
     if workers > 1:
@@ -1305,15 +1281,15 @@ def iter_esp_data_beans_next_examples(
     limit: int | None = None,
     workers: int = 1,
 ) -> Iterator[DatasetExample]:
-    """Yield `DatasetExample` rows for a BeansPro split via `esp_data`.
+    """Yield `DatasetExample` rows for a BEANSNext split via `esp_data`.
 
     Parameters
     ----------
     subset
-        BeansPro subset id. For BeansPro, this is the split name (e.g.
+        BEANSNext subset id. For BEANSNext, this is the split name (e.g.
         `"crow-description"`, `"alarm-call-presence"`).
     split
-        BeansPro split name passed to `esp_data.BeansPro(split=...)`.
+        BEANSNext split name passed to `esp_data.BEANSNext(split=...)`.
     task_id
         Optional eval-task id stored on each yielded example.
     limit
@@ -1337,12 +1313,12 @@ def iter_esp_data_beans_next_examples(
     )
     log_every_n = max(
         1,
-        _env_int_compat(_LOG_EVERY_N_ENV, _LOG_EVERY_N_ENV_COMPAT, default=50),
+        _env_int(_LOG_EVERY_N_ENV, default=50),
     )
     if workers == 1:
         workers = max(
             1,
-            _env_int_compat(_WORKERS_ENV, _WORKERS_ENV_COMPAT, default=1),
+            _env_int(_WORKERS_ENV, default=1),
         )
 
     if workers > 1:
@@ -1688,12 +1664,12 @@ def iter_esp_data_birdset_examples(
     )
     log_every_n = max(
         1,
-        _env_int_compat(_LOG_EVERY_N_ENV, _LOG_EVERY_N_ENV_COMPAT, default=50),
+        _env_int(_LOG_EVERY_N_ENV, default=50),
     )
     if workers == 1:
         workers = max(
             1,
-            _env_int_compat(_WORKERS_ENV, _WORKERS_ENV_COMPAT, default=1),
+            _env_int(_WORKERS_ENV, default=1),
         )
 
     if workers > 1:
@@ -1803,7 +1779,7 @@ def _iter_esp_data_birdset_concurrent(
 
 
 # ---------------------------------------------------------------------------
-# BeansProMultiAudio (esp_data.BeansProMultiAudio) loader
+# BEANSNextMultiAudio (esp_data.BEANSNextMultiAudio) loader
 # ---------------------------------------------------------------------------
 
 _MULTIAUDIO_GCS_BASE = "gs://esp-data-ingestion/beans-pro/v0.1.0/raw"
@@ -1870,9 +1846,9 @@ def _load_beans_next_multiaudio_rows_via_reflection(
     *,
     split: str,
 ) -> Iterator[Mapping[str, object]]:
-    """Load BeansProMultiAudio rows from esp_data, bypassing ``_process()``.
+    """Load BEANSNextMultiAudio rows from esp_data, bypassing ``_process()``.
 
-    Mirrors the BeansPro fast-path: iterates the polars backend for metadata-only
+    Mirrors the BEANSNext fast-path: iterates the polars backend for metadata-only
     rows and injects ``_DATA_ROOT_KEY`` so audio resolution uses bounded GCS
     downloads rather than per-row ``_process()`` calls.
 
@@ -1881,7 +1857,7 @@ def _load_beans_next_multiaudio_rows_via_reflection(
     esp_data
         Imported ``esp_data`` module.
     split
-        BeansProMultiAudio split name (e.g. ``"crow-4way"``).
+        BEANSNextMultiAudio split name (e.g. ``"crow-4way"``).
 
     Yields
     ------
@@ -1891,10 +1867,10 @@ def _load_beans_next_multiaudio_rows_via_reflection(
     Raises
     ------
     RuntimeError
-        If ``esp_data.BeansProMultiAudio`` is unavailable or the API does not
+        If ``esp_data.BEANSNextMultiAudio`` is unavailable or the API does not
         match expected access patterns.
     """
-    cls = getattr(esp_data, "BeansProMultiAudio", None)
+    cls = getattr(esp_data, "BEANSNextMultiAudio", None)
     if not callable(cls):
         yield from _load_beans_next_multiaudio_rows_from_gcs_jsonl(split=split)
         return
@@ -1903,7 +1879,7 @@ def _load_beans_next_multiaudio_rows_via_reflection(
         ds = cls(split=split)
     except TypeError as exc:
         raise RuntimeError(
-            f"Unable to construct `esp_data.BeansProMultiAudio(split={split!r})`. "
+            f"Unable to construct `esp_data.BEANSNextMultiAudio(split={split!r})`. "
             "Fix: update this loader or switch to HuggingFace loading."
         ) from exc
 
@@ -1922,7 +1898,7 @@ def _load_beans_next_multiaudio_rows_via_reflection(
         return
 
     raise RuntimeError(
-        "Unable to iterate BeansProMultiAudio rows from `esp_data.BeansProMultiAudio`. "
+        "Unable to iterate BEANSNextMultiAudio rows from `esp_data.BEANSNextMultiAudio`. "
         "Fix: update this loader to match your esp_data version."
     )
 
@@ -1930,15 +1906,15 @@ def _load_beans_next_multiaudio_rows_via_reflection(
 def _load_beans_next_multiaudio_rows_from_gcs_jsonl(
     *, split: str
 ) -> Iterator[Mapping[str, object]]:
-    """Load BeansProMultiAudio rows by streaming GCS JSONL metadata.
+    """Load BEANSNextMultiAudio rows by streaming GCS JSONL metadata.
 
     Compatibility fallback for environments where the installed ``esp_data``
-    package does not yet ship ``BeansProMultiAudio``.
+    package does not yet ship ``BEANSNextMultiAudio``.
 
     Parameters
     ----------
     split
-        BeansProMultiAudio split name.
+        BEANSNextMultiAudio split name.
 
     Yields
     ------
@@ -1956,7 +1932,7 @@ def _load_beans_next_multiaudio_rows_from_gcs_jsonl(
         import fsspec  # type: ignore[import-not-found]
     except ImportError as exc:
         raise RuntimeError(
-            "BeansProMultiAudio fallback loading requires `fsspec` (and `gcsfs` for "
+            "BEANSNextMultiAudio fallback loading requires `fsspec` (and `gcsfs` for "
             "`gs://`). Install them or use a different data source."
         ) from exc
 
@@ -1964,7 +1940,7 @@ def _load_beans_next_multiaudio_rows_from_gcs_jsonl(
     if cfg is None:
         known = ", ".join(sorted(_MULTIAUDIO_SPLIT_JSONL_AND_ROOT))
         raise RuntimeError(
-            f"Unknown BeansProMultiAudio split {split!r}. Known: {known}."
+            f"Unknown BEANSNextMultiAudio split {split!r}. Known: {known}."
         )
     jsonl_path, data_root = cfg
 
@@ -1981,7 +1957,7 @@ def _load_beans_next_multiaudio_rows_from_gcs_jsonl(
                 yield row
     except Exception as exc:
         raise RuntimeError(
-            f"Failed to stream BeansProMultiAudio JSONL: split={split!r} "
+            f"Failed to stream BEANSNextMultiAudio JSONL: split={split!r} "
             f"path={jsonl_path!r}. Error: {exc}"
         ) from exc
 
@@ -2018,9 +1994,7 @@ def _resolve_audio_paths_for_row(
     if not isinstance(audio_paths_raw, list) or not audio_paths_raw:
         return []
 
-    dl_timeout_raw = _env_int_compat(
-        _AUDIO_TIMEOUT_S_ENV, _AUDIO_TIMEOUT_S_ENV_COMPAT, default=60
-    )
+    dl_timeout_raw = _env_int(_AUDIO_TIMEOUT_S_ENV, default=60)
     dl_timeout: float | None = float(dl_timeout_raw) if dl_timeout_raw > 0 else None
 
     resolved: list[str] = []
@@ -2028,7 +2002,7 @@ def _resolve_audio_paths_for_row(
         if not isinstance(rel_path, str) or not rel_path.strip():
             if diagnostics:
                 _LOG.warning(
-                    "BeansProMultiAudio audio_paths[%d] is not a string; "
+                    "BEANSNextMultiAudio audio_paths[%d] is not a string; "
                     "skipping sample_id=%s",
                     i,
                     sample_id,
@@ -2046,7 +2020,7 @@ def _resolve_audio_paths_for_row(
             if path is None:
                 if diagnostics:
                     _LOG.warning(
-                        "BeansProMultiAudio GCS download failed for audio[%d] "
+                        "BEANSNextMultiAudio GCS download failed for audio[%d] "
                         "sample_id=%s path=%s",
                         i,
                         sample_id,
@@ -2059,7 +2033,7 @@ def _resolve_audio_paths_for_row(
         else:
             if diagnostics:
                 _LOG.warning(
-                    "BeansProMultiAudio audio_paths[%d] is relative and no data_root "
+                    "BEANSNextMultiAudio audio_paths[%d] is relative and no data_root "
                     "is set; skipping sample_id=%s path=%s",
                     i,
                     sample_id,
@@ -2103,7 +2077,7 @@ def _build_multiaudio_dataset_example(
     split: str,
     task_id: str | None,
 ) -> DatasetExample:
-    """Assemble a ``DatasetExample`` from a BeansProMultiAudio row.
+    """Assemble a ``DatasetExample`` from a BEANSNextMultiAudio row.
 
     Parameters
     ----------
@@ -2184,7 +2158,7 @@ def iter_esp_data_beans_next_multiaudio_examples(
     limit: int | None = None,
     workers: int = 1,
 ) -> Iterator[DatasetExample]:
-    """Yield ``DatasetExample`` rows for a BeansProMultiAudio split via ``esp_data``.
+    """Yield ``DatasetExample`` rows for a BEANSNextMultiAudio split via ``esp_data``.
 
     Each example contains:
 
@@ -2199,7 +2173,7 @@ def iter_esp_data_beans_next_multiaudio_examples(
     Parameters
     ----------
     split
-        BeansProMultiAudio split name (e.g. ``"crow-4way"``).
+        BEANSNextMultiAudio split name (e.g. ``"crow-4way"``).
     task_id
         Optional eval-task id stored on each yielded example.
     limit
@@ -2223,12 +2197,12 @@ def iter_esp_data_beans_next_multiaudio_examples(
     )
     log_every_n = max(
         1,
-        _env_int_compat(_LOG_EVERY_N_ENV, _LOG_EVERY_N_ENV_COMPAT, default=50),
+        _env_int(_LOG_EVERY_N_ENV, default=50),
     )
     if workers == 1:
         workers = max(
             1,
-            _env_int_compat(_WORKERS_ENV, _WORKERS_ENV_COMPAT, default=1),
+            _env_int(_WORKERS_ENV, default=1),
         )
 
     if workers > 1:

@@ -18,10 +18,10 @@ Available splits
   2021 Task 5.
 - ``crow-4way``: 200 examples, 4-way multiple-choice call-type matching
   for carrion crow (*Corvus corone*, 25 call types). Aligned 1:1 with
-  the ``crow-description`` split in `BeansPro`.
+  the ``crow-description`` split in `BEANSNext`.
 - ``zebra-4way``: 40 examples, 4-way multiple-choice call-type matching
   for plains zebra (*Equus quagga*, 4 call types). Aligned 1:1 with the
-  ``zebra-description`` split in `BeansPro`.
+  ``zebra-description`` split in `BEANSNext`.
 - ``unseen-species-4way``: 1227 examples, 4-way species classification
   for 172 held-out species (genus seen), random confusers.
 """
@@ -129,7 +129,7 @@ _AUDIO_ROOT_OVERRIDES: dict[str, str] = {
 
 
 @register_dataset
-class BeansProMultiAudio(Dataset):
+class BEANSNextMultiAudio(Dataset):
     """BEANS-Next multi-audio evaluation benchmark.
 
     Description
@@ -145,8 +145,8 @@ class BeansProMultiAudio(Dataset):
 
     Examples
     --------
-    >>> from esp_data.datasets.beans_next_multi_audio import BeansProMultiAudio  # doctest: +SKIP
-    >>> ds = BeansProMultiAudio(split="gibbon-fewshot-detection-balanced", sample_rate=32000)  # doctest: +SKIP
+    >>> from esp_data.datasets.beans_next_multi_audio import BEANSNextMultiAudio  # doctest: +SKIP
+    >>> ds = BEANSNextMultiAudio(split="gibbon-fewshot-detection-balanced", sample_rate=32000)  # doctest: +SKIP
     >>> row = ds[0]  # doctest: +SKIP
     >>> len(row["audios"]) >= 4  # doctest: +SKIP
     True
@@ -155,12 +155,12 @@ class BeansProMultiAudio(Dataset):
     def __init__(self, *args: object, **kwargs: object) -> None:
         if _ESP_DATA_IMPORT_ERROR is not None:
             raise ImportError(
-                "esp-data is required for BeansProMultiAudio dataset support. "
+                "esp-data is required for BEANSNextMultiAudio dataset support. "
                 "Install it with the 'esp' dependency group (private index)."
             ) from _ESP_DATA_IMPORT_ERROR
         if _POLARS_IMPORT_ERROR is not None:
             raise ImportError(
-                "polars is required for BeansProMultiAudio dataset support. "
+                "polars is required for BEANSNextMultiAudio dataset support. "
                 "Install it with: pip install 'beans-next[polars]'"
             ) from _POLARS_IMPORT_ERROR
         super().__init__(*args, **kwargs)  # type: ignore[misc]
@@ -307,7 +307,7 @@ class BeansProMultiAudio(Dataset):
     def from_config(
         cls,
         dataset_config: DatasetConfig,
-    ) -> tuple["BeansProMultiAudio", dict[str, Any]]:
+    ) -> tuple["BEANSNextMultiAudio", dict[str, Any]]:
         """Create instance from a dataset config.
 
         Parameters
@@ -317,7 +317,7 @@ class BeansProMultiAudio(Dataset):
 
         Returns
         -------
-        tuple[BeansProMultiAudio, dict[str, Any]]
+        tuple[BEANSNextMultiAudio, dict[str, Any]]
             The dataset and any transformation metadata.
         """
         cfg = dataset_config.model_dump(exclude={"dataset_name", "transformations"})

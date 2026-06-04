@@ -1315,14 +1315,11 @@ def _load_examples_for_eval_task(
     # Configurable dataset backend switch:
     # - explicit CLI `--backend` wins
     # - then YAML `data_source` (if present in run-config or eval-task body)
-    # - then env var `BEANS_NEXT_DATA_SOURCE` (compat: `BEANS_PRO_DATA_SOURCE`)
+    # - then env var `BEANS_NEXT_DATA_SOURCE`
     # - else default esp_data
     data_source = getattr(args, "data_source", None) or eval_task.get("data_source")
     if not isinstance(data_source, str) or not data_source.strip():
-        data_source = os.environ.get(
-            "BEANS_NEXT_DATA_SOURCE",
-            os.environ.get("BEANS_PRO_DATA_SOURCE", "esp_data"),
-        )
+        data_source = os.environ.get("BEANS_NEXT_DATA_SOURCE", "esp_data")
     data_source = str(data_source).strip()
     if data_source == "hf":
         data_source = "huggingface"
@@ -1371,7 +1368,7 @@ def _load_examples_for_eval_task(
             subset_name = eval_task.get("subset") or split
             if not isinstance(subset_name, str) or not subset_name.strip():
                 raise SystemExit(
-                    "BeansPro esp_data loading requires a non-empty `subset`."
+                    "BEANSNext esp_data loading requires a non-empty `subset`."
                 )
             for ex in iter_esp_data_beans_next_examples(
                 subset=subset_name.strip(),
@@ -1387,7 +1384,7 @@ def _load_examples_for_eval_task(
             subset_name = eval_task.get("subset") or split
             if not isinstance(subset_name, str) or not subset_name.strip():
                 raise SystemExit(
-                    "BeansProMultiAudio esp_data loading requires a non-empty `subset`."
+                    "BEANSNextMultiAudio esp_data loading requires a non-empty `subset`."
                 )
             for ex in iter_esp_data_beans_next_multiaudio_examples(
                 split=subset_name.strip(),
@@ -1966,13 +1963,13 @@ def run_from_cli_namespace(args: Namespace) -> None:
             group = plan_groups[url]
             first_model = group[0].model
             client_kwargs: dict[str, Any] = {"probe_on_init": True}
-            http_timeout_raw = os.environ.get("BEANS_PRO_HTTP_TIMEOUT_SEC", "").strip()
+            http_timeout_raw = os.environ.get("BEANS_NEXT_HTTP_TIMEOUT_SEC", "").strip()
             if http_timeout_raw:
                 try:
                     client_kwargs["timeout"] = float(http_timeout_raw)
                 except ValueError:
                     raise SystemExit(
-                        "Invalid BEANS_PRO_HTTP_TIMEOUT_SEC (must be float seconds): "
+                        "Invalid BEANS_NEXT_HTTP_TIMEOUT_SEC (must be float seconds): "
                         f"{http_timeout_raw!r}"
                     ) from None
             if first_model.retry_policy is not None:
@@ -2077,13 +2074,13 @@ def run_from_cli_namespace(args: Namespace) -> None:
         raise SystemExit(str(exc)) from exc
 
     client_kwargs2: dict[str, Any] = {"probe_on_init": True}
-    http_timeout_raw2 = os.environ.get("BEANS_PRO_HTTP_TIMEOUT_SEC", "").strip()
+    http_timeout_raw2 = os.environ.get("BEANS_NEXT_HTTP_TIMEOUT_SEC", "").strip()
     if http_timeout_raw2:
         try:
             client_kwargs2["timeout"] = float(http_timeout_raw2)
         except ValueError:
             raise SystemExit(
-                "Invalid BEANS_PRO_HTTP_TIMEOUT_SEC (must be float seconds): "
+                "Invalid BEANS_NEXT_HTTP_TIMEOUT_SEC (must be float seconds): "
                 f"{http_timeout_raw2!r}"
             ) from None
     with HttpClient(str(predict_url), **client_kwargs2) as client:

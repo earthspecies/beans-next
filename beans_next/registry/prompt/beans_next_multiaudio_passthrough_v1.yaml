@@ -1,4 +1,4 @@
-# Multi-audio passthrough prompt for BeansProMultiAudio.
+# Multi-audio passthrough prompt for BEANSNextMultiAudio.
 #
 # The user message is read verbatim from metadata["conversation"], which
 # already contains the full prompt text with N <Audio><AudioHere></Audio>

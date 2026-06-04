@@ -23,7 +23,7 @@ SMOKE_OUT_DIR="/scratch/${USER}/.cache/beans-next-results/${INC}/${MODEL_DIR}/${
 FULL_OUT_DIR="/scratch/${USER}/.cache/beans-next-results/${INC}/${MODEL_DIR}/${SUBSET_DIR}/${FULL_RUN_ID}"
 
 # Lean 30B single-stage config (known-good; weights pre-cached in hf_cache_qwen3_omni_instruct_lean).
-BEANS_PRO_STAGE_CONFIG="${BEANS_PRO_STAGE_CONFIG:-/home/${USER}/code/beans-pro/examples/servers/vllm/qwen3_omni_moe_instruct_text_single_h100.yaml}"
+BEANS_NEXT_STAGE_CONFIG="${BEANS_NEXT_STAGE_CONFIG:-/home/${USER}/code/beans-next/examples/servers/vllm/qwen3_omni_moe_instruct_text_single_h100.yaml}"
 HF_CACHE="${BEANS_NEXT_HF_HOME:-/home/${USER}/hf_cache_qwen3_omni_instruct_lean}"
 
 echo "Submitting serving job (Qwen3-Omni-30B-A3B-Instruct via vLLM-Omni, h100-80)..."
@@ -39,7 +39,7 @@ SERVE_JOB=$(
   VLLM_AUDIO_CONTENT_FORMAT="audio_url_data" \
   HF_HUB_DISABLE_XET="1" \
   BEANS_NEXT_HF_HOME="$HF_CACHE" \
-  VLLM_EXTRA_ARGS="--stage-configs-path ${BEANS_PRO_STAGE_CONFIG} --download-dir ${HF_CACHE}" \
+  VLLM_EXTRA_ARGS="--stage-configs-path ${BEANS_NEXT_STAGE_CONFIG} --download-dir ${HF_CACHE}" \
   BEANS_NEXT_DEBUG=1 \
   sbatch --parsable \
     --partition=h100-80 --gpus=1 --exclude=slurm-8x-h100-1 \

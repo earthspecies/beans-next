@@ -270,7 +270,7 @@ scancel 56789 56790
 **Output directory**: defaults to `$SCRATCH/beans-next-results/<model>_<timestamp>`. Override with:
 
 ```bash
-BEANS_PRO_OUT_DIR=/my/path bash examples/slurm/submit_beans_zero_core_naturelm_v1_0.sh
+BEANS_NEXT_OUT_DIR=/my/path bash examples/slurm/submit_beans_zero_core_naturelm_v1_0.sh
 ```
 
 #### Partition notes
@@ -292,10 +292,10 @@ The submit scripts are thin wrappers around the underlying `serve_*.sh` + `run_i
 SERVE_JOB=$(sbatch --parsable examples/slurm/serve_naturelm_v1_0.sh)
 
 # 2. Submit inference job with full suite, custom output dir
-BEANS_PRO_URL_FILE=$HOME/beans-next-launchers/$SERVE_JOB.url \
-BEANS_PRO_SUITE=beans_zero_core \
-BEANS_PRO_RUN_ID=naturelm_v1_0_20260501 \
-BEANS_PRO_OUT_DIR=$SCRATCH/results/naturelm_v1_0_20260501 \
+BEANS_NEXT_URL_FILE=$HOME/beans-next-launchers/$SERVE_JOB.url \
+BEANS_NEXT_SUITE=beans_zero_core \
+BEANS_NEXT_RUN_ID=naturelm_v1_0_20260501 \
+BEANS_NEXT_OUT_DIR=$SCRATCH/results/naturelm_v1_0_20260501 \
 sbatch --dependency=after:$SERVE_JOB examples/slurm/run_inference.sh
 ```
 
@@ -303,13 +303,13 @@ Available `run_inference.sh` environment variables:
 
 | Variable | Default | Description |
 |---|---|---|
-| `BEANS_PRO_URL_FILE` | — | Path to URL file written by serving job (required) |
-| `BEANS_PRO_SUITE` | `beans_zero_core` | Suite to run |
-| `BEANS_PRO_LIMIT` | (none) | Cap examples per task; omit for full suite |
-| `BEANS_PRO_OUT_DIR` | `~/beans-next-results/run_<job_id>` | Output directory |
-| `BEANS_PRO_RUN_ID` | `slurm_<job_id>` | Run identifier in artifacts |
-| `BEANS_PRO_DATA_SOURCE` | auto (`esp_data` for beans_zero_*) | `hf` or `esp_data` |
-| `BEANS_PRO_DEBUG` | `0` | Set to `1` for verbose logging |
+| `BEANS_NEXT_URL_FILE` | — | Path to URL file written by serving job (required) |
+| `BEANS_NEXT_SUITE` | `beans_zero_core` | Suite to run |
+| `BEANS_NEXT_LIMIT` | (none) | Cap examples per task; omit for full suite |
+| `BEANS_NEXT_OUT_DIR` | `~/beans-next-results/run_<job_id>` | Output directory |
+| `BEANS_NEXT_RUN_ID` | `slurm_<job_id>` | Run identifier in artifacts |
+| `BEANS_NEXT_DATA_SOURCE` | auto (`esp_data` for beans_zero_*) | `hf` or `esp_data` |
+| `BEANS_NEXT_DEBUG` | `0` | Set to `1` for verbose logging |
 
 ---
 
@@ -430,9 +430,9 @@ JOB_AF3=$(sbatch --parsable examples/slurm/serve_af3.sh)
 JOB_QWN=$(VLLM_MODEL_ID=Qwen/Qwen3-Omni-7B sbatch --parsable examples/slurm/serve_qwen3_omni.sh)
 
 for JOB_ID in $JOB_NLM $JOB_AF3 $JOB_QWN; do
-  BEANS_PRO_URL_FILE=$HOME/beans-next-launchers/$JOB_ID.url \
-  BEANS_PRO_SUITE=beans_zero_core \
-  BEANS_PRO_OUT_DIR=${SCRATCH}/beans-next-results/run_${JOB_ID} \
+  BEANS_NEXT_URL_FILE=$HOME/beans-next-launchers/$JOB_ID.url \
+  BEANS_NEXT_SUITE=beans_zero_core \
+  BEANS_NEXT_OUT_DIR=${SCRATCH}/beans-next-results/run_${JOB_ID} \
   sbatch --dependency=after:$JOB_ID examples/slurm/run_inference.sh
 done
 
@@ -443,7 +443,7 @@ squeue --me
 
 ## 7. Output artifacts
 
-Every run writes these files to `--output-dir` (or `BEANS_PRO_OUT_DIR` in SLURM):
+Every run writes these files to `--output-dir` (or `BEANS_NEXT_OUT_DIR` in SLURM):
 
 | File | Content |
 |---|---|
@@ -564,9 +564,9 @@ If a SLURM job was killed mid-run (time limit, preemption), resume from the chec
 
 ```bash
 # SLURM: add --resume to the existing output dir
-BEANS_PRO_URL_FILE=$HOME/beans-next-launchers/<new_serve_job>.url \
-BEANS_PRO_SUITE=beans_zero_core \
-BEANS_PRO_OUT_DIR=/scratch/$USER/beans-next-results/naturelm_v1_0_20260501 \
+BEANS_NEXT_URL_FILE=$HOME/beans-next-launchers/<new_serve_job>.url \
+BEANS_NEXT_SUITE=beans_zero_core \
+BEANS_NEXT_OUT_DIR=/scratch/$USER/beans-next-results/naturelm_v1_0_20260501 \
 sbatch --dependency=after:<new_serve_job> examples/slurm/run_inference.sh
 ```
 
@@ -589,9 +589,9 @@ uv run beans-next run \
 
 **`launcher did not become healthy`**: model is still loading or OOM. Check the serve log (`~/logs/<serve_job_id>.log`). AF3 takes up to 15 min; NatureLM v1.0 ~3 min; Qwen3-Omni-7B ~5 min.
 
-**`BEANS_PRO_URL_FILE not found`**: serving job failed before writing the URL file. Check serve log for errors (missing weights, OOM).
+**`BEANS_NEXT_URL_FILE not found`**: serving job failed before writing the URL file. Check serve log for errors (missing weights, OOM).
 
-**`esp_data not importable`**: the cluster's `esp_data` package is not in the inference venv. Force HuggingFace loading: `BEANS_PRO_DATA_SOURCE=hf sbatch ...`.
+**`esp_data not importable`**: the cluster's `esp_data` package is not in the inference venv. Force HuggingFace loading: `BEANS_NEXT_DATA_SOURCE=hf sbatch ...`.
 
 **`No dataset examples were loaded`**: HuggingFace download failed. Compute nodes may lack outbound internet — switch to `esp_data` or set `HF_HUB_OFFLINE=1` with a pre-populated `HF_HOME`.
 

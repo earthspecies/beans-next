@@ -40,7 +40,7 @@ def test_runner_prefers_explicit_data_source_over_env(
     from beans_next.runner import runner as runner_mod
 
     # Env asks for esp_data...
-    monkeypatch.setenv("BEANS_PRO_DATA_SOURCE", "esp_data")
+    monkeypatch.setenv("BEANS_NEXT_DATA_SOURCE", "esp_data")
 
     # ...but args explicitly request HF; we should then fail in the HF path
     # instead of trying to import esp_data.

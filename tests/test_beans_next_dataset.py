@@ -1,4 +1,4 @@
-"""Focused tests for the BeansPro loader + registry (I15-C)."""
+"""Focused tests for the BEANSNext loader + registry (I15-C)."""
 
 from __future__ import annotations
 
@@ -103,7 +103,7 @@ def test_build_dataset_example_from_beans_next_row_fixture(
 ) -> None:
     ex = beans_next_example
     assert isinstance(ex, DatasetExample)
-    assert ex.sample_id == "beanspro:test:0"
+    assert ex.sample_id == "beans_next:test:0"
     assert ex.task_id == "beans_next_crow_description"
     assert ex.split == "test"
     assert ex.labels == "A"
@@ -134,7 +134,7 @@ def test_synthesize_esp_data_sample_id_is_stable_for_beans_next_dataset() -> Non
     )
     assert a == b
     assert a != c
-    assert a.startswith("beanspro:esp_data:")
+    assert a.startswith("beans_next:esp_data:")
 
 
 @pytest.mark.parametrize(

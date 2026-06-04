@@ -52,7 +52,7 @@ Copy the entire run output directory (for example `results/<run_id>/`) into this
 
 `results/ingested/<run_id>/`
 
-If you ran via Slurm using `examples/slurm/run_inference.sh`, the output directory is whatever you set as `BEANS_PRO_OUT_DIR` (or its default from that script).
+If you ran via Slurm using `examples/slurm/run_inference.sh`, the output directory is whatever you set as `BEANS_NEXT_OUT_DIR` (or its default from that script).
 
 ### Common directory shapes (all supported by the validator)
 

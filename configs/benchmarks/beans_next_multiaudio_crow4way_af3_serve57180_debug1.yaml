@@ -1,4 +1,4 @@
-# Debug config: Beans-Pro MultiAudio crow 4-way — AF3 (limit=1)
+# Debug config: BEANS-Next MultiAudio crow 4-way — AF3 (limit=1)
 models:
   - inline:
       name: af3_serve57180

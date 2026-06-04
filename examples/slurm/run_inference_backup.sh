@@ -13,13 +13,13 @@
 #   # After submitting a serving job (e.g. serve_af3.sh), note its job id:
 #   SERVE_JOB_ID=12345
 #
-#   BEANS_PRO_URL_FILE=$HOME/beans-next-launchers/$SERVE_JOB_ID.url \
-#   BEANS_PRO_SUITE=beans_zero_core \
-#   BEANS_PRO_LIMIT=1 \
-#   BEANS_PRO_OUT_DIR=/scratch/$USER/results/af3_run \
+#   BEANS_NEXT_URL_FILE=$HOME/beans-next-launchers/$SERVE_JOB_ID.url \
+#   BEANS_NEXT_SUITE=beans_zero_core \
+#   BEANS_NEXT_LIMIT=1 \
+#   BEANS_NEXT_OUT_DIR=/scratch/$USER/results/af3_run \
 #   sbatch --dependency=after:$SERVE_JOB_ID examples/slurm/run_inference.sh
 #
-# Keep BEANS_PRO_LIMIT in the 1–5 range while debugging wiring or launcher issues.
+# Keep BEANS_NEXT_LIMIT in the 1–5 range while debugging wiring or launcher issues.
 #
 # The job waits for the URL file to appear (written by the serving job), then polls
 # `GET /health` before starting inference.
@@ -39,59 +39,34 @@
 set -euo pipefail
 
 # ---------------------------------------------------------------------------
-# BEANS_NEXT_* environment variables (preferred) + BEANS_PRO_* compatibility.
+# BEANS_NEXT_* environment variables.
 # ---------------------------------------------------------------------------
 
-_env_first() {
-  local new_name="$1"
-  local old_name="$2"
-  local default_val="$3"
-  local v="${!new_name:-}"
-  if [[ -n "$v" ]]; then
-    printf '%s' "$v"
-    return 0
-  fi
-  v="${!old_name:-}"
-  if [[ -n "$v" ]]; then
-    printf '%s' "$v"
-    return 0
-  fi
-  printf '%s' "$default_val"
-}
-
-_export_compat() {
-  local new_name="$1"
-  local old_name="$2"
-  local default_val="${3:-}"
-  # shellcheck disable=SC2163
-  export "${new_name}=$(_env_first "$new_name" "$old_name" "$default_val")"
-}
-
-_export_compat "BEANS_NEXT_DATA_SOURCE" "BEANS_PRO_DATA_SOURCE" "esp_data"
-_export_compat "BEANS_NEXT_URL_FILE" "BEANS_PRO_URL_FILE" ""
-_export_compat "BEANS_NEXT_SUITE" "BEANS_PRO_SUITE" ""
-_export_compat "BEANS_NEXT_LIMIT" "BEANS_PRO_LIMIT" ""
-_export_compat "BEANS_NEXT_OUT_DIR" "BEANS_PRO_OUT_DIR" ""
-_export_compat "BEANS_NEXT_CONFIG" "BEANS_PRO_CONFIG" ""
-_export_compat "BEANS_NEXT_RUN_ID" "BEANS_PRO_RUN_ID" ""
-_export_compat "BEANS_NEXT_TASK_ID" "BEANS_PRO_TASK_ID" ""
-_export_compat "BEANS_NEXT_DATASET_NAME" "BEANS_PRO_DATASET_NAME" ""
-_export_compat "BEANS_NEXT_SPLIT" "BEANS_PRO_SPLIT" ""
-_export_compat "BEANS_NEXT_HF_PATH" "BEANS_PRO_HF_PATH" ""
-_export_compat "BEANS_NEXT_HF_CONFIG" "BEANS_PRO_HF_CONFIG" ""
-_export_compat "BEANS_NEXT_WORKERS" "BEANS_PRO_WORKERS" ""
-_export_compat "BEANS_NEXT_SKIP_UV_SYNC" "BEANS_PRO_SKIP_UV_SYNC" "0"
-_export_compat "BEANS_NEXT_UV_PYTHON" "BEANS_PRO_UV_PYTHON" "3.11"
-_export_compat "BEANS_NEXT_URL_WAIT_TIMEOUT_SEC" "BEANS_PRO_URL_WAIT_TIMEOUT_SEC" "1800"
-_export_compat "BEANS_NEXT_URL_WAIT_INTERVAL_SEC" "BEANS_PRO_URL_WAIT_INTERVAL_SEC" "5"
-_export_compat "BEANS_NEXT_HEALTH_TIMEOUT_SEC" "BEANS_PRO_HEALTH_TIMEOUT_SEC" "900"
-_export_compat "BEANS_NEXT_HEALTH_INTERVAL_SEC" "BEANS_PRO_HEALTH_INTERVAL_SEC" "5"
-_export_compat "BEANS_NEXT_HEALTH_CONNECT_TIMEOUT_SEC" "BEANS_PRO_HEALTH_CONNECT_TIMEOUT_SEC" "2"
-_export_compat "BEANS_NEXT_HEALTH_MAX_TIME_SEC" "BEANS_PRO_HEALTH_MAX_TIME_SEC" "5"
-_export_compat "BEANS_NEXT_COPY_RESULTS_TO_HOME" "BEANS_PRO_COPY_RESULTS_TO_HOME" "0"
-_export_compat "BEANS_NEXT_RESULTS_HOME_DIR" "BEANS_PRO_RESULTS_HOME_DIR" ""
-_export_compat "BEANS_NEXT_HEARTBEAT_SEC" "BEANS_PRO_HEARTBEAT_SEC" "30"
-_export_compat "BEANS_NEXT_FAULTHANDLER_TIMEOUT_SEC" "BEANS_PRO_FAULTHANDLER_TIMEOUT_SEC" "300"
+export BEANS_NEXT_DATA_SOURCE="${BEANS_NEXT_DATA_SOURCE:-esp_data}"
+export BEANS_NEXT_URL_FILE="${BEANS_NEXT_URL_FILE:-}"
+export BEANS_NEXT_SUITE="${BEANS_NEXT_SUITE:-}"
+export BEANS_NEXT_LIMIT="${BEANS_NEXT_LIMIT:-}"
+export BEANS_NEXT_OUT_DIR="${BEANS_NEXT_OUT_DIR:-}"
+export BEANS_NEXT_CONFIG="${BEANS_NEXT_CONFIG:-}"
+export BEANS_NEXT_RUN_ID="${BEANS_NEXT_RUN_ID:-}"
+export BEANS_NEXT_TASK_ID="${BEANS_NEXT_TASK_ID:-}"
+export BEANS_NEXT_DATASET_NAME="${BEANS_NEXT_DATASET_NAME:-}"
+export BEANS_NEXT_SPLIT="${BEANS_NEXT_SPLIT:-}"
+export BEANS_NEXT_HF_PATH="${BEANS_NEXT_HF_PATH:-}"
+export BEANS_NEXT_HF_CONFIG="${BEANS_NEXT_HF_CONFIG:-}"
+export BEANS_NEXT_WORKERS="${BEANS_NEXT_WORKERS:-}"
+export BEANS_NEXT_SKIP_UV_SYNC="${BEANS_NEXT_SKIP_UV_SYNC:-0}"
+export BEANS_NEXT_UV_PYTHON="${BEANS_NEXT_UV_PYTHON:-3.11}"
+export BEANS_NEXT_URL_WAIT_TIMEOUT_SEC="${BEANS_NEXT_URL_WAIT_TIMEOUT_SEC:-1800}"
+export BEANS_NEXT_URL_WAIT_INTERVAL_SEC="${BEANS_NEXT_URL_WAIT_INTERVAL_SEC:-5}"
+export BEANS_NEXT_HEALTH_TIMEOUT_SEC="${BEANS_NEXT_HEALTH_TIMEOUT_SEC:-900}"
+export BEANS_NEXT_HEALTH_INTERVAL_SEC="${BEANS_NEXT_HEALTH_INTERVAL_SEC:-5}"
+export BEANS_NEXT_HEALTH_CONNECT_TIMEOUT_SEC="${BEANS_NEXT_HEALTH_CONNECT_TIMEOUT_SEC:-2}"
+export BEANS_NEXT_HEALTH_MAX_TIME_SEC="${BEANS_NEXT_HEALTH_MAX_TIME_SEC:-5}"
+export BEANS_NEXT_COPY_RESULTS_TO_HOME="${BEANS_NEXT_COPY_RESULTS_TO_HOME:-0}"
+export BEANS_NEXT_RESULTS_HOME_DIR="${BEANS_NEXT_RESULTS_HOME_DIR:-}"
+export BEANS_NEXT_HEARTBEAT_SEC="${BEANS_NEXT_HEARTBEAT_SEC:-30}"
+export BEANS_NEXT_FAULTHANDLER_TIMEOUT_SEC="${BEANS_NEXT_FAULTHANDLER_TIMEOUT_SEC:-300}"
 
 # In Slurm, scripts are copied to a spool dir before execution, so $0 does not point at the repo.
 # Use the submission directory as the repo root (we submit from the repo root in all runbooks).
@@ -117,8 +92,8 @@ export TMP="${TMP:-$TMPDIR}"
 mkdir -p "$TMPDIR"
 
 # Audio materialization cache (NFS-backed by default).
-export BEANS_NEXT_HF_AUDIO_CACHE_DIR="$(_env_first "BEANS_NEXT_HF_AUDIO_CACHE_DIR" "BEANS_PRO_HF_AUDIO_CACHE_DIR" "$HF_HOME/beans-next-audio")"
-export BEANS_NEXT_ESP_AUDIO_CACHE_DIR="$(_env_first "BEANS_NEXT_ESP_AUDIO_CACHE_DIR" "BEANS_PRO_ESP_AUDIO_CACHE_DIR" "$HF_HOME/beans-next-audio")"
+export BEANS_NEXT_HF_AUDIO_CACHE_DIR="${BEANS_NEXT_HF_AUDIO_CACHE_DIR:-$HF_HOME/beans-next-audio}"
+export BEANS_NEXT_ESP_AUDIO_CACHE_DIR="${BEANS_NEXT_ESP_AUDIO_CACHE_DIR:-$HF_HOME/beans-next-audio}"
 
 # Shell helpers (bash-only; avoid non-portable external deps).
 _pause() {
@@ -236,45 +211,45 @@ _normalize_predict_url() {
 }
 
 # Required: path to the URL file written by the serving job.
-URL_FILE="${BEANS_PRO_URL_FILE:?BEANS_PRO_URL_FILE must be set to the serving job URL file}"
+URL_FILE="${BEANS_NEXT_URL_FILE:?BEANS_NEXT_URL_FILE must be set to the serving job URL file}"
 
 # Run parameters (override via env before sbatch).
-SUITE="${BEANS_PRO_SUITE:-beans_zero_core}"
-LIMIT="${BEANS_PRO_LIMIT:-}"
-OUT_DIR="${BEANS_PRO_OUT_DIR:-$HOME/beans-next-results/run_${SLURM_JOB_ID}}"
-CONFIG="${BEANS_PRO_CONFIG:-}"           # optional: path to a run config YAML
-RUN_ID="${BEANS_PRO_RUN_ID:-slurm_${SLURM_JOB_ID}}"
-TASK_ID="${BEANS_PRO_TASK_ID:-}"         # optional: run one eval task directly
-DATASET_NAME="${BEANS_PRO_DATASET_NAME:-}"  # optional: e.g. esc50 (required when TASK_ID set)
-SPLIT="${BEANS_PRO_SPLIT:-}"             # optional: default is CLI default (test)
-HF_PATH="${BEANS_PRO_HF_PATH:-}"         # optional: override hub dataset id
-HF_CONFIG="${BEANS_PRO_HF_CONFIG:-}"     # optional: override hub config name
-WORKERS="${BEANS_PRO_WORKERS:-}"         # optional: override runner --workers
+SUITE="${BEANS_NEXT_SUITE:-beans_zero_core}"
+LIMIT="${BEANS_NEXT_LIMIT:-}"
+OUT_DIR="${BEANS_NEXT_OUT_DIR:-$HOME/beans-next-results/run_${SLURM_JOB_ID}}"
+CONFIG="${BEANS_NEXT_CONFIG:-}"           # optional: path to a run config YAML
+RUN_ID="${BEANS_NEXT_RUN_ID:-slurm_${SLURM_JOB_ID}}"
+TASK_ID="${BEANS_NEXT_TASK_ID:-}"         # optional: run one eval task directly
+DATASET_NAME="${BEANS_NEXT_DATASET_NAME:-}"  # optional: e.g. esc50 (required when TASK_ID set)
+SPLIT="${BEANS_NEXT_SPLIT:-}"             # optional: default is CLI default (test)
+HF_PATH="${BEANS_NEXT_HF_PATH:-}"         # optional: override hub dataset id
+HF_CONFIG="${BEANS_NEXT_HF_CONFIG:-}"     # optional: override hub config name
+WORKERS="${BEANS_NEXT_WORKERS:-}"         # optional: override runner --workers
 
 cd "$REPO"
 
 # Dataset backend selection:
 # - Default to esp_data everywhere.
-# - Override: export BEANS_PRO_DATA_SOURCE=esp_data|huggingface|hf before `sbatch`.
-if [[ -z "${BEANS_PRO_DATA_SOURCE:-}" ]]; then
-  export BEANS_PRO_DATA_SOURCE="esp_data"
+# - Override: export BEANS_NEXT_DATA_SOURCE=esp_data|huggingface|hf before `sbatch`.
+if [[ -z "${BEANS_NEXT_DATA_SOURCE:-}" ]]; then
+  export BEANS_NEXT_DATA_SOURCE="esp_data"
 fi
 
 # Work around rare interpreter-finalization crashes seen on this cluster by hard-exiting
 # the CLI after producing outputs (can be overridden).
-export BEANS_PRO_HARD_EXIT="${BEANS_PRO_HARD_EXIT:-1}"
+export BEANS_NEXT_HARD_EXIT="${BEANS_NEXT_HARD_EXIT:-1}"
 
 # Prefer Python 3.11+ for this project. Some compute nodes may not have a compatible system
 # interpreter, so allow uv to download a managed Python when needed.
-# Override if needed: BEANS_PRO_UV_PYTHON=3.11 (default).
+# Override if needed: BEANS_NEXT_UV_PYTHON=3.11 (default).
 export UV_PYTHON_DOWNLOADS="${UV_PYTHON_DOWNLOADS:-auto}"
-export UV_PYTHON="${BEANS_PRO_UV_PYTHON:-3.11}"
+export UV_PYTHON="${BEANS_NEXT_UV_PYTHON:-3.11}"
 export PYTHONUNBUFFERED="${PYTHONUNBUFFERED:-1}"
 
 # Ensure the job-scoped environment exists.
 # If esp_data is requested, try to inherit any site-provided esp_data install via system site-packages.
 if [[ ! -x "${UV_PROJECT_ENVIRONMENT%/}/bin/python" ]]; then
-  if [[ "${BEANS_PRO_DATA_SOURCE:-esp_data}" == "esp_data" ]]; then
+  if [[ "${BEANS_NEXT_DATA_SOURCE:-esp_data}" == "esp_data" ]]; then
     uv venv --system-site-packages "$UV_PROJECT_ENVIRONMENT"
   else
     uv venv "$UV_PROJECT_ENVIRONMENT"
@@ -282,20 +257,20 @@ if [[ ! -x "${UV_PROJECT_ENVIRONMENT%/}/bin/python" ]]; then
 fi
 
 # On clusters where compute nodes cannot reach the package index, `uv sync` inside the job may fail.
-# Set `BEANS_PRO_SKIP_UV_SYNC=1` if you have pre-built the environment on a shared filesystem.
+# Set `BEANS_NEXT_SKIP_UV_SYNC=1` if you have pre-built the environment on a shared filesystem.
 #
 # If `esp_data` is selected, include the `esp` dependency group (configured in pyproject.toml).
-if [[ "${BEANS_PRO_SKIP_UV_SYNC:-0}" != "1" ]]; then
-  if [[ "${BEANS_PRO_DATA_SOURCE:-esp_data}" == "esp_data" ]]; then
+if [[ "${BEANS_NEXT_SKIP_UV_SYNC:-0}" != "1" ]]; then
+  if [[ "${BEANS_NEXT_DATA_SOURCE:-esp_data}" == "esp_data" ]]; then
     uv sync --group esp
   else
     uv sync
   fi
 else
-  echo "BEANS_PRO_SKIP_UV_SYNC=1 set; skipping 'uv sync'"
+  echo "BEANS_NEXT_SKIP_UV_SYNC=1 set; skipping 'uv sync'"
 fi
 
-if [[ "${BEANS_PRO_DATA_SOURCE:-esp_data}" == "esp_data" ]]; then
+if [[ "${BEANS_NEXT_DATA_SOURCE:-esp_data}" == "esp_data" ]]; then
   set +e
   esp_data_import_out="$(uv run python -c "import esp_data" 2>&1)"
   has_esp_data=$?
@@ -303,23 +278,23 @@ if [[ "${BEANS_PRO_DATA_SOURCE:-esp_data}" == "esp_data" ]]; then
   if [[ "$has_esp_data" != "0" ]]; then
     # Note: we do not run `uv pip install` here. If esp_data isn't present, add it to the
     # project's `esp` dependency group (via `uv add --group esp esp-data`) and rerun.
-    echo "ERROR: BEANS_PRO_DATA_SOURCE=esp_data but 'esp_data' is not importable in this job environment." >&2
+    echo "ERROR: BEANS_NEXT_DATA_SOURCE=esp_data but 'esp_data' is not importable in this job environment." >&2
     if [[ -n "${esp_data_import_out:-}" ]]; then
       echo "ERROR: esp_data import output:" >&2
       echo "${esp_data_import_out}" >&2
     fi
     echo "Fix options:" >&2
-    echo "  - Ensure this job ran 'uv sync --group esp' successfully (default when BEANS_PRO_DATA_SOURCE=esp_data)." >&2
+    echo "  - Ensure this job ran 'uv sync --group esp' successfully (default when BEANS_NEXT_DATA_SOURCE=esp_data)." >&2
     echo "  - Ensure your 'pyproject.toml' has an 'esp' dependency group with 'esp-data', and 'tool.uv.index'/'tool.uv.sources' configured for esp-pypi." >&2
-    echo "  - Or force HuggingFace loading: export BEANS_PRO_DATA_SOURCE=huggingface" >&2
+    echo "  - Or force HuggingFace loading: export BEANS_NEXT_DATA_SOURCE=huggingface" >&2
     exit 1
   fi
 fi
 
 # Wait for the URL file to appear (serving job may still be loading weights).
 echo "Waiting for URL file: $URL_FILE"
-URL_WAIT_TIMEOUT_SEC="${BEANS_PRO_URL_WAIT_TIMEOUT_SEC:-1800}"
-URL_WAIT_INTERVAL_SEC="${BEANS_PRO_URL_WAIT_INTERVAL_SEC:-5}"
+URL_WAIT_TIMEOUT_SEC="${BEANS_NEXT_URL_WAIT_TIMEOUT_SEC:-1800}"
+URL_WAIT_INTERVAL_SEC="${BEANS_NEXT_URL_WAIT_INTERVAL_SEC:-5}"
 deadline=$((SECONDS + URL_WAIT_TIMEOUT_SEC))
 
 while (( SECONDS < deadline )); do
@@ -345,10 +320,10 @@ echo "Using predict URL: $PREDICT_URL"
 
 # Poll /health at the base URL (robust to URL file being present before network is ready).
 BASE_URL="${PREDICT_URL%/predict}"
-HEALTH_TIMEOUT_SEC="${BEANS_PRO_HEALTH_TIMEOUT_SEC:-900}"
-HEALTH_INTERVAL_SEC="${BEANS_PRO_HEALTH_INTERVAL_SEC:-5}"
-HEALTH_CONNECT_TIMEOUT_SEC="${BEANS_PRO_HEALTH_CONNECT_TIMEOUT_SEC:-2}"
-HEALTH_MAX_TIME_SEC="${BEANS_PRO_HEALTH_MAX_TIME_SEC:-5}"
+HEALTH_TIMEOUT_SEC="${BEANS_NEXT_HEALTH_TIMEOUT_SEC:-900}"
+HEALTH_INTERVAL_SEC="${BEANS_NEXT_HEALTH_INTERVAL_SEC:-5}"
+HEALTH_CONNECT_TIMEOUT_SEC="${BEANS_NEXT_HEALTH_CONNECT_TIMEOUT_SEC:-2}"
+HEALTH_MAX_TIME_SEC="${BEANS_NEXT_HEALTH_MAX_TIME_SEC:-5}"
 _poll_health \
   "$BASE_URL" \
   "$HEALTH_TIMEOUT_SEC" \
@@ -373,8 +348,8 @@ if [[ -n "$CONFIG" ]]; then
 elif [[ -n "$TASK_ID" ]]; then
   CLI_ARGS+=(--task-id "$TASK_ID")
   if [[ -z "$DATASET_NAME" ]]; then
-    echo "ERROR: BEANS_PRO_TASK_ID was set but BEANS_PRO_DATASET_NAME is empty." >&2
-    echo "Example: BEANS_PRO_TASK_ID=beans_zero_esc50 BEANS_PRO_DATASET_NAME=esc50" >&2
+    echo "ERROR: BEANS_NEXT_TASK_ID was set but BEANS_NEXT_DATASET_NAME is empty." >&2
+    echo "Example: BEANS_NEXT_TASK_ID=beans_zero_esc50 BEANS_NEXT_DATASET_NAME=esc50" >&2
     exit 1
   fi
   CLI_ARGS+=(--dataset-name "$DATASET_NAME")
@@ -400,7 +375,7 @@ echo "Running: uv run beans-next ${CLI_ARGS[*]}"
 # Run the CLI in-process and hard-exit explicitly.
 #
 # Why: this cluster sometimes triggers interpreter-finalization crashes (PyGILState_Release).
-# The console-script path relies on env propagation (`BEANS_PRO_HARD_EXIT=1`) being honored;
+# The console-script path relies on env propagation (`BEANS_NEXT_HARD_EXIT=1`) being honored;
 # in practice we've seen jobs still crash. This wrapper guarantees `os._exit()` is called
 # after the handler returns.
 ARGS_FILE="/scratch/$USER/beans-next-args-${SLURM_JOB_ID}.txt"
@@ -414,7 +389,7 @@ mkdir -p "$OUT_DIR"
 # - dataset/backends stalled before first request
 # - normal slow progress
 # - interpreter-finalization hangs (should be avoided by os._exit below)
-HEARTBEAT_SEC="${BEANS_PRO_HEARTBEAT_SEC:-30}"
+HEARTBEAT_SEC="${BEANS_NEXT_HEARTBEAT_SEC:-30}"
 (
   while true; do
     sleep "$HEARTBEAT_SEC"
@@ -437,7 +412,7 @@ from pathlib import Path
 from beans_next.cli import main
 
 # If the process stalls (e.g. dataset backend hang), emit periodic stack traces to stderr.
-timeout_s = int(os.environ.get("BEANS_PRO_FAULTHANDLER_TIMEOUT_SEC", "300"))
+timeout_s = int(os.environ.get("BEANS_NEXT_FAULTHANDLER_TIMEOUT_SEC", "300"))
 faulthandler.enable()
 faulthandler.dump_traceback_later(timeout_s, repeat=True)
 
@@ -463,11 +438,11 @@ echo "Run complete. Artifacts in: $OUT_DIR"
 #   slurm nodes: /home/$USER/...
 #
 # Enable:
-#   BEANS_PRO_COPY_RESULTS_TO_HOME=1
+#   BEANS_NEXT_COPY_RESULTS_TO_HOME=1
 # Optional overrides:
-#   BEANS_PRO_RESULTS_HOME_DIR=/home/$USER/beans-next-results/ingested
-if [[ "${BEANS_PRO_COPY_RESULTS_TO_HOME:-0}" == "1" ]]; then
-  RESULTS_HOME_DIR="${BEANS_PRO_RESULTS_HOME_DIR:-$HOME/beans-next-results/ingested}"
+#   BEANS_NEXT_RESULTS_HOME_DIR=/home/$USER/beans-next-results/ingested
+if [[ "${BEANS_NEXT_COPY_RESULTS_TO_HOME:-0}" == "1" ]]; then
+  RESULTS_HOME_DIR="${BEANS_NEXT_RESULTS_HOME_DIR:-$HOME/beans-next-results/ingested}"
   DEST_DIR="${RESULTS_HOME_DIR}/${RUN_ID}"
   mkdir -p "$DEST_DIR"
 
@@ -483,4 +458,3 @@ if [[ "${BEANS_PRO_COPY_RESULTS_TO_HOME:-0}" == "1" ]]; then
   echo "Copied artifacts to: $DEST_DIR"
   echo "Local host view (via NFS): /mnt${DEST_DIR}"
 fi
-

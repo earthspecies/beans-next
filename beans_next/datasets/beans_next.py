@@ -54,7 +54,7 @@ except ModuleNotFoundError as exc:  # pragma: no cover
 
 
 @register_dataset
-class BeansPro(Dataset):
+class BEANSNext(Dataset):
     """BEANS-Next acoustic description matching benchmark.
 
     Description
@@ -104,8 +104,8 @@ class BeansPro(Dataset):
 
     Examples
     --------
-    >>> from esp_data.datasets import BeansPro  # doctest: +SKIP
-    >>> dataset = BeansPro(  # doctest: +SKIP
+    >>> from esp_data.datasets import BEANSNext  # doctest: +SKIP
+    >>> dataset = BEANSNext(  # doctest: +SKIP
     ...     split="crow-description",
     ...     sample_rate=16000,
     ...     data_root="gs://esp-data-ingestion/beans-pro/v0.1.0/raw/carrion_crow_descriptions/"
@@ -115,7 +115,7 @@ class BeansPro(Dataset):
     def __init__(self, *args: object, **kwargs: object) -> None:
         if _ESP_DATA_IMPORT_ERROR is not None:
             raise ImportError(
-                "esp-data is required for BeansPro dataset support. "
+                "esp-data is required for BEANSNext dataset support. "
                 "Install it with the 'esp' dependency group (private index)."
             ) from _ESP_DATA_IMPORT_ERROR
         super().__init__(*args, **kwargs)  # type: ignore[misc]
@@ -230,7 +230,7 @@ class BeansPro(Dataset):
         self._data = self._backend_class.from_json(location, lines=True, orient="records")
 
     @classmethod
-    def from_config(cls, dataset_config: DatasetConfig) -> tuple["BeansPro", dict[str, Any]]:
+    def from_config(cls, dataset_config: DatasetConfig) -> tuple["BEANSNext", dict[str, Any]]:
         cfg = dataset_config.model_dump(exclude={"dataset_name", "transformations"})
         ds = cls(
             split=cfg["split"],

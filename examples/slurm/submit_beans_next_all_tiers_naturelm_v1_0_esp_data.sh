@@ -17,7 +17,7 @@
 set -euo pipefail
 
 RUN_TAG="naturelm_v1_0_beans_next_all_tiers_$(date +%Y%m%d_%H%M%S)"
-OUT_DIR="${BEANS_NEXT_OUT_DIR:-${BEANS_PRO_OUT_DIR:-${SCRATCH:-$HOME}/beans-next-results/$RUN_TAG}}"
+OUT_DIR="${BEANS_NEXT_OUT_DIR:-${SCRATCH:-$HOME}/beans-next-results/$RUN_TAG}"
 
 echo "Submitting serving job (NatureLM v1.0)..."
 SERVE_JOB="$(sbatch --parsable examples/slurm/serve_naturelm_v1_0.sh)"

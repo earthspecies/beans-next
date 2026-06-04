@@ -1,12 +1,12 @@
-# BeansPro (single-audio) dataset — splits, schema, and prompt notes
+# BEANSNext (single-audio) dataset — splits, schema, and prompt notes
 
-This document summarizes **BeansPro v0.1.0** as registered in `esp_data.datasets.beans_next.BeansPro` (esp-data `origin/beans-next` branch), and verifies split-level statistics and example rows by streaming the public **GCS JSONL** files (metadata only; no audio downloads).
+This document summarizes **BEANSNext v0.1.0** as registered in `esp_data.datasets.beans_next.BEANSNext` (esp-data `origin/beans-next` branch), and verifies split-level statistics and example rows by streaming the public **GCS JSONL** files (metadata only; no audio downloads).
 
 ## How to access (esp-data)
 
-- **Dataset class**: `esp_data.datasets.beans_next.BeansPro` (only present on esp-data `beans-next` branch at time of writing).
+- **Dataset class**: `esp_data.datasets.beans_next.BEANSNext` (only present on esp-data `beans-next` branch at time of writing).
 - **Source file**: `earthspecies/esp-data` → `esp_data/datasets/beans_next.py` (branch `beans-next`).
-- **Note on local import**: In this `beans-next` repo environment, `import esp_data` works, but the installed `esp_data` does **not** include `datasets.beans_next`. Importing esp-data from a worktree via `sys.path.insert(0, "/home/marius_miron_earthspecies_org/code/esp-data")` failed due to a missing dependency (`cloudpathlib`). For this reason, the stats below are computed directly from the GCS JSONL split files (which are what `BeansPro._load()` reads).
+- **Note on local import**: In this `beans-next` repo environment, `import esp_data` works, but the installed `esp_data` does **not** include `datasets.beans_next`. Importing esp-data from a worktree via `sys.path.insert(0, "/home/marius_miron_earthspecies_org/code/esp-data")` failed due to a missing dependency (`cloudpathlib`). For this reason, the stats below are computed directly from the GCS JSONL split files (which are what `BEANSNext._load()` reads).
 
 ## Splits (per-split stats + paths)
 
@@ -28,7 +28,7 @@ All splits live under `gs://esp-data-ingestion/beans-next/v0.1.0/raw/**/test.jso
 
 ### Split → audio root resolution (esp-data behavior)
 
-In `esp_data/datasets/beans_next.py`, `BeansPro` stores `audio_path_original_sample_rate` as a **relative path** and resolves it as:
+In `esp_data/datasets/beans_next.py`, `BEANSNext` stores `audio_path_original_sample_rate` as a **relative path** and resolves it as:
 
 `anypath(data_root) / row["audio_path_original_sample_rate"]`
 
@@ -55,7 +55,7 @@ For the first row of every split, the top-level keys were identical:
 - `source_dataset` (str)
 - `task` (str)
 
-**Difference vs the I15 background assumption**: BeansPro rows include additional bookkeeping fields beyond the minimal BEANS-Zero-like quartet (`instruction`, `output`, `audio_path_original_sample_rate`, `metadata`). The core four are present, but there are extra keys that loaders should either pass through or ignore explicitly.
+**Difference vs the I15 background assumption**: BEANSNext rows include additional bookkeeping fields beyond the minimal BEANS-Zero-like quartet (`instruction`, `output`, `audio_path_original_sample_rate`, `metadata`). The core four are present, but there are extra keys that loaders should either pass through or ignore explicitly.
 
 ## Instruction / prompt format notes
 

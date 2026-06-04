@@ -19,7 +19,7 @@ from beans_next.prompts.renderer import PromptRenderer, load_builtin_prompt_yaml
 def test_ensure_audio_paths_from_sequence_materializes_wavs(
     monkeypatch: Any, tmp_path: Any
 ) -> None:
-    monkeypatch.setenv("BEANS_PRO_HF_AUDIO_CACHE_DIR", str(tmp_path))
+    monkeypatch.setenv("BEANS_NEXT_HF_AUDIO_CACHE_DIR", str(tmp_path))
     audio_val = [
         {"array": np.zeros(160, dtype=np.float32), "sampling_rate": 16000, "path": ""},
         {"array": np.ones(240, dtype=np.float32), "sampling_rate": 16000, "path": ""},
@@ -33,7 +33,7 @@ def test_ensure_audio_paths_from_sequence_materializes_wavs(
 def test_multiaudio_prompt_alignment_with_passthrough_prompt(
     monkeypatch: Any, tmp_path: Any
 ) -> None:
-    monkeypatch.setenv("BEANS_PRO_HF_AUDIO_CACHE_DIR", str(tmp_path))
+    monkeypatch.setenv("BEANS_NEXT_HF_AUDIO_CACHE_DIR", str(tmp_path))
     audio_val = [
         {"array": np.zeros(160, dtype=np.float32), "sampling_rate": 16000, "path": ""},
         {"array": np.ones(240, dtype=np.float32), "sampling_rate": 16000, "path": ""},

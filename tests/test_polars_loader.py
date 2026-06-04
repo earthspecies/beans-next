@@ -42,7 +42,7 @@ def test_iter_polars_parquet_all_rows(tmp_path: Path) -> None:
     examples = list(iter_polars_parquet_examples(str(path)))
     assert len(examples) == 2
     assert examples[0].labels == "a"
-    assert examples[0].sample_id.startswith("beanspro:pl:")
+    assert examples[0].sample_id.startswith("beans_next:pl:")
     assert examples[1].labels == "b"
 
 

@@ -3,7 +3,7 @@
 # examples/slurm/run_inference.sh.
 #
 # Use this to backfill GCS when artifacts were only partially copied (e.g. a lone
-# summary.json) or when upload was skipped (BEANS_PRO_UPLOAD_GCS=0, missing gsutil).
+# summary.json) or when upload was skipped (BEANS_NEXT_UPLOAD_GCS=0, missing gsutil).
 #
 # Do *not* use `beans_next.results.upload_run_artifacts` for suite runs: it only
 # uploads a flat set of files in one directory, not suite/<suite>/<task>/ trees.
@@ -11,7 +11,7 @@
 # Usage:
 #   # Full tree under NFS ingested (set path prefix manually — must match prior sweep layout):
 #   LOCAL_SRC=$HOME/beans-next-results/ingested/adhoc/my_run \
-#     BEANS_PRO_GCS_REL_PATH=adhoc/my_run \
+#     BEANS_NEXT_GCS_REL_PATH=adhoc/my_run \
 #     bash scripts/sync_beans_next_results_to_gcs.sh
 #
 #   # Tree still under scratch cache (same layout as run_inference.sh — rel path auto):
@@ -40,9 +40,9 @@ fi
 
 USER="${USER:-$(id -un)}"
 SCRATCH_ROOT="/scratch/${USER}/.cache/beans-next-results/"
-GCS_PREFIX_BASE="${BEANS_PRO_GCS_PREFIX_BASE:-gs://foundation-model-data/synthetic/predictions/beans-next-results}"
+GCS_PREFIX_BASE="${BEANS_NEXT_GCS_PREFIX_BASE:-gs://foundation-model-data/synthetic/predictions/beans-next-results}"
 
-rel_path="${BEANS_PRO_GCS_REL_PATH:-}"
+rel_path="${BEANS_NEXT_GCS_REL_PATH:-}"
 if [[ -z "$rel_path" ]]; then
   # Mirror examples/slurm/run_inference.sh
   if [[ "${LOCAL_SRC%/}/" == "${SCRATCH_ROOT}"* ]]; then
@@ -50,7 +50,7 @@ if [[ -z "$rel_path" ]]; then
     rel_path="${rel_path%/}"
   else
     echo "ERROR: LOCAL_SRC is not under ${SCRATCH_ROOT}" >&2
-    echo "Set BEANS_PRO_GCS_REL_PATH to the bucket suffix (under beans-next-results/), e.g. i29/model/suite/run_id" >&2
+    echo "Set BEANS_NEXT_GCS_REL_PATH to the bucket suffix (under beans-next-results/), e.g. i29/model/suite/run_id" >&2
     exit 1
   fi
 fi

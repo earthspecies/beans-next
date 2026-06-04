@@ -71,7 +71,7 @@ VLLM_MODEL_ID=Qwen/Qwen3-Omni-7B sbatch examples/slurm/serve_vllm.sh
 
 Note the serving job id (shown by `sbatch`). Monitor with `squeue --me`.
 
-`BEANS_PRO_URL_DIR` defaults to `$HOME/beans-next-launchers`. Since `/home` is NFS-shared, URL
+`BEANS_NEXT_URL_DIR` defaults to `$HOME/beans-next-launchers`. Since `/home` is NFS-shared, URL
 files written by cluster jobs are readable on this local host without any rsync or SSH.
 
 ### Ports (fixed by default; overrideable)
@@ -101,7 +101,7 @@ end-to-end wiring before any larger run.
 ```bash
 SERVE_JOB_ID=12345
 
-BEANS_PRO_URL_FILE=$HOME/beans-next-launchers/$SERVE_JOB_ID.url \
+BEANS_NEXT_URL_FILE=$HOME/beans-next-launchers/$SERVE_JOB_ID.url \
 BEANS_NEXT_SUITE=beans_zero_core \
 BEANS_NEXT_LIMIT=1 \
 BEANS_NEXT_OUT_DIR=/scratch/$USER/results/af3_run_$SERVE_JOB_ID \
@@ -300,7 +300,7 @@ via `--predict-url-file` (a local text file containing a single `http(s)://...` 
 Run `scripts/validate_run_dir.sh` directly on that directory.
 
 **Two-job pattern**: artifacts land on the cluster filesystem. After the inference job completes,
-copy `BEANS_PRO_OUT_DIR` back to `results/ingested/<run_id>/` on this host. That copied directory
+copy `BEANS_NEXT_OUT_DIR` back to `results/ingested/<run_id>/` on this host. That copied directory
 is the input to the CPU-only ingestion loop (no launcher required locally).
 
 ### Copy-back: rsync patterns (recommended)
@@ -310,8 +310,8 @@ Run these on your local machine (this repo). Replace placeholders.
 ```bash
 cd /home/$USER/code/beans-next
 
-RUN_ID="<run_id_from_cluster>"  # recommended: the BEANS_PRO_RUN_ID you used on cluster
-CLUSTER_RUN_DIR="<absolute_path_to_BEANS_PRO_OUT_DIR_on_cluster>"
+RUN_ID="<run_id_from_cluster>"  # recommended: the BEANS_NEXT_RUN_ID you used on cluster
+CLUSTER_RUN_DIR="<absolute_path_to_BEANS_NEXT_OUT_DIR_on_cluster>"
 
 mkdir -p "results/ingested/${RUN_ID}"
 

@@ -114,7 +114,7 @@ Gemini models can be **significantly slower and more expensive** than local GPU 
   - `OPENAI_PROXY_MAX_AUDIO_SECONDS=10` (reduce cost/latency; increase if needed)
   - `GEMINI_MIN_MAX_TOKENS=2048` (prevents empty/short responses when thinking is enabled upstream)
 - Run BEANS-Next with a larger client timeout:
-  - `BEANS_PRO_HTTP_TIMEOUT_SEC=1800`
+  - `BEANS_NEXT_HTTP_TIMEOUT_SEC=1800`
 
 **Recommended sweep strategy (Pairs)**
 
@@ -122,7 +122,7 @@ For Gemini, prefer smaller, resumable batches:
 
 ```bash
 # Example: 10 samples per subset, but run 1–2 subsets at a time.
-BEANS_PRO_HTTP_TIMEOUT_SEC=1800 uv run beans-next pairs \
+BEANS_NEXT_HTTP_TIMEOUT_SEC=1800 uv run beans-next pairs \
   --predict-url http://127.0.0.1:19085/predict \
   --model-tag gemini_3_1_pro_preview \
   --k 10 \

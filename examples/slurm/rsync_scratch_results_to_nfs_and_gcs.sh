@@ -11,11 +11,11 @@
 # Discover names: sinfo -N -p cpu -o '%N %t'
 #
 # Environment (optional):
-#   BEANS_PRO_SCRATCH_RESULTS   Root on scratch (default: /scratch/$USER/.cache/beans-next-results)
-#   BEANS_PRO_RESULTS_HOME_DIR  NFS merge target (default: $HOME/beans-next-results/ingested)
-#   BEANS_PRO_UPLOAD_GCS        1=gsutil rsync to GCS after NFS merge (default: 1)
-#   BEANS_PRO_GCS_PREFIX_BASE   Default gs://foundation-model-data/synthetic/predictions/beans-next-results
-#   BEANS_PRO_RSYNC_DELETE      If 1, rsync to NFS uses --delete (dangerous; default 0)
+#   BEANS_NEXT_SCRATCH_RESULTS   Root on scratch (default: /scratch/$USER/.cache/beans-next-results)
+#   BEANS_NEXT_RESULTS_HOME_DIR  NFS merge target (default: $HOME/beans-next-results/ingested)
+#   BEANS_NEXT_UPLOAD_GCS        1=gsutil rsync to GCS after NFS merge (default: 1)
+#   BEANS_NEXT_GCS_PREFIX_BASE   Default gs://foundation-model-data/synthetic/predictions/beans-next-results
+#   BEANS_NEXT_RSYNC_DELETE      If 1, rsync to NFS uses --delete (dangerous; default 0)
 #
 # Does **not** delete scratch unless you add a separate cleanup step.
 
@@ -29,11 +29,11 @@ set -euo pipefail
 USER="${USER:-$(id -un)}"
 HOST="${SLURMD_NODENAME:-$(hostname -s)}"
 
-SCRATCH_ROOT="${BEANS_PRO_SCRATCH_RESULTS:-/scratch/${USER}/.cache/beans-next-results}"
-DEST_ROOT="${BEANS_PRO_RESULTS_HOME_DIR:-${HOME}/beans-next-results/ingested}"
-GCS_PREFIX_BASE="${BEANS_PRO_GCS_PREFIX_BASE:-gs://foundation-model-data/synthetic/predictions/beans-next-results}"
-UPLOAD_GCS="${BEANS_PRO_UPLOAD_GCS:-1}"
-RSYNC_DELETE="${BEANS_PRO_RSYNC_DELETE:-0}"
+SCRATCH_ROOT="${BEANS_NEXT_SCRATCH_RESULTS:-/scratch/${USER}/.cache/beans-next-results}"
+DEST_ROOT="${BEANS_NEXT_RESULTS_HOME_DIR:-${HOME}/beans-next-results/ingested}"
+GCS_PREFIX_BASE="${BEANS_NEXT_GCS_PREFIX_BASE:-gs://foundation-model-data/synthetic/predictions/beans-next-results}"
+UPLOAD_GCS="${BEANS_NEXT_UPLOAD_GCS:-1}"
+RSYNC_DELETE="${BEANS_NEXT_RSYNC_DELETE:-0}"
 
 _step() {
   echo "$(date -Is 2>/dev/null || date) [beans-next][rsync] $*"
@@ -64,7 +64,7 @@ rsync "${RSYNC_FLAGS[@]}" "${SCRATCH_ROOT}/" "${DEST_ROOT}/"
 _step "NFS merge done → $DEST_ROOT"
 
 if [[ "$UPLOAD_GCS" != "1" ]]; then
-  _step "BEANS_PRO_UPLOAD_GCS!=1 — skipping GCS"
+  _step "BEANS_NEXT_UPLOAD_GCS!=1 — skipping GCS"
   exit 0
 fi
 

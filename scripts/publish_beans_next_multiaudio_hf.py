@@ -1,4 +1,4 @@
-"""Publish BeansProMultiAudio rows to the Hugging Face Hub (BEANS-Next tier 4).
+"""Publish BEANSNextMultiAudio rows to the Hugging Face Hub (BEANS-Next tier 4).
 
 Builds **one** Hub dataset with **one** builder config (default) and a single
 ``test`` split. Each row includes ``tier`` and ``subset`` so consumers can filter

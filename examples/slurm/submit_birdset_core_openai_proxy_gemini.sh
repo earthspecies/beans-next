@@ -15,7 +15,7 @@
 set -euo pipefail
 
 RUN_TAG="birdset_core_gemini_proxy_$(date +%Y%m%d_%H%M%S)"
-OUT_DIR="${BEANS_NEXT_OUT_DIR:-${BEANS_PRO_OUT_DIR:-${SCRATCH:-$HOME}/beans-next-results/$RUN_TAG}}"
+OUT_DIR="${BEANS_NEXT_OUT_DIR:-${SCRATCH:-$HOME}/beans-next-results/$RUN_TAG}"
 
 echo "Submitting proxy serving job..."
 SERVE_JOB="$(sbatch --parsable examples/slurm/serve_openai_proxy_gemini.sh)"

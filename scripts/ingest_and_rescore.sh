@@ -79,8 +79,8 @@ fi
 info "Validating run directory: $run_dir"
 bash "${script_dir}/validate_run_dir.sh" "$run_dir"
 
-if [ "${BEANS_PRO_SKIP_RESCORE:-0}" = "1" ]; then
-  info "BEANS_PRO_SKIP_RESCORE=1 set; skipping offline rescoring step"
+if [ "${BEANS_NEXT_SKIP_RESCORE:-0}" = "1" ]; then
+  info "BEANS_NEXT_SKIP_RESCORE=1 set; skipping offline rescoring step"
   echo "PASS: input run directory validated (rescore skipped): $run_dir"
   exit 0
 fi

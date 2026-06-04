@@ -8,8 +8,8 @@
 #   bash examples/slurm/submit_beans_zero_core_naturelm_v1_0_fixtures_esp_data.sh
 #
 # Optional overrides:
-#   BEANS_PRO_FIXTURE_LIMIT=20 \
-#   BEANS_PRO_FIXTURE_OUT_DIR=/some/shared/path \
+#   BEANS_NEXT_FIXTURE_LIMIT=20 \
+#   BEANS_NEXT_FIXTURE_OUT_DIR=/some/shared/path \
 #   bash examples/slurm/submit_beans_zero_core_naturelm_v1_0_fixtures_esp_data.sh
 #
 # Notes:
@@ -31,17 +31,17 @@ if [[ ! -f "${REPO_ROOT}/pyproject.toml" ]]; then
   exit 1
 fi
 
-INC="${BEANS_PRO_INC:-adhoc}"
+INC="${BEANS_NEXT_INC:-adhoc}"
 MODEL_DIR="naturelm_v1_0"
 SUBSET_DIR="beans_zero_core"
 TS="$(date +%Y%m%d_%H%M%S)"
 SMOKE_RUN_ID="smoke_${MODEL_DIR}_${SUBSET_DIR}_${TS}"
 FIXTURE_RUN_ID="fixtures20_${MODEL_DIR}_${SUBSET_DIR}_${TS}"
-FIXTURE_LIMIT="${BEANS_PRO_FIXTURE_LIMIT:-20}"
+FIXTURE_LIMIT="${BEANS_NEXT_FIXTURE_LIMIT:-20}"
 
 DEFAULT_FIXTURE_OUT_DIR="${REPO_ROOT}/results/fixtures/${INC}/${MODEL_DIR}/${SUBSET_DIR}/${FIXTURE_RUN_ID}"
-SMOKE_OUT_DIR="${BEANS_PRO_OUT_DIR_SMOKE:-${DEFAULT_FIXTURE_OUT_DIR}/smoke}"
-FIXTURE_OUT_DIR="${BEANS_PRO_FIXTURE_OUT_DIR:-${DEFAULT_FIXTURE_OUT_DIR}/run}"
+SMOKE_OUT_DIR="${BEANS_NEXT_OUT_DIR_SMOKE:-${DEFAULT_FIXTURE_OUT_DIR}/smoke}"
+FIXTURE_OUT_DIR="${BEANS_NEXT_FIXTURE_OUT_DIR:-${DEFAULT_FIXTURE_OUT_DIR}/run}"
 
 CONFIG_PATH="configs/benchmarks/beans_zero_core_naturelm_v1_0_esp_data.yaml"
 
@@ -58,12 +58,12 @@ echo "  Log: ~/logs/$SERVE_JOB.log"
 
 echo "Submitting smoke inference job (depends on serve job $SERVE_JOB)..."
 SMOKE_JOB=$(
-  BEANS_PRO_URL_FILE="$HOME/beans-next-launchers/$SERVE_JOB.url" \
-  BEANS_PRO_DATA_SOURCE="esp_data" \
-  BEANS_PRO_CONFIG="$CONFIG_PATH" \
-  BEANS_PRO_LIMIT="${BEANS_PRO_SMOKE_LIMIT:-2}" \
-  BEANS_PRO_RUN_ID="$SMOKE_RUN_ID" \
-  BEANS_PRO_OUT_DIR="$SMOKE_OUT_DIR" \
+  BEANS_NEXT_URL_FILE="$HOME/beans-next-launchers/$SERVE_JOB.url" \
+  BEANS_NEXT_DATA_SOURCE="esp_data" \
+  BEANS_NEXT_CONFIG="$CONFIG_PATH" \
+  BEANS_NEXT_LIMIT="${BEANS_NEXT_SMOKE_LIMIT:-2}" \
+  BEANS_NEXT_RUN_ID="$SMOKE_RUN_ID" \
+  BEANS_NEXT_OUT_DIR="$SMOKE_OUT_DIR" \
   sbatch --parsable --dependency=after:"$SERVE_JOB" examples/slurm/test_run_inference.sh
 )
 echo "  Smoke job: $SMOKE_JOB"
@@ -72,12 +72,12 @@ echo "  Output: $SMOKE_OUT_DIR"
 
 echo "Submitting fixtures inference job (afterok smoke $SMOKE_JOB)..."
 FIXTURE_JOB=$(
-  BEANS_PRO_URL_FILE="$HOME/beans-next-launchers/$SERVE_JOB.url" \
-  BEANS_PRO_DATA_SOURCE="esp_data" \
-  BEANS_PRO_CONFIG="$CONFIG_PATH" \
-  BEANS_PRO_LIMIT="$FIXTURE_LIMIT" \
-  BEANS_PRO_RUN_ID="$FIXTURE_RUN_ID" \
-  BEANS_PRO_OUT_DIR="$FIXTURE_OUT_DIR" \
+  BEANS_NEXT_URL_FILE="$HOME/beans-next-launchers/$SERVE_JOB.url" \
+  BEANS_NEXT_DATA_SOURCE="esp_data" \
+  BEANS_NEXT_CONFIG="$CONFIG_PATH" \
+  BEANS_NEXT_LIMIT="$FIXTURE_LIMIT" \
+  BEANS_NEXT_RUN_ID="$FIXTURE_RUN_ID" \
+  BEANS_NEXT_OUT_DIR="$FIXTURE_OUT_DIR" \
   sbatch --parsable --dependency=afterok:"$SMOKE_JOB" examples/slurm/run_inference.sh
 )
 echo "  Fixtures job: $FIXTURE_JOB"

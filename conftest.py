@@ -95,7 +95,7 @@ def beans_next_example(beans_next_row: dict[str, object], beans_next_wav: Path) 
 
     return _build_dataset_example(
         beans_next_row,
-        sample_id="beanspro:test:0",
+        sample_id="beans_next:test:0",
         audio_path=str(beans_next_wav),
         split="test",
         task_id="beans_next_crow_description",
@@ -150,7 +150,7 @@ def beans_next_multiaudio_example(
     paths = [str(p) for p in beans_next_multiaudio_wavs]
     return _build_multiaudio_dataset_example(
         beans_next_multiaudio_row,
-        sample_id="beanspro:test:multi:0",
+        sample_id="beans_next:test:multi:0",
         audio_paths=paths,
         query_audio_path=paths[0],
         split="test",

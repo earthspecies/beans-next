@@ -34,10 +34,9 @@ if [[ -z "${SLURM_SUBMIT_DIR:-}" ]]; then
 fi
 
 # Must be set: path to the URL file written by the serving job.
-export BEANS_NEXT_URL_FILE="${BEANS_NEXT_URL_FILE:-${BEANS_PRO_URL_FILE:-}}"
+export BEANS_NEXT_URL_FILE="${BEANS_NEXT_URL_FILE:-}"
 if [[ -z "${BEANS_NEXT_URL_FILE:-}" ]]; then
   echo "ERROR: BEANS_NEXT_URL_FILE must be set." >&2
-  echo "Compat: BEANS_PRO_URL_FILE is also supported." >&2
   exit 1
 fi
 

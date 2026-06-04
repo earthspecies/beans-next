@@ -26,14 +26,14 @@
 
 set -euo pipefail
 
-export BEANS_NEXT_SUITE="${BEANS_NEXT_SUITE:-${BEANS_PRO_SUITE:-birdset_core}}"
-export BEANS_NEXT_DATA_SOURCE="${BEANS_NEXT_DATA_SOURCE:-${BEANS_PRO_DATA_SOURCE:-esp_data}}"
+export BEANS_NEXT_SUITE="${BEANS_NEXT_SUITE:-birdset_core}"
+export BEANS_NEXT_DATA_SOURCE="${BEANS_NEXT_DATA_SOURCE:-esp_data}"
 
 # Default to parallel esp_data audio materialization/downloading on CPU nodes.
-export BEANS_NEXT_ESP_DATA_WORKERS="${BEANS_NEXT_ESP_DATA_WORKERS:-${BEANS_PRO_ESP_DATA_WORKERS:-8}}"
+export BEANS_NEXT_ESP_DATA_WORKERS="${BEANS_NEXT_ESP_DATA_WORKERS:-8}"
 
 # Keep inference workers conservative by default; remote launchers can bottleneck.
-export BEANS_NEXT_INFERENCE_WORKERS="${BEANS_NEXT_INFERENCE_WORKERS:-${BEANS_PRO_INFERENCE_WORKERS:-1}}"
+export BEANS_NEXT_INFERENCE_WORKERS="${BEANS_NEXT_INFERENCE_WORKERS:-1}"
 
 exec bash examples/slurm/run_inference.sh
 
