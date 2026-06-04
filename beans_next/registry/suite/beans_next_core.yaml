@@ -43,7 +43,6 @@ beans_next_core:
     - beans_next_t3_species_by_vocalization_frequency_oe
     - beans_next_t3_species_by_vocalization_frequency_mcq
     - beans_next_t3_structural_captioning
-    - beans_next_t3_species_listing_open_list
     - beans_next_t3_frequency_range_description
     - beans_next_t3_ordered_species_summary
 

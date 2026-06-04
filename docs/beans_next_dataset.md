@@ -102,23 +102,87 @@ The field `audio_path_original_sample_rate` is present in all splits and looks l
 - `f0-mean-seen-taxa`: `La_Palma_chaffinches/cut/FCP104_93.67.wav`
 - `alarm-call-presence`: `beans-zero/v0.1.0/raw/audio/call-type/original_sample_rate/XC633022-MIXPRE-027.flac`
 
-## Metric / evaluation implications (likely)
+## Metric / evaluation implications
 
 - **MCQ 4-way** (`crow-description`, `zebra-description`)
-  - **Metric**: top-1 accuracy (exact match on `A|B|C|D`).
-  - **Parsing**: strip whitespace; optionally accept `Answer: A`-style generations with a regex.
+  - **Metric**: top-1 accuracy. Ground truth is a bare letter (`A`/`B`/`C`/`D`); the scorer
+    accepts any bare-letter variant (`A`, `(A)`, `A.`).
+
+- **T3 MCQ species/count tasks** (`t3-*-mcq`)
+  - **Metric**: top-1 accuracy. Ground truth is a full-label string, e.g. `(A) Thrush nightingale`
+    or `(A) 3`. The scorer accepts all of: bare letter (`A`), parenthesised letter (`(A)`),
+    letter + option text (`A Thrush nightingale`, `A. Thrush nightingale`), option text alone
+    (`Thrush nightingale`), and option text embedded in a sentence
+    (`The answer is Thrush nightingale`). Matching is case-insensitive.
+    For single-token content (e.g. `3`) a word-boundary check prevents `3` matching inside `32`.
 
 - **Binary presence** (bird/mammal/insect/amphibian/alarm/flight)
-  - **Metric**: accuracy (and optionally balanced accuracy if class balance is imperfect in practice).
+  - **Metric**: accuracy, case-insensitive (`Yes`/`yes`/`YES` all match).
   - **Parsing**: canonicalize case; map `Yes/No`.
 
 - **F0 regression** (`f0-mean-*`)
-  - **Metric**: MAE / RMSE on Hz (after numeric extraction).
+  - **task_type**: `regression` — **Metric**: MAE on Hz (after numeric extraction).
   - **Parsing**: extract first float/int from output string (e.g. `3100 Hz` → `3100`).
+
+- **SNR regression** (`t1-snr-regression`)
+  - **task_type**: `regression` — **Metric**: MAE on dB (after numeric extraction).
+  - **Parsing**: extract first float/int from output string (e.g. `39 dB` → `39`).
+
+- **Open-ended captioning** (`t1-caption`, `t2-captioning`)
+  - **task_type**: `captioning` — **Metric**: corpus CIDEr (computed over the full split).
+  - **Parsing**: free-form text; no postprocessing applied.
 
 - **Fixed-vocab multilabel** (`call-type-fixed-vocab`)
   - **Metric**: micro-F1 / macro-F1, or example-wise Jaccard / exact-set-match.
   - **Parsing**: split by comma, trim, map into the fixed label set `{alarm call, flight call, begging call, song, call}`.
+
+- **T3 binary** (`t3-vocalization-presence-binary`, `t3-vocalization-cooccurrence-binary`)
+  - **task_type**: `presence_binary` — **Metric**: accuracy, case-insensitive.
+  - **Output**: `Yes` / `No`.
+
+- **T3 count OE** (`t3-species-count-oe`, `t3-vocalization-count-total-oe`)
+  - **task_type**: `regression` — **Metric**: MAE on the integer count.
+  - **Output**: bare integer, e.g. `3`.
+
+- **T3 captioning** (`t3-structural-captioning`)
+  - **task_type**: `captioning` — **Metric**: corpus CIDEr.
+  - **Output**: free-form description sentence.
+
+- **T3 OE single-species** (`t3-species-by-highest/lowest-pitch-oe`,
+  `t3-species-by-longest-vocalization-oe`, `t3-species-by-vocalization-frequency-oe`,
+  `t3-species-by-vocalization-order-oe`)
+  - **task_type**: `species_name` — **Metric**: top-1 accuracy, case-insensitive.
+  - **Output**: a single species name — scientific (`Sturnus unicolor`) or common
+    (`Spotless Starling`, `spotless starling`).
+  - **Sci/common name handling**: these are the only T3 tasks with format-agnostic prompts
+    ("Which species has the highest pitch?"). The scorer accepts both forms via a bundled
+    lookup (`registry/t3_species_names.json`) covering the 46 species that appear in this
+    split. Common name variants (e.g. `Thekla Lark` and `Thekla's Lark` for
+    `Galerida theklae`) are both accepted. Species not in the lookup fall back to
+    exact match.
+  - **Source**: common names from GBIF vernacular names API (English), June 2026.
+
+- **T3 per-species count OE** (`t3-vocalization-count-per-species-oe`)
+  - **task_type**: `species_count_dict` — **Metrics**: `species_f1` + `count_mae`.
+  - **Output format**: `"Species A: N, Species B: M"` (scientific names; prompt says
+    "use scientific nomenclature").
+  - **Parsing**: comma-separated `name: count` pairs; case-insensitive name matching;
+    count MAE over matched species only.
+
+- **T3 per-species frequency range** (`t3-frequency-range-description`)
+  - **task_type**: `species_freq_range` — **Metrics**: `species_f1`, `freq_mae_low`,
+    `freq_mae_high`, `freq_mean_iou`.
+  - **Output format**: `"Species A: 2440-5130 Hz, Species B: 1510-10370 Hz"` (scientific names;
+    prompt says "use scientific nomenclature").
+  - **Parsing**: comma-separated `name: low-high Hz` pairs; `Unknown` excluded from scoring;
+    frequency metrics computed over matched species only.
+
+- **T3 ordered species summary** (`t3-ordered-species-summary`)
+  - **task_type**: `species_summary` — **Metrics**: `species_f1`, `count_mae`, `freq_mae_low`,
+    `freq_mae_high`, `freq_mean_iou`.
+  - **Output format**: `"Species A: 2 calls, 2330-5150 Hz; Species B: 1 call, 4650-7320 Hz"`
+    (semicolon-separated entries; scientific names; `None` when no identifiable species).
+  - **Parsing**: `Unknown` excluded; all metrics computed over matched species only.
 
 ## Commands used to verify split stats (metadata-only)
 

@@ -1,5 +1,5 @@
 beans_next_mammal_presence:
-  task_type: classification
+  task_type: presence_binary
   data_source: esp_data
   dataset: beans_next
   subset: mammal-presence
@@ -7,6 +7,4 @@ beans_next_mammal_presence:
   prompt: classification_beans_zero_official_v1
   metrics:
     - name: top1_accuracy
-      scorer_kwargs:
-        label_separator: ","
 

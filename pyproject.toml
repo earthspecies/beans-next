@@ -36,6 +36,12 @@ dependencies = [
   "pyyaml>=6.0",
   "soundfile>=0.12.1",
   "librosa>=0.10",
+  "semver>=3.0.4",
+  "gcsfs>=2024.9.0.post1",
+  "s3fs>=2024.9.0",
+  "google-cloud-secret-manager>=2.27.0",
+  "cloudpathlib>=0.24.0",
+  "intervaltree>=3.2.1",
 ]
 
 [dependency-groups]

@@ -10,6 +10,7 @@ from typing import Any
 from beans_next.metrics.base import MetricsError, register_scorer, validate_equal_length
 
 __all__ = [
+    "extract_frequency_range",
     "extract_numeric_value",
     "mean_absolute_error",
     "mean_absolute_percentage_error",
@@ -169,6 +170,46 @@ def extract_numeric_value(
         target_unit=target_unit,
     )
     return parsed
+
+
+def extract_frequency_range(text: str) -> tuple[float, float]:
+    """Extract a ``(low_hz, high_hz)`` frequency range from text.
+
+    When the text contains a range pattern such as ``"200-8000 Hz"`` or
+    ``"1.5 to 4 kHz"``, both bounds are returned after unit normalisation to
+    Hz.  When only a single numeric value is found (degenerate point range),
+    both elements of the tuple are equal to that value.
+
+    Parameters
+    ----------
+    text
+        Raw label or model prediction string.
+
+    Returns
+    -------
+    tuple[float, float]
+        ``(low_hz, high_hz)`` with ``low_hz <= high_hz``.
+
+    Raises
+    ------
+    MetricsError
+        If no numeric value can be extracted from ``text``.
+    """
+    if not isinstance(text, str) or not text.strip():
+        raise MetricsError(
+            "Cannot extract a frequency range from empty or non-string input."
+        )
+    range_match = _RANGE_RE.search(text)
+    if range_match is not None:
+        a = _coerce_float(range_match.group("a"))
+        b = _coerce_float(range_match.group("b"))
+        unit = (range_match.group("unit") or "").lower()
+        if unit == "khz":
+            a *= 1000.0
+            b *= 1000.0
+        return min(a, b), max(a, b)
+    val = extract_numeric_value(text, unit="hz")
+    return val, val
 
 
 def _paired_numeric_values(

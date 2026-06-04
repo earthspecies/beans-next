@@ -1,12 +1,9 @@
 beans_next_t2_captioning:
-  task_type: classification
+  task_type: captioning
   data_source: esp_data
   dataset: beans_next
   subset: t2-captioning
   split: t2-captioning
   prompt: classification_beans_zero_official_v1
   metrics:
-    - name: top1_accuracy
-      scorer_kwargs:
-        label_separator: ","
-
+    - name: cider

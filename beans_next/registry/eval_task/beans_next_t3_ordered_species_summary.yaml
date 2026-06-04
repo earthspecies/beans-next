@@ -1,12 +1,9 @@
 beans_next_t3_ordered_species_summary:
-  task_type: classification
+  task_type: species_summary
   data_source: esp_data
   dataset: beans_next
   subset: t3-ordered-species-summary
   split: t3-ordered-species-summary
   prompt: classification_beans_zero_official_v1
   metrics:
-    - name: top1_accuracy
-      scorer_kwargs:
-        label_separator: ","
-
+    - name: species_f1

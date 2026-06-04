@@ -278,6 +278,8 @@ def _load_examples_for_run(args: argparse.Namespace) -> list[DatasetExample]:
     hf_config = args.hf_config if args.hf_config else None
     rows: list[DatasetExample] = []
     data_source = getattr(args, "data_source", None)
+    if data_source == "hf":
+        data_source = "huggingface"
     if data_source == "esp_data":
         # esp_data path is BEANS-Zero specific: we use subset via dataset_name.
         # Row filtering is unnecessary because esp_data already yields by subset.

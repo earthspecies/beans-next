@@ -1,5 +1,5 @@
 beans_next_t3_vocalization_cooccurrence_binary:
-  task_type: classification
+  task_type: presence_binary
   data_source: esp_data
   dataset: beans_next
   subset: t3-vocalization-cooccurrence-binary
@@ -7,6 +7,4 @@ beans_next_t3_vocalization_cooccurrence_binary:
   prompt: classification_beans_zero_official_v1
   metrics:
     - name: top1_accuracy
-      scorer_kwargs:
-        label_separator: ","
 

@@ -42,8 +42,8 @@ def test_runner_prefers_explicit_data_source_over_env(
     # Env asks for esp_data...
     monkeypatch.setenv("BEANS_PRO_DATA_SOURCE", "esp_data")
 
-    # ...but args explicitly request HF; we should then fail on missing HF-only
-    # required key instead of trying to import esp_data.
+    # ...but args explicitly request HF; we should then fail in the HF path
+    # instead of trying to import esp_data.
     args = Namespace(
         data_source="hf",
         hf_path=None,
@@ -58,7 +58,7 @@ def test_runner_prefers_explicit_data_source_over_env(
         "hf_path": None,
     }
 
-    with pytest.raises(SystemExit, match=r"Eval task must define `hf_path`"):
+    with pytest.raises(KeyError, match=r"Unknown BEANS-Next subset"):
         runner_mod._load_examples_for_eval_task(eval_task, args=args)
 
 

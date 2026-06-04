@@ -1324,6 +1324,8 @@ def _load_examples_for_eval_task(
             os.environ.get("BEANS_PRO_DATA_SOURCE", "esp_data"),
         )
     data_source = str(data_source).strip()
+    if data_source == "hf":
+        data_source = "huggingface"
 
     hf_path = cast(
         str,

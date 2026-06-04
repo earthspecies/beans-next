@@ -41,7 +41,7 @@ def test_suite_beans_next_core_expands_to_exactly_three_eval_tasks() -> None:
         eval_tasks = _load_suite_eval_tasks("beans_next_core")
     except RegistryResolutionError:
         pytest.skip("beans_next_core suite registry not present in this checkout")
-    assert len(eval_tasks) == 43
+    assert len(eval_tasks) == 42
 
 
 @pytest.mark.parametrize(
@@ -49,7 +49,7 @@ def test_suite_beans_next_core_expands_to_exactly_three_eval_tasks() -> None:
     (
         ("beans_next_tier_1_hf", 8),
         ("beans_next_tier_2_hf", 8),
-        ("beans_next_tier_3_hf", 21),
+        ("beans_next_tier_3_hf", 20),
         ("beans_next_tier_4_hf", 6),
     ),
 )

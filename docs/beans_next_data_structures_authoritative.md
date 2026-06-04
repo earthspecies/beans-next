@@ -63,10 +63,33 @@ If `output_take_and_give` is provided, the returned dict contains only the mappe
 
 Observed conventions (from existing BEANS-Next JSONL docs in this repo):
 
-- **4-way MCQ** (`*-description`): `output ∈ {"A","B","C","D"}`
-- **Binary presence** (`*-presence`): `output ∈ {"Yes","No"}`
-- **Mean F0** (`f0-mean-*`): `output` is a string like `"3100 Hz"` (requires numeric parsing for regression)
+- **4-way MCQ** (`*-description`): `output ∈ {"A","B","C","D"}` — `task_type: classification`
+- **T3 full-label MCQ** (`t3-*-mcq`): `output` is a full option string like `"(A) Thrush nightingale"` —
+  `task_type: classification`. The scorer accepts bare letters, option text alone, letter + text,
+  and option text embedded in a sentence; matching is case-insensitive.
+- **Binary presence** (`*-presence`, `t3-vocalization-*-binary`): `output ∈ {"Yes","No"}` — `task_type: presence_binary` (case-insensitive)
+- **Mean F0** (`f0-mean-*`): `output` like `"3100 Hz"` — `task_type: regression`, MAE on Hz
+- **SNR** (`t1-snr-regression`): `output` like `"39 dB"` — `task_type: regression`, MAE on dB
+- **Count OE** (`t3-species-count-oe`, `t3-vocalization-count-total-oe`): `output` integer — `task_type: regression`, MAE
+- **Captioning** (`t1-caption`, `t2-captioning`, `t3-structural-captioning`): free-form text — `task_type: captioning`, corpus CIDEr
 - **Fixed vocab multilabel** (`call-type-fixed-vocab`): comma-separated labels, e.g. `"flight call, call"`
+- **T3 OE single species** (`t3-species-by-*-oe`, `t3-species-by-vocalization-order-oe`):
+  single species name — `task_type: species_name`. Labels are scientific names; prompts are
+  format-agnostic. The scorer accepts both scientific and common names via the bundled lookup
+  `registry/t3_species_names.json` (46 species, English common names from GBIF June 2026).
+  Multiple common name variants per species are supported (e.g. `Thekla Lark` /
+  `Thekla's Lark` for `Galerida theklae`). Species outside the lookup fall back to exact match.
+- **T3 per-species count** (`t3-vocalization-count-per-species-oe`):
+  `"Species A: N, Species B: M"` (scientific names) — `task_type: species_count_dict`,
+  metrics: `species_f1` + `count_mae` over matched species.
+- **T3 per-species frequency range** (`t3-frequency-range-description`):
+  `"Species A: 2440-5130 Hz, Species B: 1510-10370 Hz"` — `task_type: species_freq_range`,
+  metrics: `species_f1`, `freq_mae_low`, `freq_mae_high`, `freq_mean_iou` over matched species.
+  `Unknown` entries excluded from both sides.
+- **T3 ordered species summary** (`t3-ordered-species-summary`):
+  `"Species A: 2 calls, 2330-5150 Hz; Species B: 1 call, 4650-7320 Hz"` — `task_type: species_summary`,
+  metrics: `species_f1`, `count_mae`, `freq_mae_low`, `freq_mae_high`, `freq_mean_iou` over matched species.
+  `None` label when no identifiable species present; `Unknown` excluded.
 
 ## `BeansProMultiAudio` (multi-audio)
 
