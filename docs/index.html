@@ -637,17 +637,23 @@ uv run beans-next run \
             <tr>
               <td>Tier 3</td>
               <td>
-                <div><span class="highlight">t3-species-count-oe</span></div>
-                <div><span class="highlight">t3-vocalization-count-total-oe</span>, <span class="highlight">t3-vocalization-count-total-mcq</span></div>
-                <div><span class="highlight">t3-vocalization-count-per-species-oe</span></div>
-                <div><span class="highlight">t3-vocalization-presence-binary</span>, <span class="highlight">t3-vocalization-cooccurrence-binary</span></div>
-                <div><span class="highlight">t3-vocalization-referring-mcq</span></div>
-                <div><span class="highlight">t3-species-by-*</span> (order / pitch / duration / frequency; OE + MCQ variants)</div>
+                <div><span class=”highlight”>t3-species-count-oe</span>, <span class=”highlight”>t3-vocalization-count-total-oe</span>, <span class=”highlight”>t3-vocalization-count-total-mcq</span></div>
+                <div><span class=”highlight”>t3-vocalization-count-per-species-oe</span></div>
+                <div><span class=”highlight”>t3-vocalization-presence-binary</span>, <span class=”highlight”>t3-vocalization-cooccurrence-binary</span></div>
+                <div><span class=”highlight”>t3-vocalization-referring-mcq</span></div>
+                <div><span class=”highlight”>t3-species-by-*</span> (order / pitch / duration / frequency; OE + MCQ variants)</div>
+                <div><span class=”highlight”>t3-structural-captioning</span></div>
+                <div><span class=”highlight”>t3-frequency-range-description</span>, <span class=”highlight”>t3-ordered-species-summary</span></div>
               </td>
               <td>
                 <div><strong>Binary</strong>: “Yes” / “No”.</div>
-                <div><strong>Counts</strong>: numeric values (OE) or MCQ {A, B, C, D} depending on task.</div>
-                <div><strong>Species selection</strong>: OE text label or MCQ {A, B, C, D} depending on task.</div>
+                <div><strong>Counts</strong>: integer (OE) or MCQ {A, B, C, D}.</div>
+                <div><strong>Species selection OE</strong>: scientific name (e.g. <em>Sturnus unicolor</em>); scorer also accepts equivalent common names.</div>
+                <div><strong>Species selection MCQ</strong>: full option string, e.g. “(A) <em>Sturnus unicolor</em>”.</div>
+                <div><strong>Per-species counts</strong>: “<em>Species A</em>: N, <em>Species B</em>: M” (scientific names).</div>
+                <div><strong>Per-species frequency ranges</strong>: “<em>Species A</em>: 2440–5130 Hz, <em>Species B</em>: 1510–10370 Hz”.</div>
+                <div><strong>Ordered summary</strong>: “<em>Species A</em>: N calls, low–high Hz; <em>Species B</em>: …” (semicolon-separated).</div>
+                <div><strong>Structural caption</strong>: free-form description text.</div>
               </td>
             </tr>
             <tr>
@@ -814,21 +820,21 @@ uv run beans-next run \
               <td>Yes</td>
             </tr>
             <tr>
-              <td>T3 species listing</td>
+              <td>T3 per-species counting</td>
               <td>Open-ended</td>
-              <td>How many different species are vocalizing, and what are they? Give scientific names.</td>
+              <td>How many calls from each species can you hear? Use scientific nomenclature.</td>
               <td>
-                4: <em>Corvus brachyrhynchos</em>, <em>Pipilo erythrophthalmus</em>,
-                <em>Seiurus aurocapilla</em>, <em>Setophaga virens</em>
+                <em>Pipilo erythrophthalmus</em>: 6, <em>Cardinalis cardinalis</em>: 5,
+                <em>Geothlypis trichas</em>: 4, <em>Polioptila caerulea</em>: 2
               </td>
             </tr>
             <tr>
-              <td>T3 per-species counting</td>
+              <td>T3 frequency range</td>
               <td>Open-ended</td>
-              <td>How many calls from each species can you hear? Give scientific names.</td>
+              <td>Describe the frequency range per species. Use scientific nomenclature.</td>
               <td>
-                <em>Pipilo erythrophthalmus</em>: 6; <em>Cardinalis cardinalis</em>: 5;
-                <em>Geothlypis trichas</em>: 4; <em>Polioptila caerulea</em>: 2
+                <em>Corvus brachyrhynchos</em>: 870–1940 Hz, <em>Hylocichla mustelina</em>: 1510–8350 Hz,
+                <em>Pipilo erythrophthalmus</em>: 2730–4070 Hz
               </td>
             </tr>
             <tr>
