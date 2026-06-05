@@ -141,8 +141,13 @@ extend_exclude = [
 [tool.deptry.per_rule_ignores]
 DEP001 = ["google"]
 DEP002 = [
+  "cloudpathlib",
+  "gcsfs",
+  "intervaltree",
   "librosa",
   "soundfile",
+  "s3fs",
+  "semver",
   "ffmpeg",
   "pyarrow",
   "huggingface-hub",
