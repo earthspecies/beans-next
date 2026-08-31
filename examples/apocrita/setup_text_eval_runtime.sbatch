@@ -18,6 +18,7 @@ readonly SERVER_RUNTIME="${BEANS_NEXT_VLLM_RUNTIME_ROOT:-$SCRATCH_ROOT/beans-nex
 readonly SERVER_VENV="$SERVER_RUNTIME/.venv"
 readonly RUNNER_PYTHON="$RUNNER_RUNTIME/.venv/bin/python"
 readonly VLLM_VERSION="${BEANS_NEXT_VLLM_VERSION:-0.20.2}"
+readonly VLLM_WHEEL_URL="${BEANS_NEXT_VLLM_WHEEL_URL:-https://github.com/vllm-project/vllm/releases/download/v${VLLM_VERSION}/vllm-${VLLM_VERSION}%2Bcu129-cp38-abi3-manylinux_2_31_x86_64.whl}"
 
 if [[ ! -x "$RUNNER_PYTHON" ]]; then
   echo "Missing runner Python: $RUNNER_PYTHON" >&2
@@ -40,9 +41,10 @@ fi
 uv pip install \
   --python "$SERVER_VENV/bin/python" \
   --torch-backend=cu129 \
+  --extra-index-url=https://download.pytorch.org/whl/cu129 \
   --only-binary=:all: \
   --compile-bytecode \
-  "vllm==$VLLM_VERSION"
+  "$VLLM_WHEEL_URL"
 
 uv pip freeze --python "$SERVER_VENV/bin/python" \
   > "$SERVER_RUNTIME/requirements.freeze.txt"
