@@ -42,6 +42,7 @@ uv pip install \
   --python "$SERVER_VENV/bin/python" \
   --torch-backend=cu129 \
   --extra-index-url=https://download.pytorch.org/whl/cu129 \
+  --index-strategy=unsafe-best-match \
   --only-binary=:all: \
   --compile-bytecode \
   "$VLLM_WHEEL_URL"
