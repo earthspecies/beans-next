@@ -230,7 +230,7 @@ def _build_postprocess_tuples(
     *,
     task_type: str | None = None,
 ) -> tuple[tuple[StepSpec, ...], tuple[StepSpec, ...]]:
-    """Build parser and cleaner :class:`~beans_next.post_process.pipeline.StepSpec` rows.
+    """Build parser and cleaner pipeline ``StepSpec`` rows.
 
     Delegates to :func:`~beans_next.runner.runner._postprocess_steps_for_examples`
     so behavior matches suite/config runs (captioning and other free-text tasks
@@ -726,6 +726,15 @@ def _build_parser() -> argparse.ArgumentParser:
         help=(
             "URL for the judge POST endpoint (enables LLM-as-judge scoring). "
             "When set, judge_outputs.jsonl is written after the run."
+        ),
+    )
+    p_run.add_argument(
+        "--preserve-file-paths",
+        action="store_true",
+        default=False,
+        help=(
+            "Send file_path audio payloads without base64 conversion. Use only "
+            "when the runner and model server can read the same filesystem paths."
         ),
     )
     p_run.add_argument(

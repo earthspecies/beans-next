@@ -133,6 +133,9 @@ class RunnerConfig:
         completes.  The prefix should already include the run-specific path
         component (e.g. ``gs://my-bucket/predictions/my-run-id``).  When
         ``None`` (default) no upload is performed.
+    preserve_file_paths
+        Keep ``file_path`` audio payloads on the wire instead of converting them
+        to base64. Enable only when the runner and model server share a filesystem.
     """
 
     output_dir: Path
@@ -150,6 +153,7 @@ class RunnerConfig:
     cache_dir: Path | None = None
     task_type: str | None = None
     gcs_upload_prefix: str | None = None
+    preserve_file_paths: bool = False
 
 
 def _package_version() -> str:
@@ -176,7 +180,11 @@ def _wire_sample_rate_hz(audio: ModelRequest) -> int:
     return _DEFAULT_WIRE_SAMPLE_RATE_HZ
 
 
-def model_request_to_wire_item(model_request: ModelRequest) -> PredictionsV1RequestItem:
+def model_request_to_wire_item(
+    model_request: ModelRequest,
+    *,
+    preserve_file_paths: bool = False,
+) -> PredictionsV1RequestItem:
     """Convert a core :class:`~beans_next.api.types.ModelRequest` to wire item shape.
 
     Parameters
@@ -220,7 +228,7 @@ def model_request_to_wire_item(model_request: ModelRequest) -> PredictionsV1Requ
         # If the request was rendered with a local file path (common for HF rows),
         # but the model server is remote, the server can't read that path.
         # Transparently convert local WAV paths to base64_wav payloads.
-        if payload_type == "file_path":
+        if payload_type == "file_path" and not preserve_file_paths:
             try:
                 p = Path(str(data))
             except Exception:  # noqa: BLE001
@@ -764,7 +772,12 @@ class BenchmarkRunner:
                         }
                     )
                 continue
-            wire_items.append(model_request_to_wire_item(mr))
+            wire_items.append(
+                model_request_to_wire_item(
+                    mr,
+                    preserve_file_paths=self._config.preserve_file_paths,
+                )
+            )
             rendered.append((ex, mr))
 
         if not wire_items:
@@ -1384,7 +1397,8 @@ def _load_examples_for_eval_task(
             subset_name = eval_task.get("subset") or split
             if not isinstance(subset_name, str) or not subset_name.strip():
                 raise SystemExit(
-                    "BEANSNextMultiAudio esp_data loading requires a non-empty `subset`."
+                    "BEANSNextMultiAudio esp_data loading requires a non-empty "
+                    "`subset`."
                 )
             for ex in iter_esp_data_beans_next_multiaudio_examples(
                 split=subset_name.strip(),
@@ -2015,6 +2029,10 @@ def run_from_cli_namespace(args: Namespace) -> None:
                         gcs_upload_prefix=(
                             f"{_gcs_base}/{task_run_id}" if _upload_gcs else None
                         ),
+                        preserve_file_paths=bool(
+                            getattr(args_for_tasks, "preserve_file_paths", False)
+                            or model.audio_payload == "file_path"
+                        ),
                     )
 
                     judge = _judge_from_args_and_task(args_for_tasks, task_cfg)
@@ -2129,6 +2147,9 @@ def run_from_cli_namespace(args: Namespace) -> None:
                 or getattr(args, "task_type", None)
                 or None,
                 gcs_upload_prefix=f"{_gcs_base}/{run_id}" if _upload_gcs else None,
+                preserve_file_paths=bool(
+                    getattr(args, "preserve_file_paths", False)
+                ),
             )
             judge = _judge_from_args_and_task(args, single_task_cfg)
             runner = BenchmarkRunner(client, renderer, cfg, judge=judge)
@@ -2180,6 +2201,9 @@ def run_from_cli_namespace(args: Namespace) -> None:
                 task_type=task_cfg.get("task_type") or None,
                 gcs_upload_prefix=(
                     f"{_gcs_base}/{task_run_id}" if _upload_gcs else None
+                ),
+                preserve_file_paths=bool(
+                    getattr(args, "preserve_file_paths", False)
                 ),
             )
             judge = _judge_from_args_and_task(args, task_cfg)
