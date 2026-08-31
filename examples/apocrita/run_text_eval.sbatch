@@ -25,6 +25,7 @@ readonly MODEL_REVISION="${BEANS_NEXT_MODEL_REVISION:?Set BEANS_NEXT_MODEL_REVIS
 readonly MODEL_TAG="${BEANS_NEXT_MODEL_TAG:?Set BEANS_NEXT_MODEL_TAG}"
 readonly CODE_COMMIT="${BEANS_NEXT_CODE_COMMIT_OVERRIDE:-$(git -C "$REPO" rev-parse HEAD)}"
 readonly RUN_MODE="${BEANS_NEXT_RUN_MODE:-pilot}"
+readonly PILOT_LIMIT="${BEANS_NEXT_PILOT_LIMIT:-16}"
 readonly MAX_MODEL_LEN="${BEANS_NEXT_MAX_MODEL_LEN:-8192}"
 readonly MAX_NUM_SEQS="${BEANS_NEXT_MAX_NUM_SEQS:-64}"
 readonly GPU_MEMORY_UTILIZATION="${BEANS_NEXT_GPU_MEMORY_UTILIZATION:-0.90}"
@@ -181,7 +182,7 @@ if [[ "$RUN_MODE" == "pilot" ]]; then
       "$out_dir" \
       "${MODEL_TAG}_pilot_c${concurrency}" \
       text-only-informed \
-      --limit 16
+      --limit "$PILOT_LIMIT"
     stop_proxy
   done
 elif [[ "$RUN_MODE" == "full" ]]; then

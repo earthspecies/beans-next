@@ -54,3 +54,6 @@ Andrena for the 7B models and SAE A100 80GB for Qwen3-30B-A3B. The default
 pilot runs 16 examples from every task at concurrency 16, 32, and 64. A full
 run evaluates the informed condition and a deterministic 10 percent silent
 condition while the model remains loaded.
+
+For a startup smoke test, set `BEANS_NEXT_PILOT_LIMIT=1` and
+`BEANS_NEXT_CONCURRENCY_GRID=16` at submission time.
