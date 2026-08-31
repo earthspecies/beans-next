@@ -55,10 +55,46 @@ export TRANSFORMERS_CACHE="${TRANSFORMERS_CACHE:-$HF_HOME/transformers}"
 export TMPDIR="${TMPDIR:-$RUNTIME_ROOT/tmp}"
 export BEANS_NEXT_HF_BEANS_NEXT_ROOT="$DATA_ROOT"
 export BEANS_NEXT_HF_WORKERS="${BEANS_NEXT_HF_WORKERS:-${SLURM_CPUS_PER_TASK:-8}}"
+export BEANS_NEXT_OUT_DIR_RESOLVED="$OUT_DIR"
+export BEANS_NEXT_SUITE_RESOLVED="$SUITE"
 
 if [[ "${BEANS_NEXT_SKIP_UV_SYNC:-0}" != "1" ]]; then
   uv sync --frozen
 fi
+
+export BEANS_NEXT_CODE_COMMIT="$(git rev-parse HEAD)"
+snapshot_metadata="$DATA_ROOT/.cache/huggingface/download/test/metadata.parquet.metadata"
+export BEANS_NEXT_DATASET_COMMIT=""
+export BEANS_NEXT_DATASET_METADATA_SHA256=""
+if [[ -f "$snapshot_metadata" ]]; then
+  export BEANS_NEXT_DATASET_COMMIT="$(sed -n '1p' "$snapshot_metadata")"
+  export BEANS_NEXT_DATASET_METADATA_SHA256="$(sed -n '2p' "$snapshot_metadata")"
+fi
+
+uv run --frozen python - <<'PY'
+import json
+import os
+from pathlib import Path
+
+context = {
+    "schema_version": "beans_next.apocrita_context.v1",
+    "code_commit": os.environ["BEANS_NEXT_CODE_COMMIT"],
+    "dataset_root": os.environ["BEANS_NEXT_HF_BEANS_NEXT_ROOT"],
+    "dataset_commit": os.environ.get("BEANS_NEXT_DATASET_COMMIT") or None,
+    "dataset_metadata_sha256": (
+        os.environ.get("BEANS_NEXT_DATASET_METADATA_SHA256") or None
+    ),
+    "slurm_job_id": os.environ.get("SLURM_JOB_ID"),
+    "slurm_partition": os.environ.get("SLURM_JOB_PARTITION"),
+    "slurm_node": os.environ.get("SLURMD_NODENAME"),
+    "suite": os.environ["BEANS_NEXT_SUITE_RESOLVED"],
+}
+out = Path(os.environ["BEANS_NEXT_OUT_DIR_RESOLVED"])
+(out / "apocrita_context.json").write_text(
+    json.dumps(context, indent=2, sort_keys=True) + "\n",
+    encoding="utf-8",
+)
+PY
 
 args=(
   run
