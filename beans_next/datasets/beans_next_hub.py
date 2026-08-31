@@ -687,6 +687,7 @@ def _iter_single_examples(
     task_id: str | None,
     limit: int | None,
     workers: int,
+    load_audio: bool,
 ) -> Iterator[DatasetExample]:
     from beans_next.datasets.esp_data import (
         _build_dataset_example,
@@ -704,6 +705,25 @@ def _iter_single_examples(
         meta_rows.append(dict(row))
         if limit is not None and len(meta_rows) >= limit:
             break
+
+    if not load_audio:
+        for ordinal, row in enumerate(meta_rows):
+            stable = _resolve_row_id(row)
+            sample_id = (
+                stable
+                if stable is not None
+                else synthesize_esp_data_sample_id(
+                    dataset="beans_next", subset=subset, split=split, ordinal=ordinal
+                )
+            )
+            yield _build_dataset_example(
+                row,
+                sample_id=sample_id,
+                audio_path=None,
+                split=split,
+                task_id=task_id,
+            )
+        return
 
     legacy_audio = _hub_has_legacy_audio_parquet(repo_id, revision)
     rels: list[str | None] = [_single_audio_rel_path(r) for r in meta_rows]
@@ -797,6 +817,7 @@ def _iter_multiaudio_examples(
     task_id: str | None,
     limit: int | None,
     workers: int,
+    load_audio: bool,
 ) -> Iterator[DatasetExample]:
     from beans_next.datasets.esp_data import (
         _build_multiaudio_dataset_example,
@@ -814,8 +835,6 @@ def _iter_multiaudio_examples(
         meta_rows.append(dict(row))
         if limit is not None and len(meta_rows) >= limit:
             break
-
-    legacy_audio = _hub_has_legacy_audio_parquet(repo_id, revision)
 
     raw_plan: list[
         tuple[str, dict[str, Any], list[str] | None, list[str] | None]
@@ -835,6 +854,20 @@ def _iter_multiaudio_examples(
         rels = _multiaudio_repo_rel_paths(row)
         ids = _coerce_str_sequence(row.get("audio_ids"))
         raw_plan.append((sample_id, row, rels, ids))
+
+    if not load_audio:
+        for sample_id, row, _rels, _ids in raw_plan:
+            yield _build_multiaudio_dataset_example(
+                row,
+                sample_id=sample_id,
+                audio_paths=[],
+                query_audio_path=None,
+                split=split,
+                task_id=task_id,
+            )
+        return
+
+    legacy_audio = _hub_has_legacy_audio_parquet(repo_id, revision)
 
     needed_legacy: set[str] = set()
     for _sid, row, rels, ids in raw_plan:
@@ -939,6 +972,7 @@ def iter_hf_beans_next_examples(
     task_id: str | None = None,
     limit: int | None = None,
     workers: int = 1,
+    load_audio: bool = True,
 ) -> Iterator[DatasetExample]:
     """Yield ``DatasetExample`` rows for a BEANS-Next subset from HuggingFace Hub.
 
@@ -964,6 +998,9 @@ def iter_hf_beans_next_examples(
         Optional maximum number of examples to yield.
     workers
         Parallel download / WAV materialization threads when ``>1``.
+    load_audio
+        Resolve audio files and materialize legacy audio bytes. When ``False``,
+        yield metadata-only rows without accessing audio files.
 
     Yields
     ------
@@ -996,4 +1033,5 @@ def iter_hf_beans_next_examples(
         task_id=task_id,
         limit=limit,
         workers=workers,
+        load_audio=load_audio,
     )

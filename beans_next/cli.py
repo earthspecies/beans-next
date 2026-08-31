@@ -278,6 +278,7 @@ def _load_examples_for_run(args: argparse.Namespace) -> list[DatasetExample]:
     hf_config = args.hf_config if args.hf_config else None
     rows: list[DatasetExample] = []
     data_source = getattr(args, "data_source", None)
+    load_audio = getattr(args, "modality_mode", "audio") == "audio"
     if data_source == "hf":
         data_source = "huggingface"
     if data_source == "esp_data":
@@ -304,6 +305,7 @@ def _load_examples_for_run(args: argparse.Namespace) -> list[DatasetExample]:
             split=str(args.split),
             task_id=args.task_id,
             limit=limit,
+            load_audio=load_audio,
         ):
             rows.append(ex)
             if len(rows) >= limit:
@@ -315,6 +317,7 @@ def _load_examples_for_run(args: argparse.Namespace) -> list[DatasetExample]:
             config_name=hf_config,
             task_id=args.task_id,
             row_filter=row_filter,
+            load_audio=load_audio,
         ):
             rows.append(ex)
             if len(rows) >= limit:
@@ -402,7 +405,7 @@ def _run_benchmark_cli_builtin(args: argparse.Namespace) -> None:
     )
     out_dir = _default_output_dir(args, run_id)
     spec = load_prompt_spec_from_path(_prompt_path_from_args(args))
-    renderer = PromptRenderer(spec)
+    renderer = PromptRenderer(spec, modality_mode=args.modality_mode)
     cfg = RunnerConfig(
         output_dir=out_dir,
         run_id=run_id,
@@ -488,7 +491,14 @@ def _cmd_run(args: argparse.Namespace) -> int:
     -------
     int
         ``0`` when the runner completes without raising ``SystemExit``.
+
+    Raises
+    ------
+    SystemExit
+        If ``--limit`` and ``--sample-fraction`` are both set.
     """
+    if args.limit is not None and args.sample_fraction is not None:
+        raise SystemExit("--limit and --sample-fraction cannot be used together.")
     _resolve_predict_url(args)
     _dispatch_run(args)
     return 0
@@ -650,6 +660,22 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Optional cap on the number of dataset examples to score.",
     )
     p_run.add_argument(
+        "--sample-fraction",
+        type=float,
+        default=None,
+        metavar="FRACTION",
+        help=(
+            "Deterministically select this fraction of each task after loading. "
+            "Cannot be combined with --limit."
+        ),
+    )
+    p_run.add_argument(
+        "--seed",
+        type=int,
+        default=0,
+        help="Seed for deterministic per-task sampling (default 0).",
+    )
+    p_run.add_argument(
         "--suite",
         default=None,
         help="Optional suite id from the eval registry (when registry content exists).",
@@ -718,6 +744,15 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         metavar="PATH",
         help="Prompt spec YAML (default bundled classification_bioacoustic_v1).",
+    )
+    p_run.add_argument(
+        "--modality-mode",
+        choices=("audio", "text-only", "text-only-informed"),
+        default="audio",
+        help=(
+            "Input modality mode. Text-only modes remove audio placeholders and "
+            "send no audio; text-only-informed also states that audio is unavailable."
+        ),
     )
     p_run.add_argument(
         "--judge-url",
