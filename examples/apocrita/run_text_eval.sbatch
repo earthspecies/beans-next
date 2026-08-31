@@ -78,9 +78,14 @@ trap cleanup EXIT INT TERM
 wait_for_url() {
   local url="$1"
   local label="$2"
-  local attempts="${3:-180}"
+  local pid="$3"
+  local attempts="${4:-180}"
   for ((i = 1; i <= attempts; i++)); do
     if curl --fail --silent "$url" >/dev/null; then return 0; fi
+    if ! kill -0 "$pid" 2>/dev/null; then
+      echo "$label process exited before $url became healthy" >&2
+      return 1
+    fi
     sleep 5
   done
   echo "Timed out while waiting for $label at $url" >&2
@@ -96,10 +101,9 @@ wait_for_url() {
   --max-num-seqs "$MAX_NUM_SEQS" \
   --gpu-memory-utilization "$GPU_MEMORY_UTILIZATION" \
   --enable-prefix-caching \
-  --disable-log-requests \
   >"$JOB_ROOT/vllm.log" 2>&1 &
 vllm_pid="$!"
-wait_for_url "http://127.0.0.1:$VLLM_PORT/health" "vLLM"
+wait_for_url "http://127.0.0.1:$VLLM_PORT/health" "vLLM" "$vllm_pid"
 
 start_proxy() {
   local concurrency="$1"
@@ -117,7 +121,8 @@ start_proxy() {
   "$SERVER_PYTHON" examples/servers/openai_compatible_proxy/serve.py \
     >"$proxy_log" 2>&1 &
   proxy_pid="$!"
-  wait_for_url "http://127.0.0.1:$PROXY_PORT/health" "BEANS proxy" 60
+  wait_for_url \
+    "http://127.0.0.1:$PROXY_PORT/health" "BEANS proxy" "$proxy_pid" 60
 }
 
 stop_proxy() {
