@@ -210,7 +210,8 @@ if [[ "$RUN_MODE" == "pilot" ]]; then
         "$out_dir" \
         "${MODEL_TAG}_pilot_c${concurrency}" \
         text-only-informed \
-        --sample-fraction "$PILOT_SAMPLE_FRACTION"
+        --sample-fraction "$PILOT_SAMPLE_FRACTION" \
+        --stratify-by-label
     else
       run_benchmark \
         "$out_dir" \
