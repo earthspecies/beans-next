@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import importlib.metadata
 import json
 import logging
@@ -1178,6 +1179,127 @@ def _effective_limit(args: Namespace) -> int:
         return _DEFAULT_LIMIT
 
 
+def _sample_examples(
+    examples: list[DatasetExample],
+    *,
+    fraction: float | None,
+    seed: int,
+) -> list[DatasetExample]:
+    """Select an exact deterministic fraction while preserving dataset order.
+
+    Returns
+    -------
+    list[DatasetExample]
+        The full input when ``fraction`` is unset, otherwise the selected rows.
+
+    Raises
+    ------
+    SystemExit
+        If ``fraction`` is outside the interval ``(0, 1]``.
+    """
+    if fraction is None or not examples:
+        return examples
+    if fraction <= 0.0 or fraction > 1.0:
+        raise SystemExit("--sample-fraction must be greater than 0 and at most 1.")
+    if fraction == 1.0:
+        return examples
+
+    count = max(1, round(len(examples) * fraction))
+    ranked = sorted(
+        range(len(examples)),
+        key=lambda index: hashlib.sha256(
+            f"{seed}\0{examples[index].sample_id}".encode()
+        ).digest(),
+    )
+    selected = frozenset(ranked[:count])
+    return [example for index, example in enumerate(examples) if index in selected]
+
+
+def _sample_examples_stratified_by_label(
+    examples: list[DatasetExample],
+    *,
+    fraction: float | None,
+    seed: int,
+) -> list[DatasetExample]:
+    """Select an exact deterministic fraction stratified by reference label.
+
+    Returns
+    -------
+    list[DatasetExample]
+        Selected rows in their original dataset order.
+
+    Raises
+    ------
+    SystemExit
+        If ``fraction`` is outside the interval ``(0, 1]``.
+    """
+    if fraction is None or not examples or fraction == 1.0:
+        return _sample_examples(examples, fraction=fraction, seed=seed)
+    if fraction <= 0.0 or fraction > 1.0:
+        raise SystemExit("--sample-fraction must be greater than 0 and at most 1.")
+
+    target_count = max(1, round(len(examples) * fraction))
+    groups: dict[str, list[int]] = {}
+    for index, example in enumerate(examples):
+        key = json.dumps(example.labels, sort_keys=True, ensure_ascii=False)
+        groups.setdefault(key, []).append(index)
+
+    quotas = {
+        key: len(indices) * target_count / len(examples)
+        for key, indices in groups.items()
+    }
+    allocations = {key: int(quota) for key, quota in quotas.items()}
+    remaining = target_count - sum(allocations.values())
+    remainder_order = sorted(
+        groups,
+        key=lambda key: (
+            -(quotas[key] - allocations[key]),
+            hashlib.sha256(f"{seed}\0{key}".encode()).digest(),
+        ),
+    )
+    for key in remainder_order[:remaining]:
+        allocations[key] += 1
+
+    selected: set[int] = set()
+    for key, indices in groups.items():
+        ranked = sorted(
+            indices,
+            key=lambda index: hashlib.sha256(
+                f"{seed}\0{examples[index].sample_id}".encode()
+            ).digest(),
+        )
+        selected.update(ranked[: allocations[key]])
+    return [example for index, example in enumerate(examples) if index in selected]
+
+
+def _finalize_loaded_examples(
+    examples: list[DatasetExample],
+    *,
+    args: Namespace,
+) -> list[DatasetExample]:
+    """Apply the optional deterministic sample fraction to one task.
+
+    Returns
+    -------
+    list[DatasetExample]
+        Examples after per-task sampling.
+    """
+    raw_fraction = getattr(args, "sample_fraction", None)
+    fraction = float(raw_fraction) if raw_fraction is not None else None
+    seed = int(getattr(args, "seed", 0) or 0)
+    if bool(getattr(args, "stratify_by_label", False)):
+        sampled = _sample_examples_stratified_by_label(
+            examples, fraction=fraction, seed=seed
+        )
+    else:
+        sampled = _sample_examples(examples, fraction=fraction, seed=seed)
+    if bool(getattr(args, "permute_answer_order", False)):
+        from beans_next.diagnostics import permute_answer_order
+
+        return [permute_answer_order(example, seed=seed) for example in sampled]
+    return sampled
+
+
 def _default_output_dir(args: Namespace, run_id: str) -> Path:
     """Resolve an output directory from CLI args.
 
@@ -1336,6 +1458,8 @@ def _load_examples_for_eval_task(
     data_source = str(data_source).strip()
     if data_source == "hf":
         data_source = "huggingface"
+    modality_mode = str(getattr(args, "modality_mode", "audio") or "audio")
+    load_audio = modality_mode == "audio"
 
     hf_path = cast(
         str,
@@ -1369,7 +1493,8 @@ def _load_examples_for_eval_task(
         str | None,
         eval_task.get("eval_task_id") or eval_task.get("task_id") or None,
     )
-    limit = _effective_limit(args)
+    sample_fraction = getattr(args, "sample_fraction", None)
+    limit = _DEFAULT_LIMIT if sample_fraction is not None else _effective_limit(args)
     rows: list[DatasetExample] = []
 
     if data_source == "esp_data":
@@ -1378,6 +1503,11 @@ def _load_examples_for_eval_task(
                 "esp_data loading requires a non-empty `subset`/`dataset_name`."
             )
         if dataset_name.strip() == "beans_next":
+            if not load_audio:
+                raise SystemExit(
+                    "Text-only BEANS-Next requires --backend huggingface; its "
+                    "esp_data iterator has no metadata-only path."
+                )
             subset_name = eval_task.get("subset") or split
             if not isinstance(subset_name, str) or not subset_name.strip():
                 raise SystemExit(
@@ -1392,8 +1522,13 @@ def _load_examples_for_eval_task(
                 rows.append(ex)
                 if len(rows) >= limit:
                     break
-            return rows
+            return _finalize_loaded_examples(rows, args=args)
         if dataset_name.strip() == "beans_next_multiaudio":
+            if not load_audio:
+                raise SystemExit(
+                    "Text-only multi-audio BEANS-Next requires --backend "
+                    "huggingface; its esp_data iterator has no metadata-only path."
+                )
             subset_name = eval_task.get("subset") or split
             if not isinstance(subset_name, str) or not subset_name.strip():
                 raise SystemExit(
@@ -1408,8 +1543,13 @@ def _load_examples_for_eval_task(
                 rows.append(ex)
                 if len(rows) >= limit:
                     break
-            return rows
+            return _finalize_loaded_examples(rows, args=args)
         if dataset_name.strip() == "birdset":
+            if not load_audio:
+                raise SystemExit(
+                    "Text-only BirdSet requires --backend huggingface; its "
+                    "esp_data iterator has no metadata-only path."
+                )
             subset_name = eval_task.get("subset") or split
             if not isinstance(subset_name, str) or not subset_name.strip():
                 raise SystemExit(
@@ -1424,17 +1564,18 @@ def _load_examples_for_eval_task(
                 rows.append(ex)
                 if len(rows) >= limit:
                     break
-            return rows
+            return _finalize_loaded_examples(rows, args=args)
         for ex in iter_esp_data_beans_zero_examples(
             subset=dataset_name.strip(),
             split=str(split),
             task_id=task_id,
             limit=limit,
+            load_audio=load_audio,
         ):
             rows.append(ex)
             if len(rows) >= limit:
                 break
-        return rows
+        return _finalize_loaded_examples(rows, args=args)
 
     if data_source == "huggingface":
         if isinstance(dataset_name, str) and dataset_name.strip() == "birdset":
@@ -1455,7 +1596,7 @@ def _load_examples_for_eval_task(
                 rows.append(ex)
                 if len(rows) >= limit:
                     break
-            return rows
+            return _finalize_loaded_examples(rows, args=args)
 
         _BEANS_ZERO_REPO = "EarthSpeciesProject/BEANS-Zero"
         _dataset_key = (
@@ -1474,7 +1615,11 @@ def _load_examples_for_eval_task(
                     "BEANS-Zero huggingface loading requires a non-empty `subset` or "
                     "`dataset_name` in the eval task."
                 )
-            revision = str(eval_task.get("revision") or "main")
+            revision = str(
+                getattr(args, "hf_revision", None)
+                or eval_task.get("revision")
+                or "main"
+            )
             for ex in iter_hf_dataset_examples(
                 hf_path.strip(),
                 split=str(split),
@@ -1482,11 +1627,12 @@ def _load_examples_for_eval_task(
                 revision=revision,
                 task_id=task_id,
                 row_filter=row_filter,
+                load_audio=load_audio,
             ):
                 rows.append(ex)
                 if len(rows) >= limit:
                     break
-            return rows
+            return _finalize_loaded_examples(rows, args=args)
 
         from beans_next.datasets.beans_next_hub import (
             BEANS_NEXT_HUB_REPO_ID,
@@ -1501,7 +1647,11 @@ def _load_examples_for_eval_task(
             raise SystemExit(
                 "huggingface backend requires a non-empty `subset` in the eval task."
             )
-        revision = str(eval_task.get("revision") or "main")
+        revision = str(
+            getattr(args, "hf_revision", None)
+            or eval_task.get("revision")
+            or "main"
+        )
         # BEANS-Next on Hugging Face is a single-table Parquet dataset. We treat the
         # benchmark split as "test" by default (older configs sometimes used
         # subset-named splits, and HF defaults can be "train" depending on the card).
@@ -1513,11 +1663,12 @@ def _load_examples_for_eval_task(
             revision=revision,
             task_id=task_id,
             limit=limit,
+            load_audio=load_audio,
         ):
             rows.append(ex)
             if len(rows) >= limit:
                 break
-        return rows
+        return _finalize_loaded_examples(rows, args=args)
 
     if not isinstance(hf_path, str) or not hf_path.strip():
         raise SystemExit("Eval task must define `hf_path` (or provide `--hf-path`).")
@@ -1546,19 +1697,29 @@ def _load_examples_for_eval_task(
             rows.append(ex)
             if len(rows) >= limit:
                 break
-        return rows
+        return _finalize_loaded_examples(rows, args=args)
 
     for ex in iter_hf_streaming_examples(
         hf_path,
         split=str(split),
         config_name=cast(str | None, hf_config),
+        revision=(
+            str(args.hf_revision)
+            if getattr(args, "hf_revision", None)
+            else (
+                str(eval_task.get("revision"))
+                if eval_task.get("revision")
+                else None
+            )
+        ),
         task_id=task_id,
         row_filter=row_filter,
+        load_audio=load_audio,
     ):
         rows.append(ex)
         if len(rows) >= limit:
             break
-    return rows
+    return _finalize_loaded_examples(rows, args=args)
 
 
 @lru_cache(maxsize=1)
@@ -2013,7 +2174,8 @@ def run_from_cli_namespace(args: Namespace) -> None:
                         labels_override=_labels_for_eval_task(task_cfg),
                     )
                     spec = _prompt_spec_from_eval_task(task_cfg, args=args_for_tasks)
-                    renderer = PromptRenderer(spec)
+                    modality_mode = getattr(args_for_tasks, "modality_mode", "audio")
+                    renderer = PromptRenderer(spec, modality_mode=modality_mode)
                     task_run_id = f"{run_id}__{model.name}__{eval_task_id}"
                     out_dir = (base_out / model.name / eval_task_id).resolve()
                     out_dir.mkdir(parents=True, exist_ok=True)
@@ -2026,6 +2188,8 @@ def run_from_cli_namespace(args: Namespace) -> None:
                         workers=workers,
                         cache_dir=cache_dir,
                         task_type=task_cfg.get("task_type") or None,
+                        prompt_version=f"{spec.prompt_id}:{modality_mode}",
+                        seed=int(getattr(args_for_tasks, "seed", 0) or 0),
                         gcs_upload_prefix=(
                             f"{_gcs_base}/{task_run_id}" if _upload_gcs else None
                         ),
@@ -2134,7 +2298,8 @@ def run_from_cli_namespace(args: Namespace) -> None:
             )
             spec = _prompt_spec_from_eval_task(single_task_cfg, args=args)
 
-            renderer = PromptRenderer(spec)
+            modality_mode = getattr(args, "modality_mode", "audio")
+            renderer = PromptRenderer(spec, modality_mode=modality_mode)
             cfg = RunnerConfig(
                 output_dir=base_out,
                 run_id=run_id,
@@ -2146,6 +2311,8 @@ def run_from_cli_namespace(args: Namespace) -> None:
                 task_type=single_task_cfg.get("task_type")
                 or getattr(args, "task_type", None)
                 or None,
+                prompt_version=f"{spec.prompt_id}:{modality_mode}",
+                seed=int(getattr(args, "seed", 0) or 0),
                 gcs_upload_prefix=f"{_gcs_base}/{run_id}" if _upload_gcs else None,
                 preserve_file_paths=bool(
                     getattr(args, "preserve_file_paths", False)
@@ -2187,7 +2354,8 @@ def run_from_cli_namespace(args: Namespace) -> None:
                 labels_override=_labels_for_eval_task(task_cfg),
             )
             spec = _prompt_spec_from_eval_task(task_cfg, args=args)
-            renderer = PromptRenderer(spec)
+            modality_mode = getattr(args, "modality_mode", "audio")
+            renderer = PromptRenderer(spec, modality_mode=modality_mode)
             task_run_id = f"{run_id}__{eval_task_id}"
             out_dir = (suite_out / eval_task_id).resolve()
             cfg = RunnerConfig(
@@ -2199,6 +2367,8 @@ def run_from_cli_namespace(args: Namespace) -> None:
                 workers=workers,
                 cache_dir=cache_dir,
                 task_type=task_cfg.get("task_type") or None,
+                prompt_version=f"{spec.prompt_id}:{modality_mode}",
+                seed=int(getattr(args, "seed", 0) or 0),
                 gcs_upload_prefix=(
                     f"{_gcs_base}/{task_run_id}" if _upload_gcs else None
                 ),

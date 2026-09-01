@@ -1,7 +1,8 @@
-"""Optional `esp_data`-backed dataset loader.
+"""Optional ``esp_data``/``alp_data``-backed dataset loader.
 
-This module provides an **optional** fast-path for ESP-internal (and soon public)
-dataset access via `esp_data`. It is intentionally a guarded import so that
+This module provides an **optional** fast-path for the legacy internal
+``esp_data`` package and its public successor, ``alp_data``. It is intentionally
+a guarded import so that
 BEANS-Next remains installable without any private dependencies.
 
 The integration is config-driven: callers select `data_source="esp_data"` and
@@ -355,28 +356,37 @@ def _materialize_wav_from_row_audio(
 
 
 def require_esp_data() -> ModuleType:
-    """Import and return the `esp_data` package.
+    """Import and return legacy ``esp_data`` or public ``alp_data``.
 
     Returns
     -------
     types.ModuleType
-        The imported `esp_data` module.
+        The imported dataset module.
 
     Raises
     ------
     ImportError
-        If `esp_data` is not installed in the current environment.
+        If neither supported package is installed in the current environment.
     """
     try:
         import esp_data  # type: ignore[import-not-found]
-    except ImportError as exc:  # pragma: no cover
-        msg = (
-            "esp_data dataset loading was requested, but `esp_data` is not installed. "
-            "Install it in your environment (internal: `uv sync` in an env that "
-            "includes esp_data; public: `uv pip install esp-data` once released), "
-            "or switch to HuggingFace loading by setting `data_source: hf`."
+    except ImportError:
+        try:
+            import alp_data  # type: ignore[import-not-found]
+            import alp_data.datasets as alp_datasets  # type: ignore[import-not-found]
+        except ImportError as exc:  # pragma: no cover
+            msg = (
+                "esp_data dataset loading was requested, but neither `esp_data` "
+                "nor public `alp_data` is installed. Install `alp-data`, or switch "
+                "to Hugging Face loading by setting `data_source: hf`."
+            )
+            raise ImportError(msg) from exc
+        beans_zero_cls = getattr(alp_data, "BeansZero", None) or getattr(
+            alp_datasets, "BeansZero", None
         )
-        raise ImportError(msg) from exc
+        if beans_zero_cls is not None and not hasattr(alp_data, "BeansZero"):
+            alp_data.BeansZero = beans_zero_cls
+        return alp_data
     return esp_data
 
 
@@ -592,12 +602,15 @@ def _load_beans_zero_rows_via_reflection(
     # - by filtering the global split="test" by row["dataset_name"] == subset.
     beans_zero_cls = getattr(esp_data, "BeansZero", None)
     if callable(beans_zero_cls):
-        esp_split = split
-        try:
-            ds = beans_zero_cls(split=esp_split)
-        except TypeError:
-            attempts.append(f"esp_data.BeansZero(split={esp_split!r})")
-        else:
+        candidate_splits = (subset, split) if subset != split else (split,)
+        for esp_split in candidate_splits:
+            try:
+                ds = beans_zero_cls(split=esp_split)
+            except (LookupError, TypeError):
+                attempts.append(f"esp_data.BeansZero(split={esp_split!r})")
+                continue
+            else:
+                filter_global_split = esp_split == split and split == "test"
             try:
                 # Bypass _process() which downloads audio from GCS for every row.
                 # Instead, access the underlying polars DataFrame directly (metadata
@@ -607,7 +620,7 @@ def _load_beans_zero_rows_via_reflection(
                 backend_df = getattr(getattr(ds, "_data", None), "_df", None)
                 if backend_df is not None and hasattr(backend_df, "iter_rows"):
                     for raw in backend_df.iter_rows(named=True):  # type: ignore[union-attr]
-                        if split == "test" and raw.get("dataset_name") != subset:
+                        if filter_global_split and raw.get("dataset_name") != subset:
                             continue
                         out: dict[str, object] = dict(raw)
                         if data_root:
@@ -616,7 +629,7 @@ def _load_beans_zero_rows_via_reflection(
                     return
                 # Fallback when the private _df attribute is unavailable:
                 # iterate via __iter__ which calls _process → GCS download per row.
-                if split == "test":
+                if filter_global_split:
                     for row in ds:  # type: ignore[misc]
                         if row.get("dataset_name") == subset:
                             yield row
@@ -1087,6 +1100,7 @@ def iter_esp_data_beans_zero_examples(
     task_id: str | None = None,
     limit: int | None = None,
     workers: int = 1,
+    load_audio: bool = True,
 ) -> Iterator[DatasetExample]:
     """Yield `DatasetExample` rows for a BEANS-Zero subset via `esp_data`.
 
@@ -1105,6 +1119,9 @@ def iter_esp_data_beans_zero_examples(
         downloads sequentially; values ``>1`` collect all metadata rows first
         then issue concurrent GCS downloads, which significantly reduces
         wall-clock time when network latency dominates.
+    load_audio
+        Resolve and download each row's audio. Set to ``False`` for metadata-only
+        text evaluation.
 
     Yields
     ------
@@ -1130,7 +1147,7 @@ def iter_esp_data_beans_zero_examples(
             _env_int(_WORKERS_ENV, default=1),
         )
 
-    if workers > 1:
+    if load_audio and workers > 1:
         yield from _iter_esp_data_concurrent(
             esp_mod,
             subset=subset,
@@ -1170,12 +1187,16 @@ def iter_esp_data_beans_zero_examples(
                 dataset="beans_zero", subset=subset, split=split, ordinal=ordinal
             )
         )
-        audio_path = _resolve_audio_for_row(
-            row,
-            sample_id=sample_id,
-            subset=subset,
-            split=split,
-            diagnostics=diagnostics,
+        audio_path = (
+            _resolve_audio_for_row(
+                row,
+                sample_id=sample_id,
+                subset=subset,
+                split=split,
+                diagnostics=diagnostics,
+            )
+            if load_audio
+            else None
         )
         yield _build_dataset_example(
             row,

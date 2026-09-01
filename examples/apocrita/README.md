@@ -32,3 +32,28 @@ The defaults use the downloaded snapshot at
 write results below `/gpfs/scratch/acw777/beans-next-runs/results`, and resume
 an interrupted run. Set `BEANS_NEXT_SHARED_FILESYSTEM=0` for a model endpoint
 outside Apocrita so audio is sent as base64 instead of GPFS paths.
+
+## Text-only LLM evaluation
+
+Create the vLLM runtime in a CPU job:
+
+```bash
+mkdir -p /gpfs/scratch/acw777/beans-next-runs/logs
+sbatch examples/apocrita/setup_text_eval_runtime.sbatch
+```
+
+After that job succeeds, download the public Qwen snapshots in another CPU job:
+
+```bash
+sbatch examples/apocrita/download_text_models.sbatch
+```
+
+Read the generated model manifest under `/gpfs/scratch/acw777/beans-next-models`.
+Submit `run_text_eval.sbatch` with an exact snapshot path and revision. Use
+Andrena for the 7B models and SAE A100 80GB for Qwen3-30B-A3B. The default
+pilot runs 16 examples from every task at concurrency 16, 32, and 64. A full
+run evaluates the informed condition and a deterministic 10 percent silent
+condition while the model remains loaded.
+
+For a startup smoke test, set `BEANS_NEXT_PILOT_LIMIT=1` and
+`BEANS_NEXT_CONCURRENCY_GRID=16` at submission time.

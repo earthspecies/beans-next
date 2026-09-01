@@ -25,6 +25,18 @@ from beans_next.api.types import (
 from beans_next.prompts.audio_tags import AUDIO_PLACEHOLDER
 
 _AUDIO_PLACEHOLDER_RE = re.compile(re.escape(AUDIO_PLACEHOLDER))
+_TEXT_ONLY_AUDIO_TOKEN_RE = re.compile(
+    rf"{re.escape(AUDIO_PLACEHOLDER)}|\[audio\]",
+    flags=re.IGNORECASE,
+)
+
+ModalityMode = Literal["audio", "text-only", "text-only-informed"]
+
+TEXT_ONLY_INSTRUCTION = (
+    "Audio is intentionally unavailable. Answer using only the text and answer "
+    "choices. Make your best guess and follow the requested answer format. Do not "
+    "refuse or explain."
+)
 
 
 class AudioPlaceholderAlignmentError(ValueError):
@@ -184,8 +196,16 @@ class PromptRenderer:
         If ``jinja2`` is not installed (raised from the constructor).
     """
 
-    def __init__(self, spec: PromptSpec) -> None:
+    def __init__(
+        self,
+        spec: PromptSpec,
+        *,
+        modality_mode: ModalityMode = "audio",
+    ) -> None:
+        if modality_mode not in {"audio", "text-only", "text-only-informed"}:
+            raise ValueError(f"Unsupported modality mode: {modality_mode!r}")
         self._spec = spec
+        self._modality_mode = modality_mode
         env_cls = _load_sandboxed_environment_class()
         self._env = env_cls(autoescape=False, enable_async=False)
         self._compiled = [
@@ -223,12 +243,19 @@ class PromptRenderer:
         for role, tmpl in self._compiled:
             content = tmpl.render(**ctx)
             messages.append(ChatMessage(role=role, content=content))
-        audio_inputs = _build_audio_inputs(example, self._spec.audio_slots)
-        _assert_audio_alignment(
-            messages,
-            audio_inputs,
-            sample_id=example.sample_id,
-        )
+        if self._modality_mode == "audio":
+            audio_inputs = _build_audio_inputs(example, self._spec.audio_slots)
+            _assert_audio_alignment(
+                messages,
+                audio_inputs,
+                sample_id=example.sample_id,
+            )
+        else:
+            messages = _render_text_only_messages(
+                messages,
+                informed=self._modality_mode == "text-only-informed",
+            )
+            audio_inputs = []
         return ModelRequest(
             schema_version=PREDICTIONS_V1,
             sample_id=example.sample_id,
@@ -236,6 +263,45 @@ class PromptRenderer:
             audio_inputs=audio_inputs,
             generation_config=self._spec.generation_config,
         )
+
+
+def _render_text_only_messages(
+    messages: list[ChatMessage],
+    *,
+    informed: bool,
+) -> list[ChatMessage]:
+    """Remove audio placeholders and optionally add the no-audio instruction.
+
+    Returns
+    -------
+    list[ChatMessage]
+        New messages that contain no audio placeholders.
+    """
+    rendered = [
+        ChatMessage(
+            role=message.role,
+            content=_TEXT_ONLY_AUDIO_TOKEN_RE.sub("", message.content),
+        )
+        for message in messages
+    ]
+    if not informed:
+        return rendered
+
+    for index, message in enumerate(rendered):
+        if message.role != "user":
+            continue
+        content = message.content.lstrip()
+        rendered[index] = ChatMessage(
+            role="user",
+            content=(
+                f"{TEXT_ONLY_INSTRUCTION}\n\n{content}"
+                if content
+                else TEXT_ONLY_INSTRUCTION
+            ),
+        )
+        return rendered
+
+    return [ChatMessage(role="user", content=TEXT_ONLY_INSTRUCTION), *rendered]
 
 
 def _load_sandboxed_environment_class() -> type:
