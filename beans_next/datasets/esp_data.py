@@ -602,12 +602,15 @@ def _load_beans_zero_rows_via_reflection(
     # - by filtering the global split="test" by row["dataset_name"] == subset.
     beans_zero_cls = getattr(esp_data, "BeansZero", None)
     if callable(beans_zero_cls):
-        esp_split = split
-        try:
-            ds = beans_zero_cls(split=esp_split)
-        except TypeError:
-            attempts.append(f"esp_data.BeansZero(split={esp_split!r})")
-        else:
+        candidate_splits = (subset, split) if subset != split else (split,)
+        for esp_split in candidate_splits:
+            try:
+                ds = beans_zero_cls(split=esp_split)
+            except (LookupError, TypeError):
+                attempts.append(f"esp_data.BeansZero(split={esp_split!r})")
+                continue
+            else:
+                filter_global_split = esp_split == split and split == "test"
             try:
                 # Bypass _process() which downloads audio from GCS for every row.
                 # Instead, access the underlying polars DataFrame directly (metadata
@@ -617,7 +620,7 @@ def _load_beans_zero_rows_via_reflection(
                 backend_df = getattr(getattr(ds, "_data", None), "_df", None)
                 if backend_df is not None and hasattr(backend_df, "iter_rows"):
                     for raw in backend_df.iter_rows(named=True):  # type: ignore[union-attr]
-                        if split == "test" and raw.get("dataset_name") != subset:
+                        if filter_global_split and raw.get("dataset_name") != subset:
                             continue
                         out: dict[str, object] = dict(raw)
                         if data_root:
@@ -626,7 +629,7 @@ def _load_beans_zero_rows_via_reflection(
                     return
                 # Fallback when the private _df attribute is unavailable:
                 # iterate via __iter__ which calls _process → GCS download per row.
-                if split == "test":
+                if filter_global_split:
                     for row in ds:  # type: ignore[misc]
                         if row.get("dataset_name") == subset:
                             yield row
