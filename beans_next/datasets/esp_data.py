@@ -1087,6 +1087,7 @@ def iter_esp_data_beans_zero_examples(
     task_id: str | None = None,
     limit: int | None = None,
     workers: int = 1,
+    load_audio: bool = True,
 ) -> Iterator[DatasetExample]:
     """Yield `DatasetExample` rows for a BEANS-Zero subset via `esp_data`.
 
@@ -1105,6 +1106,9 @@ def iter_esp_data_beans_zero_examples(
         downloads sequentially; values ``>1`` collect all metadata rows first
         then issue concurrent GCS downloads, which significantly reduces
         wall-clock time when network latency dominates.
+    load_audio
+        Resolve and download each row's audio. Set to ``False`` for metadata-only
+        text evaluation.
 
     Yields
     ------
@@ -1130,7 +1134,7 @@ def iter_esp_data_beans_zero_examples(
             _env_int(_WORKERS_ENV, default=1),
         )
 
-    if workers > 1:
+    if load_audio and workers > 1:
         yield from _iter_esp_data_concurrent(
             esp_mod,
             subset=subset,
@@ -1170,12 +1174,16 @@ def iter_esp_data_beans_zero_examples(
                 dataset="beans_zero", subset=subset, split=split, ordinal=ordinal
             )
         )
-        audio_path = _resolve_audio_for_row(
-            row,
-            sample_id=sample_id,
-            subset=subset,
-            split=split,
-            diagnostics=diagnostics,
+        audio_path = (
+            _resolve_audio_for_row(
+                row,
+                sample_id=sample_id,
+                subset=subset,
+                split=split,
+                diagnostics=diagnostics,
+            )
+            if load_audio
+            else None
         )
         yield _build_dataset_example(
             row,

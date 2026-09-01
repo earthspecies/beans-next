@@ -1461,12 +1461,6 @@ def _load_examples_for_eval_task(
     modality_mode = str(getattr(args, "modality_mode", "audio") or "audio")
     load_audio = modality_mode == "audio"
 
-    if not load_audio and data_source == "esp_data":
-        raise SystemExit(
-            "Text-only modes require --backend huggingface so dataset loading can "
-            "skip all audio access."
-        )
-
     hf_path = cast(
         str,
         eval_task.get("hf_path")
@@ -1509,6 +1503,11 @@ def _load_examples_for_eval_task(
                 "esp_data loading requires a non-empty `subset`/`dataset_name`."
             )
         if dataset_name.strip() == "beans_next":
+            if not load_audio:
+                raise SystemExit(
+                    "Text-only BEANS-Next requires --backend huggingface; its "
+                    "esp_data iterator has no metadata-only path."
+                )
             subset_name = eval_task.get("subset") or split
             if not isinstance(subset_name, str) or not subset_name.strip():
                 raise SystemExit(
@@ -1525,6 +1524,11 @@ def _load_examples_for_eval_task(
                     break
             return _finalize_loaded_examples(rows, args=args)
         if dataset_name.strip() == "beans_next_multiaudio":
+            if not load_audio:
+                raise SystemExit(
+                    "Text-only multi-audio BEANS-Next requires --backend "
+                    "huggingface; its esp_data iterator has no metadata-only path."
+                )
             subset_name = eval_task.get("subset") or split
             if not isinstance(subset_name, str) or not subset_name.strip():
                 raise SystemExit(
@@ -1541,6 +1545,11 @@ def _load_examples_for_eval_task(
                     break
             return _finalize_loaded_examples(rows, args=args)
         if dataset_name.strip() == "birdset":
+            if not load_audio:
+                raise SystemExit(
+                    "Text-only BirdSet requires --backend huggingface; its "
+                    "esp_data iterator has no metadata-only path."
+                )
             subset_name = eval_task.get("subset") or split
             if not isinstance(subset_name, str) or not subset_name.strip():
                 raise SystemExit(
@@ -1561,6 +1570,7 @@ def _load_examples_for_eval_task(
             split=str(split),
             task_id=task_id,
             limit=limit,
+            load_audio=load_audio,
         ):
             rows.append(ex)
             if len(rows) >= limit:
