@@ -71,6 +71,34 @@ def _c(
 # correspond to the Insect and Begging columns in semantic_v2 and remain null
 # until a future suite exports them.
 TABLE_SPECS: dict[str, tuple[ColumnSpec, ...]] = {
+    "beans_zero": (
+        _c("cbi", "beans_zero_cbi", "accuracy", number_format=".3f"),
+        _c(
+            "humbugdb",
+            "beans_zero_humbugdb",
+            "accuracy",
+            number_format=".3f",
+        ),
+        _c("esc50", "beans_zero_esc50", "accuracy", number_format=".3f"),
+        _c(
+            "call_type",
+            "beans_zero_call_type",
+            "accuracy",
+            number_format=".3f",
+        ),
+        _c(
+            "lifestage",
+            "beans_zero_lifestage",
+            "accuracy",
+            number_format=".3f",
+        ),
+        _c(
+            "individual_count",
+            "beans_zero_zf_indiv",
+            "accuracy",
+            number_format=".3f",
+        ),
+    ),
     "acoustic_v2": (
         _c("caption", "beans_next_t1_caption", "cider", scale=100.0),
         _c(
@@ -620,6 +648,7 @@ def build_paper_rows(
         "species_id": species,
     }
     latex_rows = {
+        "beans_zero": tables["beans_zero"]["latex_row"],
         "acoustic_v2": tables["acoustic_v2"]["latex_row"],
         "semantic_v2": tables["semantic_v2"]["latex_row"],
         "structural_v3_main": tables["structural_v3"]["latex_row"],
@@ -629,6 +658,7 @@ def build_paper_rows(
     # ``rows`` is a compact, table-oriented view for consumers that do not
     # need provenance.  ``tables.*.tasks`` retains the metric audit trail.
     rows = {
+        "beans_zero": tables["beans_zero"]["row"],
         "acoustic_v2": tables["acoustic_v2"]["row"],
         "semantic_v2": tables["semantic_v2"]["row"],
         "structural_v3_main": tables["structural_v3"]["row"],
@@ -656,6 +686,7 @@ def _latex_output(result: Mapping[str, Any]) -> str:
     if not isinstance(latex_rows, Mapping):
         raise ValueError("Result is missing latex_rows")
     order = (
+        "beans_zero",
         "acoustic_v2",
         "semantic_v2",
         "structural_v3_main",

@@ -55,6 +55,12 @@ def _write_fixture(tmp_path: Path) -> Path:
     )
 
     tasks: list[dict[str, object]] = [
+        _task("beans_zero_cbi", {"accuracy": 0.0123}),
+        _task("beans_zero_humbugdb", {"accuracy": 0.0456}),
+        _task("beans_zero_esc50", {"accuracy": 0.0789}),
+        _task("beans_zero_call_type", {"accuracy": 0.5}),
+        _task("beans_zero_lifestage", {"accuracy": 0.25}),
+        _task("beans_zero_zf_indiv", {"accuracy": 0.75}),
         _task("beans_next_t1_caption", {"cider": 0.012}),
         _task("beans_next_t1_description_mcq", {"top1_accuracy": 0.345}),
         _task("beans_next_t1_snr_regression", {"absolute_error": 3.21}),
@@ -110,6 +116,11 @@ def test_build_rows_scales_units_and_preserves_missing_tasks(
     tmp_path: Path,
 ) -> None:
     result = row_builder.build_paper_rows(_write_fixture(tmp_path), "Test model")
+
+    beans_zero = result["tables"]["beans_zero"]
+    assert beans_zero["values"]["cbi"] == pytest.approx(0.0123)
+    assert beans_zero["values"]["humbugdb"] == pytest.approx(0.0456)
+    assert beans_zero["values"]["individual_count"] == pytest.approx(0.75)
 
     acoustic = result["tables"]["acoustic_v2"]
     assert acoustic["values"]["caption"] == pytest.approx(1.2)
@@ -205,7 +216,7 @@ def test_wrong_metric_name_is_a_clear_error(
         row_builder.build_paper_rows(path, "Test model")
 
 
-def test_latex_cli_emits_five_concise_fragments(
+def test_latex_cli_emits_six_concise_fragments(
     row_builder: ModuleType,
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
@@ -214,7 +225,8 @@ def test_latex_cli_emits_five_concise_fragments(
         [str(_write_fixture(tmp_path)), "--model-label", "Test model", "--latex"]
     ) == 0
     output = capsys.readouterr().out
-    assert output.count(r"\\") == 5
+    assert output.count(r"\\") == 6
+    assert "Test model & 0.012 & 0.046 & 0.079 & 0.500 & 0.250 & 0.750" in output
     assert "Test model & 1.2 & 34.5" in output
     assert "Test model & 50.0" in output
     assert "& 0.007 \\\\" in output
