@@ -28,6 +28,7 @@ readonly RUN_MODE="${BEANS_NEXT_RUN_MODE:-pilot}"
 readonly DATA_BACKEND="${BEANS_NEXT_DATA_BACKEND:-huggingface}"
 readonly SUITE="${BEANS_NEXT_SUITE:-beans_next_all_tiers_hf}"
 readonly PILOT_LIMIT="${BEANS_NEXT_PILOT_LIMIT:-16}"
+readonly PILOT_SAMPLE_FRACTION="${BEANS_NEXT_PILOT_SAMPLE_FRACTION:-}"
 readonly MAX_MODEL_LEN="${BEANS_NEXT_MAX_MODEL_LEN:-8192}"
 readonly MAX_NUM_SEQS="${BEANS_NEXT_MAX_NUM_SEQS:-64}"
 readonly GPU_MEMORY_UTILIZATION="${BEANS_NEXT_GPU_MEMORY_UTILIZATION:-0.90}"
@@ -186,6 +187,8 @@ model_path=$MODEL_PATH
 run_mode=$RUN_MODE
 data_backend=$DATA_BACKEND
 suite=$SUITE
+pilot_limit=$PILOT_LIMIT
+pilot_sample_fraction=${PILOT_SAMPLE_FRACTION:-none}
 data_revision=${BEANS_NEXT_DATA_REVISION:-neurips2026}
 slurm_job_id=$SLURM_JOB_ID
 slurm_partition=${SLURM_JOB_PARTITION:-unknown}
@@ -202,11 +205,19 @@ if [[ "$RUN_MODE" == "pilot" ]]; then
   for concurrency in "${grid[@]}"; do
     out_dir="$JOB_ROOT/pilot_c${concurrency}"
     start_proxy "$concurrency" "$out_dir.proxy.log"
-    run_benchmark \
-      "$out_dir" \
-      "${MODEL_TAG}_pilot_c${concurrency}" \
-      text-only-informed \
-      --limit "$PILOT_LIMIT"
+    if [[ -n "$PILOT_SAMPLE_FRACTION" ]]; then
+      run_benchmark \
+        "$out_dir" \
+        "${MODEL_TAG}_pilot_c${concurrency}" \
+        text-only-informed \
+        --sample-fraction "$PILOT_SAMPLE_FRACTION"
+    else
+      run_benchmark \
+        "$out_dir" \
+        "${MODEL_TAG}_pilot_c${concurrency}" \
+        text-only-informed \
+        --limit "$PILOT_LIMIT"
+    fi
     stop_proxy
   done
 elif [[ "$RUN_MODE" == "full" ]]; then
