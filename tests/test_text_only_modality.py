@@ -184,14 +184,20 @@ def test_beans_next_multiaudio_metadata_only_loader_skips_all_audio(
 
 
 class Audio:
+    """Sentinel audio feature used by the fake dataset schema."""
+
     pass
 
 
 class _ValueFeature:
+    """Minimal non-audio feature used by the fake dataset schema."""
+
     dtype = "string"
 
 
 class _FakeDataset:
+    """Small datasets-compatible fixture that records column access."""
+
     def __init__(self, *, include_audio: bool = True) -> None:
         self.include_audio = include_audio
         self.features = {"dataset_name": _ValueFeature()}

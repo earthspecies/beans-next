@@ -1,3 +1,5 @@
+"""Tests for deterministic answer-order permutation diagnostics."""
+
 from __future__ import annotations
 
 from argparse import Namespace
