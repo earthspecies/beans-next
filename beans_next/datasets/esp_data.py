@@ -385,7 +385,7 @@ def require_esp_data() -> ModuleType:
             alp_datasets, "BeansZero", None
         )
         if beans_zero_cls is not None and not hasattr(alp_data, "BeansZero"):
-            setattr(alp_data, "BeansZero", beans_zero_cls)
+            alp_data.BeansZero = beans_zero_cls
         return alp_data
     return esp_data
 
