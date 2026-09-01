@@ -29,6 +29,7 @@ readonly DATA_BACKEND="${BEANS_NEXT_DATA_BACKEND:-huggingface}"
 readonly SUITE="${BEANS_NEXT_SUITE:-beans_next_all_tiers_hf}"
 readonly PILOT_LIMIT="${BEANS_NEXT_PILOT_LIMIT:-16}"
 readonly PILOT_SAMPLE_FRACTION="${BEANS_NEXT_PILOT_SAMPLE_FRACTION:-}"
+readonly RESUME_FROM="${BEANS_NEXT_RESUME_FROM:-}"
 readonly MAX_MODEL_LEN="${BEANS_NEXT_MAX_MODEL_LEN:-8192}"
 readonly MAX_NUM_SEQS="${BEANS_NEXT_MAX_NUM_SEQS:-64}"
 readonly GPU_MEMORY_UTILIZATION="${BEANS_NEXT_GPU_MEMORY_UTILIZATION:-0.90}"
@@ -152,7 +153,11 @@ run_benchmark() {
   local out_dir="$1"
   local run_id="$2"
   local modality="$3"
+  local -a resume_args=()
   shift 3
+  if [[ -n "$RESUME_FROM" ]]; then
+    resume_args=(--resume-from "$RESUME_FROM")
+  fi
   mkdir -p "$out_dir"
   nvidia-smi \
     --query-gpu=timestamp,index,utilization.gpu,memory.used,power.draw \
@@ -170,6 +175,7 @@ run_benchmark() {
       --workers "${SLURM_CPUS_PER_GPU:-12}" \
       --modality-mode "$modality" \
       --seed 20260901 \
+      "${resume_args[@]}" \
       "$@"
   kill "$monitor_pid" 2>/dev/null || true
   wait "$monitor_pid" 2>/dev/null || true
@@ -189,6 +195,7 @@ data_backend=$DATA_BACKEND
 suite=$SUITE
 pilot_limit=$PILOT_LIMIT
 pilot_sample_fraction=${PILOT_SAMPLE_FRACTION:-none}
+resume_from=${RESUME_FROM:-none}
 data_revision=${BEANS_NEXT_DATA_REVISION:-neurips2026}
 slurm_job_id=$SLURM_JOB_ID
 slurm_partition=${SLURM_JOB_PARTITION:-unknown}
