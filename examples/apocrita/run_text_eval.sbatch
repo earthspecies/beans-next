@@ -217,8 +217,20 @@ elif [[ "$RUN_MODE" == "full" ]]; then
     text-only \
     --sample-fraction 0.1
   stop_proxy
+elif [[ "$RUN_MODE" == "permutation" ]]; then
+  concurrency="${BEANS_NEXT_CONCURRENCY:-64}"
+  start_proxy "$concurrency" "$JOB_ROOT/proxy.log"
+  run_benchmark \
+    "$JOB_ROOT/answer_order_permutation" \
+    "${MODEL_TAG}_answer_order_permutation" \
+    text-only-informed \
+    --suite beans_next_explicit_mcq_hf \
+    --sample-fraction 0.05 \
+    --stratify-by-label \
+    --permute-answer-order
+  stop_proxy
 else
-  echo "BEANS_NEXT_RUN_MODE must be pilot or full, got: $RUN_MODE" >&2
+  echo "BEANS_NEXT_RUN_MODE must be pilot, full, or permutation, got: $RUN_MODE" >&2
   exit 1
 fi
 

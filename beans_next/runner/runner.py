@@ -1215,6 +1215,63 @@ def _sample_examples(
     return [example for index, example in enumerate(examples) if index in selected]
 
 
+def _sample_examples_stratified_by_label(
+    examples: list[DatasetExample],
+    *,
+    fraction: float | None,
+    seed: int,
+) -> list[DatasetExample]:
+    """Select an exact deterministic fraction stratified by reference label.
+
+    Returns
+    -------
+    list[DatasetExample]
+        Selected rows in their original dataset order.
+
+    Raises
+    ------
+    SystemExit
+        If ``fraction`` is outside the interval ``(0, 1]``.
+    """
+    if fraction is None or not examples or fraction == 1.0:
+        return _sample_examples(examples, fraction=fraction, seed=seed)
+    if fraction <= 0.0 or fraction > 1.0:
+        raise SystemExit("--sample-fraction must be greater than 0 and at most 1.")
+
+    target_count = max(1, round(len(examples) * fraction))
+    groups: dict[str, list[int]] = {}
+    for index, example in enumerate(examples):
+        key = json.dumps(example.labels, sort_keys=True, ensure_ascii=False)
+        groups.setdefault(key, []).append(index)
+
+    quotas = {
+        key: len(indices) * target_count / len(examples)
+        for key, indices in groups.items()
+    }
+    allocations = {key: int(quota) for key, quota in quotas.items()}
+    remaining = target_count - sum(allocations.values())
+    remainder_order = sorted(
+        groups,
+        key=lambda key: (
+            -(quotas[key] - allocations[key]),
+            hashlib.sha256(f"{seed}\0{key}".encode()).digest(),
+        ),
+    )
+    for key in remainder_order[:remaining]:
+        allocations[key] += 1
+
+    selected: set[int] = set()
+    for key, indices in groups.items():
+        ranked = sorted(
+            indices,
+            key=lambda index: hashlib.sha256(
+                f"{seed}\0{examples[index].sample_id}".encode()
+            ).digest(),
+        )
+        selected.update(ranked[: allocations[key]])
+    return [example for index, example in enumerate(examples) if index in selected]
+
+
 def _finalize_loaded_examples(
     examples: list[DatasetExample],
     *,
@@ -1230,7 +1287,17 @@ def _finalize_loaded_examples(
     raw_fraction = getattr(args, "sample_fraction", None)
     fraction = float(raw_fraction) if raw_fraction is not None else None
     seed = int(getattr(args, "seed", 0) or 0)
-    return _sample_examples(examples, fraction=fraction, seed=seed)
+    if bool(getattr(args, "stratify_by_label", False)):
+        sampled = _sample_examples_stratified_by_label(
+            examples, fraction=fraction, seed=seed
+        )
+    else:
+        sampled = _sample_examples(examples, fraction=fraction, seed=seed)
+    if bool(getattr(args, "permute_answer_order", False)):
+        from beans_next.diagnostics import permute_answer_order
+
+        return [permute_answer_order(example, seed=seed) for example in sampled]
+    return sampled
 
 
 def _default_output_dir(args: Namespace, run_id: str) -> Path:

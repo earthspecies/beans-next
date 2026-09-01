@@ -676,6 +676,24 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Seed for deterministic per-task sampling (default 0).",
     )
     p_run.add_argument(
+        "--permute-answer-order",
+        action="store_true",
+        default=False,
+        help=(
+            "Deterministically permute explicit textual multiple-choice options "
+            "and remap their reference labels (diagnostic use only)."
+        ),
+    )
+    p_run.add_argument(
+        "--stratify-by-label",
+        action="store_true",
+        default=False,
+        help=(
+            "Stratify --sample-fraction by the original reference label "
+            "(diagnostic use only)."
+        ),
+    )
+    p_run.add_argument(
         "--suite",
         default=None,
         help="Optional suite id from the eval registry (when registry content exists).",
