@@ -25,6 +25,8 @@ readonly MODEL_REVISION="${BEANS_NEXT_MODEL_REVISION:?Set BEANS_NEXT_MODEL_REVIS
 readonly MODEL_TAG="${BEANS_NEXT_MODEL_TAG:?Set BEANS_NEXT_MODEL_TAG}"
 readonly CODE_COMMIT="${BEANS_NEXT_CODE_COMMIT_OVERRIDE:-$(git -C "$REPO" rev-parse HEAD)}"
 readonly RUN_MODE="${BEANS_NEXT_RUN_MODE:-pilot}"
+readonly DATA_BACKEND="${BEANS_NEXT_DATA_BACKEND:-huggingface}"
+readonly SUITE="${BEANS_NEXT_SUITE:-beans_next_all_tiers_hf}"
 readonly PILOT_LIMIT="${BEANS_NEXT_PILOT_LIMIT:-16}"
 readonly MAX_MODEL_LEN="${BEANS_NEXT_MAX_MODEL_LEN:-8192}"
 readonly MAX_NUM_SEQS="${BEANS_NEXT_MAX_NUM_SEQS:-64}"
@@ -160,8 +162,8 @@ run_benchmark() {
   /usr/bin/time -v -o "$out_dir/time.txt" \
     "$RUNNER_PYTHON" -m beans_next.cli run \
       --predict-url "http://127.0.0.1:$PROXY_PORT/predict" \
-      --backend huggingface \
-      --suite beans_next_all_tiers_hf \
+      --backend "$DATA_BACKEND" \
+      --suite "$SUITE" \
       --run-id "$run_id" \
       --output-dir "$out_dir" \
       --workers "${SLURM_CPUS_PER_GPU:-12}" \
@@ -182,6 +184,9 @@ model_id=$MODEL_ID
 model_revision=$MODEL_REVISION
 model_path=$MODEL_PATH
 run_mode=$RUN_MODE
+data_backend=$DATA_BACKEND
+suite=$SUITE
+data_revision=${BEANS_NEXT_DATA_REVISION:-neurips2026}
 slurm_job_id=$SLURM_JOB_ID
 slurm_partition=${SLURM_JOB_PARTITION:-unknown}
 slurm_node=${SLURMD_NODENAME:-unknown}
@@ -229,8 +234,17 @@ elif [[ "$RUN_MODE" == "permutation" ]]; then
     --stratify-by-label \
     --permute-answer-order
   stop_proxy
+elif [[ "$RUN_MODE" == "beans_zero" ]]; then
+  concurrency="${BEANS_NEXT_CONCURRENCY:-64}"
+  start_proxy "$concurrency" "$JOB_ROOT/proxy.log"
+  run_benchmark \
+    "$JOB_ROOT/beans_zero_text_only_informed" \
+    "${MODEL_TAG}_beans_zero_text_only_informed" \
+    text-only-informed \
+    --hf-revision "${BEANS_NEXT_DATA_REVISION:?Set BEANS_NEXT_DATA_REVISION}"
+  stop_proxy
 else
-  echo "BEANS_NEXT_RUN_MODE must be pilot, full, or permutation, got: $RUN_MODE" >&2
+  echo "BEANS_NEXT_RUN_MODE must be pilot, full, permutation, or beans_zero, got: $RUN_MODE" >&2
   exit 1
 fi
 

@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
 from beans_next.api.types import DatasetExample
-from beans_next.datasets import beans_next_hub, hf
+from beans_next.datasets import beans_next_hub, hf, hf_streaming
 from beans_next.prompts.audio_tags import AUDIO_PLACEHOLDER
 from beans_next.prompts.renderer import (
     TEXT_ONLY_INSTRUCTION,
@@ -213,6 +214,11 @@ class _FakeDataset:
     def set_format(self, *_args: object, **_kwargs: object) -> None:
         return None
 
+    def __iter__(self) -> Iterator[dict[str, object]]:
+        if self.include_audio:
+            pytest.fail("audio column was accessed")
+        yield {"id": "row-1", "dataset_name": "esc50", "output": "dog"}
+
 
 def test_generic_hf_metadata_only_loader_removes_audio_before_iteration(
     monkeypatch: pytest.MonkeyPatch,
@@ -224,6 +230,25 @@ def test_generic_hf_metadata_only_loader_removes_audio_before_iteration(
 
     examples = list(
         hf.iter_hf_dataset_examples(
+            "unused",
+            split="test",
+            load_audio=False,
+        )
+    )
+
+    assert len(examples) == 1
+    assert examples[0].labels == "dog"
+    assert "audio_path" not in examples[0].metadata
+
+
+def test_streaming_hf_metadata_only_loader_removes_audio_before_iteration(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    datasets = SimpleNamespace(load_dataset=lambda *_args, **_kwargs: _FakeDataset())
+    monkeypatch.setattr(hf_streaming, "require_datasets", lambda: datasets)
+
+    examples = list(
+        hf_streaming.iter_hf_streaming_examples(
             "unused",
             split="test",
             load_audio=False,

@@ -734,6 +734,11 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p_run.add_argument(
+        "--hf-revision",
+        default=None,
+        help="Optional exact Hugging Face dataset revision.",
+    )
+    p_run.add_argument(
         "--split",
         default="test",
         help="Dataset split name for HF loading (default test).",

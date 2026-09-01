@@ -1605,7 +1605,11 @@ def _load_examples_for_eval_task(
                     "BEANS-Zero huggingface loading requires a non-empty `subset` or "
                     "`dataset_name` in the eval task."
                 )
-            revision = str(eval_task.get("revision") or "main")
+            revision = str(
+                getattr(args, "hf_revision", None)
+                or eval_task.get("revision")
+                or "main"
+            )
             for ex in iter_hf_dataset_examples(
                 hf_path.strip(),
                 split=str(split),
@@ -1633,7 +1637,11 @@ def _load_examples_for_eval_task(
             raise SystemExit(
                 "huggingface backend requires a non-empty `subset` in the eval task."
             )
-        revision = str(eval_task.get("revision") or "main")
+        revision = str(
+            getattr(args, "hf_revision", None)
+            or eval_task.get("revision")
+            or "main"
+        )
         # BEANS-Next on Hugging Face is a single-table Parquet dataset. We treat the
         # benchmark split as "test" by default (older configs sometimes used
         # subset-named splits, and HF defaults can be "train" depending on the card).
@@ -1685,8 +1693,18 @@ def _load_examples_for_eval_task(
         hf_path,
         split=str(split),
         config_name=cast(str | None, hf_config),
+        revision=(
+            str(args.hf_revision)
+            if getattr(args, "hf_revision", None)
+            else (
+                str(eval_task.get("revision"))
+                if eval_task.get("revision")
+                else None
+            )
+        ),
         task_id=task_id,
         row_filter=row_filter,
+        load_audio=load_audio,
     ):
         rows.append(ex)
         if len(rows) >= limit:
