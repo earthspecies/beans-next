@@ -246,8 +246,16 @@ elif [[ "$RUN_MODE" == "beans_zero" ]]; then
     text-only-informed \
     --hf-revision "${BEANS_NEXT_DATA_REVISION:?Set BEANS_NEXT_DATA_REVISION}"
   stop_proxy
+elif [[ "$RUN_MODE" == "silent_full" ]]; then
+  concurrency="${BEANS_NEXT_CONCURRENCY:-64}"
+  start_proxy "$concurrency" "$JOB_ROOT/proxy.log"
+  run_benchmark \
+    "$JOB_ROOT/text_only_full" \
+    "${MODEL_TAG}_text_only_full" \
+    text-only
+  stop_proxy
 else
-  echo "BEANS_NEXT_RUN_MODE must be pilot, full, permutation, or beans_zero, got: $RUN_MODE" >&2
+  echo "BEANS_NEXT_RUN_MODE must be pilot, full, permutation, beans_zero, or silent_full, got: $RUN_MODE" >&2
   exit 1
 fi
 
