@@ -29,8 +29,6 @@ readonly PILOT_LIMIT="${BEANS_NEXT_PILOT_LIMIT:-16}"
 readonly MAX_MODEL_LEN="${BEANS_NEXT_MAX_MODEL_LEN:-8192}"
 readonly MAX_NUM_SEQS="${BEANS_NEXT_MAX_NUM_SEQS:-64}"
 readonly GPU_MEMORY_UTILIZATION="${BEANS_NEXT_GPU_MEMORY_UTILIZATION:-0.90}"
-readonly VLLM_PORT="$((20000 + SLURM_JOB_ID % 10000))"
-readonly PROXY_PORT="$((30000 + SLURM_JOB_ID % 10000))"
 readonly RUNNER_PYTHON="$RUNNER_RUNTIME/.venv/bin/python"
 readonly SERVER_PYTHON="$SERVER_RUNTIME/.venv/bin/python"
 readonly VLLM_BIN="$SERVER_RUNTIME/.venv/bin/vllm"
@@ -48,6 +46,18 @@ if [[ ! -x "$RUNNER_PYTHON" || ! -x "$SERVER_PYTHON" || ! -x "$VLLM_BIN" ]]; the
   echo "Missing runner or vLLM runtime" >&2
   exit 1
 fi
+
+find_free_port() {
+  "$RUNNER_PYTHON" -c \
+    'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1]); s.close()'
+}
+
+VLLM_PORT="${BEANS_NEXT_VLLM_PORT:-$(find_free_port)}"
+PROXY_PORT="${BEANS_NEXT_PROXY_PORT:-$(find_free_port)}"
+while [[ "$PROXY_PORT" == "$VLLM_PORT" ]]; do
+  PROXY_PORT="$(find_free_port)"
+done
+readonly VLLM_PORT PROXY_PORT
 
 mkdir -p "$JOB_ROOT" "$SERVER_RUNTIME/tmp" "$SERVER_RUNTIME/cache/huggingface"
 cd "$REPO"
@@ -83,11 +93,11 @@ wait_for_url() {
   local pid="$3"
   local attempts="${4:-180}"
   for ((i = 1; i <= attempts; i++)); do
-    if curl --fail --silent "$url" >/dev/null; then return 0; fi
     if ! kill -0 "$pid" 2>/dev/null; then
       echo "$label process exited before $url became healthy" >&2
       return 1
     fi
+    if curl --fail --silent "$url" >/dev/null; then return 0; fi
     sleep 5
   done
   echo "Timed out while waiting for $label at $url" >&2
@@ -178,6 +188,8 @@ slurm_node=${SLURMD_NODENAME:-unknown}
 max_model_len=$MAX_MODEL_LEN
 max_num_seqs=$MAX_NUM_SEQS
 gpu_memory_utilization=$GPU_MEMORY_UTILIZATION
+vllm_port=$VLLM_PORT
+proxy_port=$PROXY_PORT
 EOF
 
 if [[ "$RUN_MODE" == "pilot" ]]; then
