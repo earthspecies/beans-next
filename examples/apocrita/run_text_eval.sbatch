@@ -236,6 +236,9 @@ elif [[ "$RUN_MODE" == "permutation" ]]; then
   stop_proxy
 elif [[ "$RUN_MODE" == "beans_zero" ]]; then
   concurrency="${BEANS_NEXT_CONCURRENCY:-64}"
+  mkdir -p "$SERVER_RUNTIME/cache/empty-gcloud"
+  export CLOUDSDK_CONFIG="$SERVER_RUNTIME/cache/empty-gcloud"
+  export ALP_DATA_HOME="${BEANS_NEXT_ALP_DATA_HOME:-https://storage.googleapis.com/esp-data-274503}"
   start_proxy "$concurrency" "$JOB_ROOT/proxy.log"
   run_benchmark \
     "$JOB_ROOT/beans_zero_text_only_informed" \
