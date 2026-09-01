@@ -1,7 +1,8 @@
-"""Optional `esp_data`-backed dataset loader.
+"""Optional ``esp_data``/``alp_data``-backed dataset loader.
 
-This module provides an **optional** fast-path for ESP-internal (and soon public)
-dataset access via `esp_data`. It is intentionally a guarded import so that
+This module provides an **optional** fast-path for the legacy internal
+``esp_data`` package and its public successor, ``alp_data``. It is intentionally
+a guarded import so that
 BEANS-Next remains installable without any private dependencies.
 
 The integration is config-driven: callers select `data_source="esp_data"` and
@@ -355,28 +356,37 @@ def _materialize_wav_from_row_audio(
 
 
 def require_esp_data() -> ModuleType:
-    """Import and return the `esp_data` package.
+    """Import and return legacy ``esp_data`` or public ``alp_data``.
 
     Returns
     -------
     types.ModuleType
-        The imported `esp_data` module.
+        The imported dataset module.
 
     Raises
     ------
     ImportError
-        If `esp_data` is not installed in the current environment.
+        If neither supported package is installed in the current environment.
     """
     try:
         import esp_data  # type: ignore[import-not-found]
-    except ImportError as exc:  # pragma: no cover
-        msg = (
-            "esp_data dataset loading was requested, but `esp_data` is not installed. "
-            "Install it in your environment (internal: `uv sync` in an env that "
-            "includes esp_data; public: `uv pip install esp-data` once released), "
-            "or switch to HuggingFace loading by setting `data_source: hf`."
+    except ImportError:
+        try:
+            import alp_data  # type: ignore[import-not-found]
+            import alp_data.datasets as alp_datasets  # type: ignore[import-not-found]
+        except ImportError as exc:  # pragma: no cover
+            msg = (
+                "esp_data dataset loading was requested, but neither `esp_data` "
+                "nor public `alp_data` is installed. Install `alp-data`, or switch "
+                "to Hugging Face loading by setting `data_source: hf`."
+            )
+            raise ImportError(msg) from exc
+        beans_zero_cls = getattr(alp_data, "BeansZero", None) or getattr(
+            alp_datasets, "BeansZero", None
         )
-        raise ImportError(msg) from exc
+        if beans_zero_cls is not None and not hasattr(alp_data, "BeansZero"):
+            setattr(alp_data, "BeansZero", beans_zero_cls)
+        return alp_data
     return esp_data
 
 
