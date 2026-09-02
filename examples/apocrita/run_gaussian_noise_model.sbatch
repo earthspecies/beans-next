@@ -20,6 +20,8 @@ readonly ROOT="/gpfs/scratch/acw777/beans-next-gaussian"
 readonly MODEL_KIND="${BEANS_NEXT_MODEL_KIND:?Set naturelm-v1.0, qwen3-omni, or audio-flamingo-next}"
 readonly RUN_PHASE="${BEANS_NEXT_RUN_PHASE:-pilots}"
 readonly DATASET_REVISION="eee57626950ffa95a76e39c87a1de46b113dce4c"
+readonly BEANS_ZERO_DATASET_REVISION="e9e45ffff7500867c885ef74c245c07e66677084"
+readonly BEANS_ZERO_HF_HOME="/gpfs/scratch/acw777/beans-next-zero-cache/huggingface"
 readonly GLOBAL_SEED="${BEANS_NEXT_GAUSSIAN_NOISE_SEED:-0}"
 readonly PROTOCOL_VERSION="beans-next.gaussian-noise.v1"
 readonly NOISE_CACHE="$ROOT/noise-cache"
@@ -101,6 +103,7 @@ case "$MODEL_KIND" in
     export VLLM_MAX_MODEL_LEN=16384
     export VLLM_AUDIO_CONTENT_FORMAT=audio_url_data
     export BEANS_NEXT_SKIP_UV_SYNC=1
+    export SPEECH_VOICE_SAMPLES="$TMPDIR/voice_samples"
     export VLLM_EXTRA_ARGS="--revision $VLLM_MODEL_REVISION --stage-configs-path $REPO/examples/servers/vllm/qwen3_omni_moe_instruct_text_single_h100.yaml --download-dir $HUGGINGFACE_HUB_CACHE"
     bash "$REPO/examples/slurm/serve_vllm.sh" &
     ;;
@@ -133,9 +136,19 @@ run_eval() {
   local args=(
     run --predict-url "$PREDICT_URL" --backend huggingface --suite "$suite"
     --run-id "${MODEL_KIND}_${condition}_${SLURM_JOB_ID}" --output-dir "$out_dir"
-    --workers "${SLURM_CPUS_PER_GPU:-12}" --hf-revision "$DATASET_REVISION"
-    --preserve-file-paths --seed 0
+    --workers "${SLURM_CPUS_PER_GPU:-12}" --preserve-file-paths --seed 0
   )
+  local -a dataset_env=()
+  if [[ "$suite" == "beans_zero_smoke" ]]; then
+    args+=(--hf-revision "$BEANS_ZERO_DATASET_REVISION")
+    dataset_env+=(
+      "HF_HOME=$BEANS_ZERO_HF_HOME"
+      "HUGGINGFACE_HUB_CACHE=$BEANS_ZERO_HF_HOME/hub"
+      "HF_DATASETS_CACHE=$BEANS_ZERO_HF_HOME/datasets"
+    )
+  else
+    args+=(--hf-revision "$DATASET_REVISION")
+  fi
   if [[ "$condition" == noise_* || "$condition" == beans_zero_noise_smoke ]]; then
     args+=(
       --modality-mode gaussian-noise
@@ -156,7 +169,7 @@ run_eval() {
   mkdir -p "$out_dir"
   printf '%q ' "$CORE_PYTHON" -m beans_next.cli "${args[@]}"
   printf '\n'
-  time "$CORE_PYTHON" -m beans_next.cli "${args[@]}"
+  time env "${dataset_env[@]}" "$CORE_PYTHON" -m beans_next.cli "${args[@]}"
   if [[ "$condition" == noise_* || "$condition" == beans_zero_noise_smoke ]]; then
     local -a manifests=()
     while IFS= read -r manifest; do
@@ -188,6 +201,7 @@ Path("$JOB_ROOT/apocrita_context.json").write_text(json.dumps({
   "model_kind": "$MODEL_KIND",
   "run_phase": "$RUN_PHASE",
   "dataset_revision": "$DATASET_REVISION",
+  "beans_zero_dataset_revision": "$BEANS_ZERO_DATASET_REVISION",
   "code_commit": "$BEANS_NEXT_CODE_COMMIT",
   "global_seed": "$GLOBAL_SEED",
   "protocol_version": "$PROTOCOL_VERSION",
