@@ -218,6 +218,12 @@ case "$RUN_PHASE" in
     run_eval noise_sensitivity_m10 beans_next_all_tiers_hf 5 -10
     run_eval noise_throughput beans_next_all_tiers_hf 20 -20
     ;;
+  sensitivity-throughput)
+    run_eval noise_sensitivity_m30 beans_next_all_tiers_hf 5 -30
+    run_eval noise_sensitivity_m20 beans_next_all_tiers_hf 5 -20
+    run_eval noise_sensitivity_m10 beans_next_all_tiers_hf 5 -10
+    run_eval noise_throughput beans_next_all_tiers_hf 20 -20
+    ;;
   full-noise)
     run_eval noise_full beans_next_all_tiers_hf "" -20
     ;;
