@@ -133,10 +133,16 @@ run_eval() {
   local limit="$3"
   local rms_dbfs="$4"
   local out_dir="$JOB_ROOT/$condition"
+  local workers="${SLURM_CPUS_PER_GPU:-12}"
+  if [[ "$MODEL_KIND" == "audio-flamingo-next" ]]; then
+    # Transformers generation on this checkpoint is not thread-safe. Parallel
+    # requests can poison the CUDA context after an otherwise valid response.
+    workers=1
+  fi
   local args=(
     run --predict-url "$PREDICT_URL" --backend huggingface --suite "$suite"
     --run-id "${MODEL_KIND}_${condition}_${SLURM_JOB_ID}" --output-dir "$out_dir"
-    --workers "${SLURM_CPUS_PER_GPU:-12}" --seed 0
+    --workers "$workers" --seed 0
   )
   if [[ "$MODEL_KIND" != "qwen3-omni" ]]; then
     args+=(--preserve-file-paths)
