@@ -212,6 +212,18 @@ def _seed_digest(
     ).hexdigest()
 
 
+def _cache_key(seed_digest: str, rms_dbfs: float) -> str:
+    """Identify one rendered amplitude without changing the protocol seed."""
+
+    material = json.dumps(
+        {"seed_sha256": seed_digest, "rms_dbfs": float(rms_dbfs)},
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
+    ).encode("utf-8")
+    return hashlib.sha256(material).hexdigest()
+
+
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -364,6 +376,7 @@ def _cached_record(
     source_identity: str,
     slot_index: int,
     seed_digest: str,
+    cache_key: str,
 ) -> GaussianNoiseRecord | None:
     if not audio_path.is_file() or not metadata_path.is_file():
         return None
@@ -375,7 +388,7 @@ def _cached_record(
         ) from exc
     expected = {
         "schema_version": "beans_next.gaussian_noise.v1",
-        "cache_key": seed_digest,
+        "cache_key": cache_key,
         "dataset_revision": str(config.dataset_revision),
         "source_identity": str(source_identity),
         "slot_index": int(slot_index),
@@ -458,15 +471,22 @@ def materialize(
         )
 
     seed_digest = _seed_digest(config, source_identity, slot_index)
+    cache_key = _cache_key(seed_digest, config.rms_dbfs)
     seed = int.from_bytes(
         bytes.fromhex(seed_digest[:16]), byteorder="big", signed=False
     )
     cache_dir = config.cache_dir
     cache_dir.mkdir(parents=True, exist_ok=True)
-    audio_path = cache_dir / f"{seed_digest}.wav"
-    metadata_path = cache_dir / f"{seed_digest}.wav.json"
+    audio_path = cache_dir / f"{cache_key}.wav"
+    metadata_path = cache_dir / f"{cache_key}.wav.json"
     cached = _cached_record(
-        audio_path, metadata_path, config, source_identity, slot_index, seed_digest
+        audio_path,
+        metadata_path,
+        config,
+        source_identity,
+        slot_index,
+        seed_digest,
+        cache_key,
     )
     if cached is not None:
         return cached
@@ -490,7 +510,7 @@ def materialize(
         "source_path": str(source),
         "source_sha256": source_checksum,
         "slot_index": slot_index,
-        "cache_key": seed_digest,
+        "cache_key": cache_key,
         "seed": seed,
         "seed_sha256": seed_digest,
         "rms_dbfs_requested": float(config.rms_dbfs),
@@ -521,7 +541,13 @@ def materialize(
     # A concurrent worker may have completed the sidecar between our initial
     # cache check and publication.  Always validate the immutable final pair.
     cached = _cached_record(
-        audio_path, metadata_path, config, source_identity, slot_index, seed_digest
+        audio_path,
+        metadata_path,
+        config,
+        source_identity,
+        slot_index,
+        seed_digest,
+        cache_key,
     )
     if cached is None:  # pragma: no cover - defensive against a broken filesystem
         raise RuntimeError(

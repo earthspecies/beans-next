@@ -52,3 +52,24 @@ def test_seed_inputs_and_slots_are_distinct(tmp_path: Path) -> None:
     assert slot_zero.cache_key != slot_one.cache_key
     assert slot_zero.cache_key != other_revision.cache_key
     assert slot_zero.path.read_bytes() != slot_one.path.read_bytes()
+
+
+def test_sensitivity_levels_share_seed_but_not_cache_entry(tmp_path: Path) -> None:
+    source_path = tmp_path / "source.wav"
+    sf.write(source_path, np.zeros(2_000, dtype=np.float32), 8_000)
+    common = {"dataset_revision": "r1", "cache_dir": tmp_path / "cache"}
+    quiet = materialize(
+        source_path, "same", 0, GaussianNoiseConfig(**common, rms_dbfs=-30)
+    )
+    loud = materialize(
+        source_path, "same", 0, GaussianNoiseConfig(**common, rms_dbfs=-10)
+    )
+
+    assert quiet.seed == loud.seed
+    assert quiet.seed_sha256 == loud.seed_sha256
+    assert quiet.cache_key != loud.cache_key
+    assert quiet.path != loud.path
+    quiet_audio, _ = sf.read(quiet.path, dtype="float64")
+    loud_audio, _ = sf.read(loud.path, dtype="float64")
+    assert np.isclose(np.sqrt(np.mean(quiet_audio**2)), 10 ** (-30 / 20))
+    assert np.isclose(np.sqrt(np.mean(loud_audio**2)), 10 ** (-10 / 20))
