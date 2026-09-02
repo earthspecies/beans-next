@@ -34,10 +34,10 @@ export TMPDIR="$ROOT/cache/tmp"
 mkdir -p "$UV_CACHE_DIR" "$XDG_CACHE_HOME" "$HUGGINGFACE_HUB_CACHE" "$TMPDIR"
 
 cd "$REPO"
-UV_PROJECT_ENVIRONMENT="$RUNTIME_ROOT/core" uv sync --frozen
+UV_PROJECT_ENVIRONMENT="$RUNTIME_ROOT/core" uv sync --frozen --python 3.12
 
 cd "$REPO/examples/servers/af3"
-UV_PROJECT_ENVIRONMENT="$RUNTIME_ROOT/afnext" uv sync --frozen --group gpu
+UV_PROJECT_ENVIRONMENT="$RUNTIME_ROOT/afnext" uv sync --frozen --group gpu --python 3.12
 
 cd "$REPO/examples/servers/vllm"
 if [[ ! -x "$RUNTIME_ROOT/qwen/bin/python" ]]; then
@@ -60,7 +60,7 @@ git checkout --detach "$NATURE_CODE_COMMIT"
 test "$(git rev-parse HEAD)" = "$NATURE_CODE_COMMIT"
 
 cd "$REPO/examples/servers/naturelm-v1.0"
-UV_PROJECT_ENVIRONMENT="$RUNTIME_ROOT/naturelm" uv sync --frozen --group real
+UV_PROJECT_ENVIRONMENT="$RUNTIME_ROOT/naturelm" uv sync --frozen --group real --python 3.12
 uv pip install --python "$RUNTIME_ROOT/naturelm/bin/python" --no-deps -e "$NATURE_CODE"
 uv pip install --python "$RUNTIME_ROOT/naturelm/bin/python" \
   'cloudpathlib[gs]>=0.20.0' 'einops>=0.8.0' 'librosa>=0.9.2' \
