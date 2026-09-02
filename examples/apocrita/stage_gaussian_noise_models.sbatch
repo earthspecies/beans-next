@@ -60,7 +60,9 @@ git checkout --detach "$NATURE_CODE_COMMIT"
 test "$(git rev-parse HEAD)" = "$NATURE_CODE_COMMIT"
 
 cd "$REPO/examples/servers/naturelm-v1.0"
-UV_PROJECT_ENVIRONMENT="$RUNTIME_ROOT/naturelm" uv sync --frozen --group real --python 3.12
+# This launcher does not contain a lockfile. Its direct model-runtime packages
+# are pinned in the local pyproject.toml.
+UV_PROJECT_ENVIRONMENT="$RUNTIME_ROOT/naturelm" uv sync --group real --python 3.12
 uv pip install --python "$RUNTIME_ROOT/naturelm/bin/python" --no-deps -e "$NATURE_CODE"
 uv pip install --python "$RUNTIME_ROOT/naturelm/bin/python" \
   'cloudpathlib[gs]>=0.20.0' 'einops>=0.8.0' 'librosa>=0.9.2' \
