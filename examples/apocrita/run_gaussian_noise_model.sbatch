@@ -27,6 +27,10 @@ readonly URL_DIR="$ROOT/urls"
 readonly JOB_ROOT="${BEANS_NEXT_JOB_ROOT:-$ROOT/results/$MODEL_KIND/$RUN_PHASE/job_${SLURM_JOB_ID}}"
 readonly CORE_PYTHON="$ROOT/runtime/core/bin/python"
 
+# The reusable core environment may have been staged from an earlier source
+# archive.  Import the immutable source tree that this job was submitted from.
+export PYTHONPATH="$REPO${PYTHONPATH:+:$PYTHONPATH}"
+
 mkdir -p "$ROOT/logs" "$URL_DIR" "$NOISE_CACHE" "$JOB_ROOT"
 test -x "$CORE_PYTHON"
 
