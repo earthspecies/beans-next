@@ -596,6 +596,7 @@ def _validate_audio_object(
     rms_target: float,
     mean_tolerance: float,
     rms_tolerance_db: float,
+    allow_over_full_scale: bool,
 ) -> dict[str, Any] | None:
     if obj is None:
         errors.append(f"{record_label}: missing {kind} audio object")
@@ -691,7 +692,7 @@ def _validate_audio_object(
                 f"{record_label}.noise: waveform mean {float(actual['mean']):.6g} "
                 f"exceeds tolerance {mean_tolerance:.6g}"
             )
-        if float(actual["peak"]) > 1.0 + 1.0e-9:
+        if not allow_over_full_scale and float(actual["peak"]) > 1.0 + 1.0e-9:
             errors.append(
                 f"{record_label}.noise: waveform clips (peak {float(actual['peak']):.6g} > 1)"
             )
@@ -750,7 +751,7 @@ def _schema_version(document: Mapping[str, Any]) -> object:
 
 
 def _validate_protocol(
-    document: Mapping[str, Any], errors: list[str]
+    document: Mapping[str, Any], errors: list[str], *, expected_rms_dbfs: float
 ) -> tuple[Mapping[str, Any], float, float, float, object | None]:
     schema = _schema_version(document)
     schema_norm = _normalise_text(schema) if schema is not _MISSING else ""
@@ -829,9 +830,9 @@ def _validate_protocol(
     if rms_target is None:
         errors.append("protocol rms_dbfs must be finite numeric")
         rms_target = TARGET_RMS_DBFS
-    elif abs(rms_target - TARGET_RMS_DBFS) > 1.0e-6:
+    elif abs(rms_target - expected_rms_dbfs) > 1.0e-6:
         errors.append(
-            f"protocol rms_dbfs must be exactly {TARGET_RMS_DBFS:g}, got {rms_target:g}"
+            f"protocol rms_dbfs must be exactly {expected_rms_dbfs:g}, got {rms_target:g}"
         )
     mean_target_value = _first(
         protocol,
@@ -1125,6 +1126,8 @@ def validate_manifest(
     check_audio: bool = True,
     check_artifacts: bool = True,
     base_dir: str | Path | None = None,
+    expected_rms_dbfs: float = TARGET_RMS_DBFS,
+    allow_over_full_scale: bool = False,
 ) -> ValidationReport:
     """Strictly validate a Gaussian-noise manifest.
 
@@ -1166,7 +1169,7 @@ def validate_manifest(
             return ValidationReport(False, [str(exc)], [], {})
 
     protocol, rms_target, _mean_target, rms_tolerance, global_seed = _validate_protocol(
-        document.metadata, errors
+        document.metadata, errors, expected_rms_dbfs=expected_rms_dbfs
     )
     mean_tolerance_value = _first(
         protocol, "mean_tolerance", default=DEFAULT_MEAN_TOLERANCE
@@ -1250,6 +1253,7 @@ def validate_manifest(
             rms_target=rms_target,
             mean_tolerance=mean_tolerance,
             rms_tolerance_db=rms_tolerance,
+            allow_over_full_scale=allow_over_full_scale,
         )
         noise_result = _validate_audio_object(
             noise,
@@ -1262,6 +1266,7 @@ def validate_manifest(
             rms_target=rms_target,
             mean_tolerance=mean_tolerance,
             rms_tolerance_db=rms_tolerance,
+            allow_over_full_scale=allow_over_full_scale,
         )
         if source_result is not None and noise_result is not None:
             for property_name in ("frames", "sample_rate", "channels"):
@@ -1649,6 +1654,17 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--expected-samples", type=int)
     parser.add_argument("--expected-slots", type=int)
     parser.add_argument(
+        "--expected-rms-dbfs",
+        type=float,
+        default=TARGET_RMS_DBFS,
+        help="required protocol RMS level (default: -20 dBFS)",
+    )
+    parser.add_argument(
+        "--allow-over-full-scale",
+        action="store_true",
+        help="allow float-WAV peaks above full scale for a loud sensitivity arm",
+    )
+    parser.add_argument(
         "--skip-audio-check",
         action="store_true",
         help="validate declared metadata without opening local audio files",
@@ -1685,6 +1701,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         expected_slots=args.expected_slots,
         check_audio=not args.skip_audio_check,
         check_artifacts=not args.skip_artifact_check,
+        expected_rms_dbfs=args.expected_rms_dbfs,
+        allow_over_full_scale=args.allow_over_full_scale,
     )
     if args.json_output:
         print(

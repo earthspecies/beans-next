@@ -322,13 +322,15 @@ def _noise_audio(
         raise RuntimeError("Gaussian generator produced zero variance")
     audio *= target_rms / current_rms
 
-    # Gaussian distributions have unbounded tails.  At the protocol's -20 dBFS
-    # level this branch is exceptionally unlikely, but it guarantees that the
-    # written waveform never clips instead of silently clipping in a codec.
+    # Gaussian distributions have unbounded tails.  The primary -20 dBFS
+    # protocol must stay below full scale; fail rather than silently changing
+    # its requested RMS.  The deliberately louder -10 dBFS sensitivity arm is
+    # stored as float WAV and may contain samples outside [-1, 1].
     peak = float(np.max(np.abs(audio), initial=0.0))
-    if peak >= 1.0:
-        # Leave headroom for the final float32 WAV conversion as well.
-        audio *= 0.999999 / peak
+    if float(config.rms_dbfs) <= -20.0 and peak >= 1.0:
+        raise RuntimeError(
+            "Gaussian waveform exceeds full scale at the required non-clipping level"
+        )
     return audio
 
 

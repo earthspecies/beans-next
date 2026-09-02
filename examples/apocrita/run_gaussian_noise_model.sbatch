@@ -163,7 +163,12 @@ run_eval() {
       return 1
     fi
     for manifest in "${manifests[@]}"; do
-      "$CORE_PYTHON" "$REPO/scripts/validate_gaussian_noise_manifest.py" "$manifest"
+      local -a validator_args=(--expected-rms-dbfs "$rms_dbfs")
+      if [[ "$rms_dbfs" == "-10" || "$rms_dbfs" == "-10.0" ]]; then
+        validator_args+=(--allow-over-full-scale)
+      fi
+      "$CORE_PYTHON" "$REPO/scripts/validate_gaussian_noise_manifest.py" \
+        "$manifest" "${validator_args[@]}"
     done
   fi
 }
