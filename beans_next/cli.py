@@ -688,6 +688,16 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p_run.add_argument(
+        "--exclude-sample-id",
+        action="append",
+        default=[],
+        metavar="ID",
+        help=(
+            "Exclude an exact dataset sample id before inference. Repeat the option "
+            "to exclude multiple documented model-incompatible samples."
+        ),
+    )
+    p_run.add_argument(
         "--seed",
         type=int,
         default=0,

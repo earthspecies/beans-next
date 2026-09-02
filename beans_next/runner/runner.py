@@ -1483,6 +1483,25 @@ def _beans_zero_max_length_seconds_for_subset(subset: str) -> int | None:
     return iv if iv > 0 else None
 
 
+def _exclude_requested_sample_ids(
+    examples: list[DatasetExample], *, args: Namespace
+) -> list[DatasetExample]:
+    """Remove explicitly documented sample ids from an evaluation task.
+
+    Returns
+    -------
+    list[DatasetExample]
+        Input examples whose exact sample ids were not requested for exclusion.
+    """
+    raw_ids = getattr(args, "exclude_sample_id", None) or []
+    excluded = {
+        str(sample_id).strip() for sample_id in raw_ids if str(sample_id).strip()
+    }
+    if not excluded:
+        return examples
+    return [example for example in examples if example.sample_id not in excluded]
+
+
 def _load_examples_for_eval_task(
     eval_task: Mapping[str, Any], *, args: Namespace
 ) -> list[DatasetExample]:
@@ -2212,8 +2231,9 @@ def run_from_cli_namespace(args: Namespace) -> None:
                     task_cfg.setdefault("eval_task_id", eval_task_id)
 
                     try:
-                        examples = _load_examples_for_eval_task(
-                            task_cfg, args=args_for_tasks
+                        examples = _exclude_requested_sample_ids(
+                            _load_examples_for_eval_task(task_cfg, args=args_for_tasks),
+                            args=args_for_tasks,
                         )
                     except ImportError as exc:
                         raise SystemExit(str(exc)) from exc
@@ -2346,7 +2366,9 @@ def run_from_cli_namespace(args: Namespace) -> None:
             else:
                 single_task_cfg = {}
             try:
-                examples = _load_examples_for_eval_task(single_task_cfg, args=args)
+                examples = _exclude_requested_sample_ids(
+                    _load_examples_for_eval_task(single_task_cfg, args=args), args=args
+                )
             except ImportError as exc:
                 raise SystemExit(str(exc)) from exc
             if not examples:
@@ -2404,7 +2426,9 @@ def run_from_cli_namespace(args: Namespace) -> None:
 
             # Load examples (limit applies per task).
             try:
-                examples = _load_examples_for_eval_task(task_cfg, args=args)
+                examples = _exclude_requested_sample_ids(
+                    _load_examples_for_eval_task(task_cfg, args=args), args=args
+                )
             except ImportError as exc:
                 raise SystemExit(str(exc)) from exc
             if not examples:

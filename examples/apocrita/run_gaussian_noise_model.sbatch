@@ -135,8 +135,8 @@ run_eval() {
   local out_dir="$JOB_ROOT/$condition"
   local workers="${SLURM_CPUS_PER_GPU:-12}"
   if [[ "$MODEL_KIND" == "audio-flamingo-next" ]]; then
-    # Transformers generation on this checkpoint is not thread-safe. Parallel
-    # requests can poison the CUDA context after an otherwise valid response.
+    # Keep generation serial: one CUDA assertion poisons the process, and AF-NeXT
+    # does not gain useful throughput from concurrent client requests here.
     workers=1
   fi
   local args=(
@@ -146,6 +146,17 @@ run_eval() {
   )
   if [[ "$MODEL_KIND" != "qwen3-omni" ]]; then
     args+=(--preserve-file-paths)
+  fi
+  if [[ "$MODEL_KIND" == "audio-flamingo-next" ]]; then
+    # This one 120.013875-second recording deterministically triggers an upstream
+    # AF-NeXT CUDA indexing assertion. It occurs as four benchmark rows. Exclude
+    # the same rows from real and noise conditions to preserve matched pairing.
+    args+=(
+      --exclude-sample-id "t1-description-mcq:1267:664"
+      --exclude-sample-id "t1-description-mcq:2343:656"
+      --exclude-sample-id "t1-caption:2059:422"
+      --exclude-sample-id "t1-caption:964:423"
+    )
   fi
   local -a dataset_env=()
   if [[ "$suite" == "beans_zero_smoke" ]]; then

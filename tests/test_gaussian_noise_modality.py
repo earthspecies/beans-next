@@ -26,6 +26,7 @@ from beans_next.prompts.renderer import (
     PromptSpec,
     load_builtin_prompt_yaml,
 )
+from beans_next.runner.runner import _exclude_requested_sample_ids
 
 
 def _noise_config(cache_dir: Path, *, global_seed: int = 1729) -> GaussianNoiseConfig:
@@ -376,6 +377,28 @@ def test_cli_accepts_gaussian_noise_modality_choice() -> None:
         ]
     )
     assert args.modality_mode == "gaussian-noise"
+
+
+def test_cli_excludes_only_exact_requested_sample_ids() -> None:
+    """Documented model-incompatible rows can be removed without prefix matches."""
+    args = _build_parser().parse_args(
+        [
+            "run",
+            "--predict-url",
+            "http://localhost:1/predict",
+            "--exclude-sample-id",
+            "sample:2",
+            "--exclude-sample-id",
+            "sample:4",
+        ]
+    )
+    examples = [DatasetExample(sample_id=f"sample:{index}") for index in range(5)]
+    filtered = _exclude_requested_sample_ids(examples, args=args)
+    assert [example.sample_id for example in filtered] == [
+        "sample:0",
+        "sample:1",
+        "sample:3",
+    ]
 
 
 def test_manifest_records_protocol_commit_checksums_and_sorted_slots(
