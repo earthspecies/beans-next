@@ -286,6 +286,37 @@ class TestMcqDoesNotCommaSplitAndChoosesFinalLetter:
         assert result.text == expected
 
 
+class TestCaptioningPreservesFreeTextAndSkipsFuzzyMatch:
+    """Captioning (and other open-ended task types) must never comma-split
+    reference captions into a label vocabulary or Levenshtein-match against
+    it: that turns free-text CIDEr scoring into an O(n^2) closed-vocabulary
+    match over the whole corpus and corrupts the processed text."""
+
+    def test_long_comma_containing_caption_is_untouched(self) -> None:
+        parsers, cleaners = _default_postprocess_steps(
+            targets=[
+                "A bird calls, then a dog barks, in the forest.",
+                "Wind rustles the leaves, and rain begins to fall.",
+            ],
+            task_type="captioning",
+        )
+        assert parsers == ()
+        raw = "A rooster crows, followed by distant thunder, at dawn."
+        result = run_post_process_pipeline(raw, parser_steps=parsers, cleaner_steps=cleaners)
+        assert result.text == raw
+
+    def test_task_type_none_with_free_text_targets_falls_back_to_fuzzy_match(
+        self,
+    ) -> None:
+        # Sanity check: only an explicit open-ended task_type skips fuzzy
+        # matching; the legacy (task_type=None) default is unchanged.
+        parsers, cleaners = _default_postprocess_steps(
+            targets=["A bird calls, then a dog barks, in the forest."],
+            task_type=None,
+        )
+        assert parsers != ()
+
+
 class TestHzBucketDoesNotCommaSplitAndParsesThousandsSeparator:
     """F0 Hz bucket tasks must not comma-split prose or numeric thousands separators."""
 
