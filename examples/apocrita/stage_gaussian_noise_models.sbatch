@@ -33,6 +33,31 @@ export HUGGINGFACE_HUB_CACHE="$HF_HOME/hub"
 export TMPDIR="$ROOT/cache/tmp"
 mkdir -p "$UV_CACHE_DIR" "$XDG_CACHE_HOME" "$HUGGINGFACE_HUB_CACHE" "$TMPDIR"
 
+link_cached_snapshot() {
+  local source_snapshot="$1"
+  local target_repo_cache="$2"
+  local revision="$3"
+  test -d "$source_snapshot"
+  mkdir -p "$target_repo_cache/snapshots"
+  if [[ ! -e "$target_repo_cache/snapshots/$revision" ]]; then
+    ln -s "$source_snapshot" "$target_repo_cache/snapshots/$revision"
+  fi
+  test -d "$target_repo_cache/snapshots/$revision"
+}
+
+link_cached_snapshot \
+  "/gpfs/scratch/acw777/beans-next-models/models--meta-llama--Llama-3.1-8B-Instruct/snapshots/$LLAMA_REVISION" \
+  "$HUGGINGFACE_HUB_CACHE/models--meta-llama--Meta-Llama-3.1-8B-Instruct" \
+  "$LLAMA_REVISION"
+link_cached_snapshot \
+  "/gpfs/scratch/acw777/alm-eval/cache/huggingface/hub/models--Qwen--Qwen3-Omni-30B-A3B-Instruct/snapshots/$QWEN_REVISION" \
+  "$HUGGINGFACE_HUB_CACHE/models--Qwen--Qwen3-Omni-30B-A3B-Instruct" \
+  "$QWEN_REVISION"
+link_cached_snapshot \
+  "/gpfs/scratch/acw777/alm-eval/cache/huggingface/hub/models--nvidia--audio-flamingo-next-hf/snapshots/$AFNEXT_REVISION" \
+  "$HUGGINGFACE_HUB_CACHE/models--nvidia--audio-flamingo-next-hf" \
+  "$AFNEXT_REVISION"
+
 cd "$REPO"
 UV_PROJECT_ENVIRONMENT="$RUNTIME_ROOT/core" uv sync --frozen --python 3.12
 
@@ -77,13 +102,13 @@ import os
 from huggingface_hub import snapshot_download
 
 targets = (
-    ("EarthSpeciesProject/NatureLM-audio", os.environ["NATURE_MODEL_REVISION"]),
-    ("meta-llama/Meta-Llama-3.1-8B-Instruct", os.environ["LLAMA_REVISION"]),
-    ("Qwen/Qwen3-Omni-30B-A3B-Instruct", os.environ["QWEN_REVISION"]),
-    ("nvidia/audio-flamingo-next-hf", os.environ["AFNEXT_REVISION"]),
+    ("EarthSpeciesProject/NatureLM-audio", os.environ["NATURE_MODEL_REVISION"], False),
+    ("meta-llama/Meta-Llama-3.1-8B-Instruct", os.environ["LLAMA_REVISION"], True),
+    ("Qwen/Qwen3-Omni-30B-A3B-Instruct", os.environ["QWEN_REVISION"], True),
+    ("nvidia/audio-flamingo-next-hf", os.environ["AFNEXT_REVISION"], True),
 )
-for repo_id, revision in targets:
-    path = snapshot_download(repo_id, revision=revision)
+for repo_id, revision, local_only in targets:
+    path = snapshot_download(repo_id, revision=revision, local_files_only=local_only)
     print(f"staged {repo_id}@{revision} -> {path}")
 PY
 
