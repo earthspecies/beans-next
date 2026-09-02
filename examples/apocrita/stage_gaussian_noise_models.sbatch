@@ -16,13 +16,16 @@ readonly ROOT="/gpfs/scratch/acw777/beans-next-gaussian"
 readonly RUNTIME_ROOT="$ROOT/runtime"
 readonly MODEL_ROOT="$ROOT/models"
 readonly QWEN_HUB_CACHE="$ROOT/cache/qwen-huggingface/hub"
+readonly AFNEXT_HUB_CACHE="$ROOT/cache/afnext-huggingface/hub"
 readonly NATURE_CODE_COMMIT="c708df7a4cc294ca8d4aaf0498794b5674ce20b1"
 readonly NATURE_MODEL_REVISION="77855d9b0acd039f90798dcf0861f626bfefbd6f"
 readonly LLAMA_REVISION="0e9e39f249a16976918f6564b8830bc894c89659"
 readonly QWEN_REVISION="26291f793822fb6be9555850f06dfe95f2d7e695"
 readonly AFNEXT_REVISION="5634886e2615c2f587dcf8b93c6edfe9907930ca"
 
-mkdir -p "$ROOT/logs" "$RUNTIME_ROOT" "$MODEL_ROOT" "$ROOT/cache" "$QWEN_HUB_CACHE"
+mkdir -p \
+  "$ROOT/logs" "$RUNTIME_ROOT" "$MODEL_ROOT" "$ROOT/cache" \
+  "$QWEN_HUB_CACHE" "$AFNEXT_HUB_CACHE"
 
 module use /data/home/acw777/privatemodules
 module load uv/latest
@@ -52,11 +55,6 @@ link_cached_snapshot \
   "/gpfs/scratch/acw777/beans-next-models/models--meta-llama--Llama-3.1-8B-Instruct/snapshots/$LLAMA_REVISION" \
   "$HUGGINGFACE_HUB_CACHE/models--meta-llama--Meta-Llama-3.1-8B-Instruct" \
   "$LLAMA_REVISION"
-link_cached_snapshot \
-  "/gpfs/scratch/acw777/alm-eval/cache/huggingface/hub/models--nvidia--audio-flamingo-next-hf/snapshots/$AFNEXT_REVISION" \
-  "$HUGGINGFACE_HUB_CACHE/models--nvidia--audio-flamingo-next-hf" \
-  "$AFNEXT_REVISION"
-
 cd "$REPO"
 UV_PROJECT_ENVIRONMENT="$RUNTIME_ROOT/core" uv sync --frozen --python 3.12
 
@@ -95,7 +93,8 @@ uv pip install --python "$RUNTIME_ROOT/naturelm/bin/python" \
   'tqdm>=4.66.4' 'click>=8.1.7' \
   'beans-zero @ git+https://github.com/earthspecies/beans-zero.git@31d4487ee6452ae6c31853d45fd38b7d4150372d'
 
-export NATURE_MODEL_REVISION LLAMA_REVISION QWEN_REVISION AFNEXT_REVISION QWEN_HUB_CACHE
+export NATURE_MODEL_REVISION LLAMA_REVISION QWEN_REVISION AFNEXT_REVISION
+export QWEN_HUB_CACHE AFNEXT_HUB_CACHE
 "$RUNTIME_ROOT/core/bin/python" - <<'PY'
 import os
 from pathlib import Path
@@ -110,7 +109,12 @@ targets = (
         False,
         os.environ["QWEN_HUB_CACHE"],
     ),
-    ("nvidia/audio-flamingo-next-hf", os.environ["AFNEXT_REVISION"], True, None),
+    (
+        "nvidia/audio-flamingo-next-hf",
+        os.environ["AFNEXT_REVISION"],
+        False,
+        os.environ["AFNEXT_HUB_CACHE"],
+    ),
 )
 for repo_id, revision, local_only, cache_dir in targets:
     path = snapshot_download(

@@ -392,6 +392,9 @@ def _load_real_pipeline(model_name: str, device: str) -> object:  # noqa: ANN401
         load_kwargs: dict[str, Any] = {}
         if revision and revision not in {"unknown", "stub"}:
             load_kwargs["revision"] = revision
+        llama_path = os.environ.get("NATURELM_V1_0_LLAMA_PATH", "").strip()
+        if llama_path:
+            load_kwargs["llama_path"] = llama_path
         model = NatureLM.from_pretrained(model_name, **load_kwargs)
         model = model.to(device).eval()
         model.llama_tokenizer.pad_token_id = model.llama_tokenizer.eos_token_id

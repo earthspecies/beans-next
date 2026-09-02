@@ -55,6 +55,7 @@ case "$MODEL_KIND" in
   naturelm-v1.0)
     export UV_PROJECT_ENVIRONMENT="$ROOT/runtime/naturelm"
     export BEANS_NEXT_UV_PROJECT_ENVIRONMENT="$UV_PROJECT_ENVIRONMENT"
+    export NATURELM_V1_0_LLAMA_PATH="/gpfs/scratch/acw777/beans-next-models/models--meta-llama--Llama-3.1-8B-Instruct/snapshots/0e9e39f249a16976918f6564b8830bc894c89659"
     export NATURELM_CODE_DIR="$ROOT/models/NatureLM-audio-c708df7a4cc294ca8d4aaf0498794b5674ce20b1"
     export NATURELM_V1_0_MODEL="EarthSpeciesProject/NatureLM-audio"
     export NATURELM_V1_0_MODEL_REVISION="77855d9b0acd039f90798dcf0861f626bfefbd6f"
@@ -66,6 +67,11 @@ case "$MODEL_KIND" in
     ;;
   audio-flamingo-next)
     export UV_PROJECT_ENVIRONMENT="$ROOT/runtime/afnext"
+    export HF_HOME="$ROOT/cache/afnext-huggingface"
+    export HUGGINGFACE_HUB_CACHE="$HF_HOME/hub"
+    export TRANSFORMERS_CACHE="$HF_HOME/transformers"
+    export XDG_CACHE_HOME="$HF_HOME/xdg"
+    mkdir -p "$HUGGINGFACE_HUB_CACHE" "$TRANSFORMERS_CACHE" "$XDG_CACHE_HOME"
     export AF3_MODEL="nvidia/audio-flamingo-next-hf"
     export AF3_MODEL_REVISION="5634886e2615c2f587dcf8b93c6edfe9907930ca"
     export BEANS_NEXT_SKIP_UV_SYNC=1

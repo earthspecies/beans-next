@@ -33,6 +33,7 @@ import shutil
 import tempfile
 import threading
 import time
+import traceback
 import urllib.request
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
@@ -148,6 +149,7 @@ async def lifespan(app: FastAPI) -> None:  # type: ignore[type-arg]
                 _LOAD_STATE.stage_started_at = None
                 _LOAD_STATE.last_error = None
         except Exception as exc:  # noqa: BLE001
+            traceback.print_exc()
             with _LOAD_LOCK:
                 _LOAD_STATE.status = "failed"
                 _LOAD_STATE.last_error = str(exc)
