@@ -43,6 +43,8 @@ link_cached_snapshot() {
     ln -s "$source_snapshot" "$target_repo_cache/snapshots/$revision"
   fi
   test -d "$target_repo_cache/snapshots/$revision"
+  mkdir -p "$target_repo_cache/refs"
+  printf '%s\n' "$revision" >"$target_repo_cache/refs/main"
 }
 
 link_cached_snapshot \

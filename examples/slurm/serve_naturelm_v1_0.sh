@@ -122,10 +122,15 @@ fi
 if [[ "${NATURELM_V1_0_STUB:-}" != "1" ]]; then
   echo "NatureLM v1.0 real mode selected (NATURELM_V1_0_STUB not set to 1)."
   if [[ -z "${HF_TOKEN:-}" ]]; then
-    echo "ERROR: HF_TOKEN must be set for real NatureLM inference." >&2
-    echo "ERROR: You need HuggingFace access to the gated base model:" >&2
-    echo "  meta-llama/Meta-Llama-3.1-8B-Instruct" >&2
-    exit 1
+    nature_cache="$HUGGINGFACE_HUB_CACHE/models--EarthSpeciesProject--NatureLM-audio/snapshots/${NATURELM_V1_0_MODEL_REVISION:-}"
+    llama_cache="$HUGGINGFACE_HUB_CACHE/models--meta-llama--Meta-Llama-3.1-8B-Instruct/snapshots/0e9e39f249a16976918f6564b8830bc894c89659"
+    if [[ ! -d "$nature_cache" || ! -d "$llama_cache" ]]; then
+      echo "ERROR: HF_TOKEN is unset and an exact cached NatureLM snapshot is missing." >&2
+      echo "ERROR: Required NatureLM cache: $nature_cache" >&2
+      echo "ERROR: Required Llama cache: $llama_cache" >&2
+      exit 1
+    fi
+    echo "HF_TOKEN is unset; using the exact cached NatureLM and Llama snapshots"
   fi
   if [[ "${BEANS_NEXT_SKIP_REAL_DEPS_INSTALL:-0}" == "1" ]]; then
     echo "BEANS_NEXT_SKIP_REAL_DEPS_INSTALL=1 set; skipping real-mode dependency install"
