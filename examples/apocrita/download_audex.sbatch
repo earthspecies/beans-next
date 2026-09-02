@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-# Download public text-model snapshots after setup_text_eval_runtime.sbatch.
+# Download the NVIDIA Audex 30B-A3B snapshot into its own model cache.
+# Not gated; ~67 GB after skipping enhancement_VAE/, audex_causal_speech_decoder/,
+# checkpoint_folder_audiogen/, checkpoint_folder_textonly/, and assets/.
 
-#SBATCH --job-name=beans-text-models
+#SBATCH --job-name=beans-audex-download
 #SBATCH --output=/gpfs/scratch/acw777/beans-next-runs/logs/%x.%j.out
 #SBATCH --error=/gpfs/scratch/acw777/beans-next-runs/logs/%x.%j.err
 #SBATCH --partition=compute
@@ -12,15 +14,15 @@
 
 set -euo pipefail
 
-readonly REPO="${SLURM_SUBMIT_DIR:?Submit from the beans-next repository root}"
+readonly REPO="${SLURM_SUBMIT_DIR:?Submit from the beans-next-audex repository root}"
 readonly SCRATCH_ROOT="${BEANS_NEXT_SCRATCH_ROOT:-/gpfs/scratch/acw777}"
-readonly SERVER_RUNTIME="${BEANS_NEXT_VLLM_RUNTIME_ROOT:-$SCRATCH_ROOT/beans-next-vllm-runtime}"
+readonly SERVER_RUNTIME="${BEANS_NEXT_AUDEX_RUNTIME_ROOT:-$SCRATCH_ROOT/beans-next-audex-runtime}"
 readonly SERVER_PYTHON="$SERVER_RUNTIME/.venv/bin/python"
 readonly MODEL_CACHE="${BEANS_NEXT_MODEL_CACHE:-$SCRATCH_ROOT/beans-next-models}"
-readonly MANIFEST="${BEANS_NEXT_MODEL_MANIFEST:-$MODEL_CACHE/models-manifest.${SLURM_JOB_ID}.json}"
+readonly MANIFEST="${BEANS_NEXT_AUDEX_MANIFEST:-$MODEL_CACHE/audex-manifest.${SLURM_JOB_ID}.json}"
 
 if [[ ! -x "$SERVER_PYTHON" ]]; then
-  echo "Missing vLLM runtime: $SERVER_PYTHON" >&2
+  echo "Missing Audex runtime: $SERVER_PYTHON (run setup_audex_runtime.sbatch first)" >&2
   exit 1
 fi
 
@@ -30,23 +32,9 @@ export HF_HOME="$SERVER_RUNTIME/cache/huggingface"
 export HUGGINGFACE_HUB_CACHE="$MODEL_CACHE"
 export TMPDIR="$SERVER_RUNTIME/tmp"
 
-models=(
-  "Qwen/Qwen2.5-7B-Instruct"
-  "Qwen/Qwen3-30B-A3B-Instruct-2507"
-)
-if [[ "${BEANS_NEXT_INCLUDE_LLAMA:-0}" == "1" ]]; then
-  models+=("meta-llama/Llama-3.1-8B-Instruct")
-fi
-
-args=()
-for model in "${models[@]}"; do
-  args+=(--model "$model")
-done
-
-"$SERVER_PYTHON" "$REPO/examples/apocrita/download_text_models.py" \
-  "${args[@]}" \
+"$SERVER_PYTHON" "$REPO/examples/apocrita/download_audex.py" \
   --cache-dir "$MODEL_CACHE" \
   --manifest "$MANIFEST" \
   --workers "${SLURM_CPUS_PER_TASK:-8}"
 
-echo "model_manifest=$MANIFEST"
+echo "audex_manifest=$MANIFEST"

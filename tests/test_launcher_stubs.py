@@ -197,6 +197,13 @@ def test_af3_stub_mode_conforms() -> None:
     )
 
 
+def test_audex_stub_mode_conforms() -> None:
+    _run_launcher_conformance(
+        app="examples.servers.audex.serve:app",
+        env={"AUDEX_ADAPTER_STUB": "1"},
+    )
+
+
 def test_naturelm_v1_0_stub_mode_conforms() -> None:
     _run_launcher_conformance(
         app="serve:app",

@@ -1,0 +1,33 @@
+# Full BEANS-Zero core evaluation (all subsets) — NVIDIA Audex 30B-A3B.
+#
+# Uses `esp_data` as the dataset backend (16 kHz pre-resampled audio), the
+# same backend the three blind-LLM baselines used on this suite, so scoring
+# stays byte-identical and the comparison is apples-to-apples.
+#
+# Run:
+#   uv run beans-next run --config configs/benchmarks/beans_zero_core_audex.yaml \
+#     --preserve-file-paths \
+#     -o results/beans_zero_core_audex_$(date +%Y%m%d)
+#
+# Prereqs: launcher + upstream vllm serve running locally (example ports
+# 8000/8001) — see examples/servers/audex/README.md.
+#   cd examples/servers/audex
+#   AUDEX_ADAPTER_STUB=0 AUDEX_UPSTREAM_BASE_URL=http://127.0.0.1:8001 \
+#     AUDEX_MODEL_ID=audex_audio PORT=8000 ./serve.sh
+
+models:
+  - inline:
+      name: "audex_30b_a3b"
+      description: "NVIDIA Audex 30B-A3B (local launcher)"
+      predict_url: http://127.0.0.1:8000/predict
+      info_url: http://127.0.0.1:8000/info
+      health_url: http://127.0.0.1:8000/health
+      response_schema: predictions_v1
+      audio_payload: file_path
+      retry_policy:
+        max_attempts: 12
+        backoff_initial: 0.5
+        backoff_max: 10.0
+
+suite: beans_zero_core
+data_source: esp_data
