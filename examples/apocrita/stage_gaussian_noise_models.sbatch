@@ -15,13 +15,14 @@ readonly REPO="${SLURM_SUBMIT_DIR:?Submit from the beans-next repository root}"
 readonly ROOT="/gpfs/scratch/acw777/beans-next-gaussian"
 readonly RUNTIME_ROOT="$ROOT/runtime"
 readonly MODEL_ROOT="$ROOT/models"
+readonly QWEN_HUB_CACHE="$ROOT/cache/qwen-huggingface/hub"
 readonly NATURE_CODE_COMMIT="c708df7a4cc294ca8d4aaf0498794b5674ce20b1"
 readonly NATURE_MODEL_REVISION="77855d9b0acd039f90798dcf0861f626bfefbd6f"
 readonly LLAMA_REVISION="0e9e39f249a16976918f6564b8830bc894c89659"
 readonly QWEN_REVISION="26291f793822fb6be9555850f06dfe95f2d7e695"
 readonly AFNEXT_REVISION="5634886e2615c2f587dcf8b93c6edfe9907930ca"
 
-mkdir -p "$ROOT/logs" "$RUNTIME_ROOT" "$MODEL_ROOT" "$ROOT/cache"
+mkdir -p "$ROOT/logs" "$RUNTIME_ROOT" "$MODEL_ROOT" "$ROOT/cache" "$QWEN_HUB_CACHE"
 
 module use /data/home/acw777/privatemodules
 module load uv/latest
@@ -51,10 +52,6 @@ link_cached_snapshot \
   "/gpfs/scratch/acw777/beans-next-models/models--meta-llama--Llama-3.1-8B-Instruct/snapshots/$LLAMA_REVISION" \
   "$HUGGINGFACE_HUB_CACHE/models--meta-llama--Meta-Llama-3.1-8B-Instruct" \
   "$LLAMA_REVISION"
-link_cached_snapshot \
-  "/gpfs/scratch/acw777/alm-eval/cache/huggingface/hub/models--Qwen--Qwen3-Omni-30B-A3B-Instruct/snapshots/$QWEN_REVISION" \
-  "$HUGGINGFACE_HUB_CACHE/models--Qwen--Qwen3-Omni-30B-A3B-Instruct" \
-  "$QWEN_REVISION"
 link_cached_snapshot \
   "/gpfs/scratch/acw777/alm-eval/cache/huggingface/hub/models--nvidia--audio-flamingo-next-hf/snapshots/$AFNEXT_REVISION" \
   "$HUGGINGFACE_HUB_CACHE/models--nvidia--audio-flamingo-next-hf" \
@@ -98,19 +95,33 @@ uv pip install --python "$RUNTIME_ROOT/naturelm/bin/python" \
   'tqdm>=4.66.4' 'click>=8.1.7' \
   'beans-zero @ git+https://github.com/earthspecies/beans-zero.git@31d4487ee6452ae6c31853d45fd38b7d4150372d'
 
-export NATURE_MODEL_REVISION LLAMA_REVISION QWEN_REVISION AFNEXT_REVISION
+export NATURE_MODEL_REVISION LLAMA_REVISION QWEN_REVISION AFNEXT_REVISION QWEN_HUB_CACHE
 "$RUNTIME_ROOT/core/bin/python" - <<'PY'
 import os
+from pathlib import Path
 from huggingface_hub import snapshot_download
 
 targets = (
-    ("EarthSpeciesProject/NatureLM-audio", os.environ["NATURE_MODEL_REVISION"], False),
-    ("meta-llama/Meta-Llama-3.1-8B-Instruct", os.environ["LLAMA_REVISION"], True),
-    ("Qwen/Qwen3-Omni-30B-A3B-Instruct", os.environ["QWEN_REVISION"], True),
-    ("nvidia/audio-flamingo-next-hf", os.environ["AFNEXT_REVISION"], True),
+    ("EarthSpeciesProject/NatureLM-audio", os.environ["NATURE_MODEL_REVISION"], False, None),
+    ("meta-llama/Meta-Llama-3.1-8B-Instruct", os.environ["LLAMA_REVISION"], True, None),
+    (
+        "Qwen/Qwen3-Omni-30B-A3B-Instruct",
+        os.environ["QWEN_REVISION"],
+        False,
+        os.environ["QWEN_HUB_CACHE"],
+    ),
+    ("nvidia/audio-flamingo-next-hf", os.environ["AFNEXT_REVISION"], True, None),
 )
-for repo_id, revision, local_only in targets:
-    path = snapshot_download(repo_id, revision=revision, local_files_only=local_only)
+for repo_id, revision, local_only, cache_dir in targets:
+    path = snapshot_download(
+        repo_id,
+        revision=revision,
+        local_files_only=local_only,
+        cache_dir=cache_dir,
+    )
+    broken = [item for item in Path(path).iterdir() if item.is_symlink() and not item.exists()]
+    if broken:
+        raise RuntimeError(f"{repo_id}@{revision} contains {len(broken)} broken file links")
     print(f"staged {repo_id}@{revision} -> {path}")
 PY
 

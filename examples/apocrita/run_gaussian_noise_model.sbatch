@@ -73,6 +73,11 @@ case "$MODEL_KIND" in
     ;;
   qwen3-omni)
     export UV_PROJECT_ENVIRONMENT="$ROOT/runtime/qwen"
+    export HF_HOME="$ROOT/cache/qwen-huggingface"
+    export HUGGINGFACE_HUB_CACHE="$HF_HOME/hub"
+    export TRANSFORMERS_CACHE="$HF_HOME/transformers"
+    export XDG_CACHE_HOME="$HF_HOME/xdg"
+    mkdir -p "$HUGGINGFACE_HUB_CACHE" "$TRANSFORMERS_CACHE" "$XDG_CACHE_HOME"
     export BEANS_NEXT_HF_HOME="$HF_HOME"
     export BEANS_NEXT_HF_HUB_CACHE="$HUGGINGFACE_HUB_CACHE"
     export BEANS_NEXT_HUGGINGFACE_HUB_CACHE="$HUGGINGFACE_HUB_CACHE"
