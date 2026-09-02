@@ -186,7 +186,7 @@ else
     exit 1
   fi
 fi
-PORT="$PORT" URL_FILE="$URL_FILE" uv run --python "$UV_PROJECT_ENVIRONMENT" python - <<'PY'
+PORT="$PORT" URL_FILE="$URL_FILE" "$UV_PROJECT_ENVIRONMENT/bin/python" - <<'PY'
 import os
 import signal
 import socket
