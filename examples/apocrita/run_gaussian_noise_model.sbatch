@@ -33,7 +33,13 @@ test -x "$CORE_PYTHON"
 module use /data/home/acw777/privatemodules
 module load uv/latest
 
-export BEANS_NEXT_CODE_COMMIT="$(git -C "$REPO" rev-parse HEAD)"
+if [[ -z "${BEANS_NEXT_CODE_COMMIT:-}" ]]; then
+  export BEANS_NEXT_CODE_COMMIT="$(git -C "$REPO" rev-parse HEAD)"
+fi
+if [[ ! "$BEANS_NEXT_CODE_COMMIT" =~ ^[0-9a-f]{40}$ ]]; then
+  echo "BEANS_NEXT_CODE_COMMIT must be a full Git commit SHA" >&2
+  exit 2
+fi
 export BEANS_NEXT_URL_DIR="$URL_DIR"
 export BEANS_NEXT_HF_BEANS_NEXT_ROOT="/gpfs/scratch/acw777/esp/beans-next"
 export BEANS_NEXT_HF_AUDIO_CACHE_DIR="$ROOT/cache/dataset-audio"
