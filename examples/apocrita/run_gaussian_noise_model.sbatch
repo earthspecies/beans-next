@@ -136,8 +136,11 @@ run_eval() {
   local args=(
     run --predict-url "$PREDICT_URL" --backend huggingface --suite "$suite"
     --run-id "${MODEL_KIND}_${condition}_${SLURM_JOB_ID}" --output-dir "$out_dir"
-    --workers "${SLURM_CPUS_PER_GPU:-12}" --preserve-file-paths --seed 0
+    --workers "${SLURM_CPUS_PER_GPU:-12}" --seed 0
   )
+  if [[ "$MODEL_KIND" != "qwen3-omni" ]]; then
+    args+=(--preserve-file-paths)
+  fi
   local -a dataset_env=()
   if [[ "$suite" == "beans_zero_smoke" ]]; then
     args+=(--hf-revision "$BEANS_ZERO_DATASET_REVISION")
