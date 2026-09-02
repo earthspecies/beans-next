@@ -284,9 +284,7 @@ def _deterministic_stub_prediction(
     sample_id: str,
     item: PredictionsV1RequestItem,
 ) -> str:
-    messages_payload = [
-        {"role": m.role, "content": m.content} for m in item.messages
-    ]
+    messages_payload = [{"role": m.role, "content": m.content} for m in item.messages]
     audio_meta = [
         {
             "payload_type": a.payload_type,
@@ -371,7 +369,9 @@ def _load_real_pipeline(model_name: str, device: str) -> object:  # noqa: ANN401
     load_mode = os.environ.get("NATURELM_V1_0_LOAD_MODE", "pipeline").strip().lower()
 
     def _load_via_naturelm_package() -> object:  # noqa: ANN401
-        from NatureLM.infer import Pipeline, load_model_and_config  # noqa: PLC0415
+        from NatureLM.config import Config  # noqa: PLC0415
+        from NatureLM.infer import Pipeline  # noqa: PLC0415
+        from NatureLM.models import NatureLM  # noqa: PLC0415
 
         print(
             f"[naturelm-v1.0] Loading NatureLM Pipeline from {model_name!r} "
@@ -388,7 +388,19 @@ def _load_real_pipeline(model_name: str, device: str) -> object:  # noqa: ANN401
             raise RuntimeError(
                 "NATURELM_CFG_PATH must be set to a readable inference.yml path"
             )
-        model, _cfg = load_model_and_config(cfg_path=cfg_path, device=device)
+        revision = os.environ.get("NATURELM_V1_0_MODEL_REVISION", "").strip()
+        load_kwargs: dict[str, Any] = {}
+        if revision and revision not in {"unknown", "stub"}:
+            load_kwargs["revision"] = revision
+        model = NatureLM.from_pretrained(model_name, **load_kwargs)
+        model = model.to(device).eval()
+        model.llama_tokenizer.pad_token_id = model.llama_tokenizer.eos_token_id
+        model.llama_model.generation_config.pad_token_id = (
+            model.llama_tokenizer.pad_token_id
+        )
+        # Validate the same inference configuration consumed by Pipeline while
+        # loading checkpoint weights from the explicit model revision above.
+        Config.from_sources(cfg_path)
         loaded = Pipeline(model=model, cfg_path=cfg_path)
         elapsed = time.time() - t0
         print(f"[naturelm-v1.0] NatureLM Pipeline loaded in {elapsed:.1f}s")
