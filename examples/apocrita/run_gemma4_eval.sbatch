@@ -225,6 +225,12 @@ export PORT="$ADAPTER_PORT"
 readonly SERVER_SITE_PACKAGES="$SERVER_RUNTIME/.venv/lib/python3.12/site-packages"
 export LD_LIBRARY_PATH="$SERVER_SITE_PACKAGES/nvidia/cu13/lib:$SERVER_SITE_PACKAGES/nvidia/cuda_runtime/lib:${LD_LIBRARY_PATH:-}"
 
+# flashinfer's sampler JIT-compiles a CUDA kernel on first use, which needs
+# nvcc/a full CUDA toolkit under $CUDA_HOME (not just the runtime libs pip
+# installs, and not present on this cluster's GPU compute nodes). Fall back
+# to vLLM's native-torch sampler, which needs no compilation.
+export VLLM_USE_FLASHINFER_SAMPLER=0
+
 if [[ "$GEMMA4_BACKEND" == "vllm" ]]; then
   "$VLLM_BIN" serve "$MODEL_PATH" \
     --served-model-name gemma4_audio \
