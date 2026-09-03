@@ -147,18 +147,6 @@ run_eval() {
   if [[ "$MODEL_KIND" != "qwen3-omni" ]]; then
     args+=(--preserve-file-paths)
   fi
-  if [[ "$MODEL_KIND" == "audio-flamingo-next" ]]; then
-    # This one 120.013875-second recording deterministically triggers an upstream
-    # AF-NeXT CUDA indexing assertion. Two recordings occur as five benchmark rows.
-    # Exclude the same rows from real and noise conditions to preserve pairing.
-    args+=(
-      --exclude-sample-id "t1-description-mcq:1267:664"
-      --exclude-sample-id "t1-description-mcq:2343:656"
-      --exclude-sample-id "t1-description-mcq:2094:553"
-      --exclude-sample-id "t1-caption:2059:422"
-      --exclude-sample-id "t1-caption:964:423"
-    )
-  fi
   local -a dataset_env=()
   if [[ "$suite" == "beans_zero_smoke" ]]; then
     args+=(--hf-revision "$BEANS_ZERO_DATASET_REVISION")
@@ -211,6 +199,53 @@ run_eval() {
   fi
 }
 
+run_af_boundary_pilot() {
+  if [[ "$MODEL_KIND" != "audio-flamingo-next" ]]; then
+    echo "af-boundary-pilot requires audio-flamingo-next" >&2
+    return 2
+  fi
+  "$CORE_PYTHON" - <<PY
+import json
+import urllib.request
+
+cases = [
+    ("real-30s", "/gpfs/scratch/acw777/esp/beans-next/test/audio/c5/c54f4dd4003f46c4c54c9e35aa12251dc121bbb23e34fd365ccc80fe83f566b6.wav", 96000),
+    ("noise-30s", "/gpfs/scratch/acw777/beans-next-gaussian/noise-cache/6b9ee4c9bd7723df2a17aad5c0b665356dcfba9f72596980d5a1cd35aa7450ce.wav", 96000),
+    ("real-60s", "/gpfs/scratch/acw777/esp/beans-next/test/audio/c8/c8a385c91a7b4237bc0cada28635d151609e68c706cb3d9cb99ec9e2a7f31790.wav", 44100),
+    ("noise-60s", "/gpfs/scratch/acw777/beans-next-gaussian/noise-cache/e550744c4879bbf039f29340deec02c0498f5ce824989fe60da2894f216b93c2.wav", 44100),
+    ("real-120s", "/gpfs/scratch/acw777/esp/beans-next/test/audio/94/94b7d828d20784e45cdae0695327371ebbcd2379c59b21fbe7208bba5b2eaa73.wav", 96000),
+    ("noise-120s", "/gpfs/scratch/acw777/beans-next-gaussian/noise-cache/d7aeefaf3776397ae6e402bbf2afc7158a476a5431c8da72b9c370558bb0dd75.wav", 96000),
+]
+for sample_id, path, sample_rate in cases:
+    payload = {
+        "schema_version": "predictions_v1",
+        "requests": [{
+            "sample_id": sample_id,
+            "messages": [{
+                "role": "user",
+                "content": "<Audio><AudioHere></Audio>Answer briefly.",
+            }],
+            "audio_inputs": [{
+                "payload_type": "file_path",
+                "data": path,
+                "sample_rate": sample_rate,
+            }],
+            "generation_config": {"max_tokens": 4, "temperature": 0},
+        }],
+    }
+    request = urllib.request.Request(
+        "$PREDICT_URL",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+    )
+    with urllib.request.urlopen(request, timeout=600) as response:
+        result = json.load(response)["responses"][0]
+    print(sample_id, json.dumps(result, sort_keys=True))
+    if result.get("error"):
+        raise SystemExit(f"Boundary pilot failed for {sample_id}: {result['error']}")
+PY
+}
+
 "$CORE_PYTHON" - <<PY
 import json
 from pathlib import Path
@@ -231,6 +266,9 @@ Path("$JOB_ROOT/apocrita_context.json").write_text(json.dumps({
 PY
 
 case "$RUN_PHASE" in
+  af-boundary-pilot)
+    run_af_boundary_pilot
+    ;;
   pilots)
     run_eval noise_smoke beans_next_all_tiers_hf 2 -20
     run_eval beans_zero_noise_smoke beans_zero_smoke 2 -20

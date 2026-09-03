@@ -37,7 +37,7 @@ import traceback
 import urllib.request
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any, Literal, Protocol
 
 from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel, ConfigDict, ValidationError
@@ -48,6 +48,7 @@ LAUNCHER_NAME: str = "beans-next-af-next"
 _DEFAULT_MODEL_ID: str = "nvidia/audio-flamingo-next-hf"
 _DEFAULT_MAX_NEW_TOKENS: int = 512
 _DEFAULT_REPETITION_PENALTY: float = 1.2
+_MIN_VALID_AUDIO_FRAMES_PER_WINDOW: int = 3
 
 MAX_BATCH_SIZE: int = int(os.environ.get("AF3_MAX_BATCH_SIZE", "4"))
 
@@ -56,6 +57,25 @@ _SUPPORTS_BATCHING: bool = True
 _SCHEMA_VERSIONS: list[str] = [PREDICTIONS_V1]
 
 _AUDIO_PLACEHOLDER: re.Pattern[str] = re.compile(r"<Audio><AudioHere></Audio>")
+
+
+class _AudioArray(Protocol):
+    """Minimal array interface needed for safe AF-Next tail trimming."""
+
+    shape: tuple[int, ...]
+
+    def __getitem__(self, key: slice) -> _AudioArray: ...
+
+
+class _FeatureExtractor(Protocol):
+    sampling_rate: int
+    chunk_length: int
+    hop_length: int
+
+
+class _AudioProcessor(Protocol):
+    feature_extractor: _FeatureExtractor
+
 
 # Module-level model handles; populated by _load_model() at startup.
 _model: Any = None
@@ -87,11 +107,15 @@ def _load_model() -> None:
     import torch
     from transformers import AutoModel, AutoProcessor
 
-    if os.environ.get("AF3_ALLOW_CPU", "").strip() not in (
-        "1",
-        "true",
-        "True",
-    ) and not torch.cuda.is_available():
+    if (
+        os.environ.get("AF3_ALLOW_CPU", "").strip()
+        not in (
+            "1",
+            "true",
+            "True",
+        )
+        and not torch.cuda.is_available()
+    ):
         raise RuntimeError(
             "AF-Next real mode requires CUDA, but torch.cuda.is_available() is False. "
             "The cluster driver must match the PyTorch CUDA build. "
@@ -111,6 +135,7 @@ def _load_model() -> None:
     _processor = AutoProcessor.from_pretrained(
         model_id, **({"revision": revision} if revision else {})
     )
+    _install_safe_audio_processor_call(_processor)
     _model = AutoModel.from_pretrained(model_id, **kwargs).eval()
 
     _loaded_model_id = model_id
@@ -267,6 +292,70 @@ def _deterministic_prediction(sample_id: str, item: PredictionsV1RequestItem) ->
 # ---------------------------------------------------------------------------
 # Real inference helpers
 # ---------------------------------------------------------------------------
+
+
+def _drop_zero_token_audio_tail(
+    audio: _AudioArray,
+    *,
+    window_size: int,
+    min_tail_samples: int,
+) -> _AudioArray:
+    """Drop a final chunk that cannot produce one AF-Next audio token.
+
+    Returns
+    -------
+    _AudioArray
+        The original array, or a view ending at the preceding chunk boundary.
+    """
+    n_samples = int(audio.shape[0])
+    tail_samples = n_samples % window_size
+    if n_samples > window_size and 0 < tail_samples < min_tail_samples:
+        return audio[: n_samples - tail_samples]
+    return audio
+
+
+def _install_safe_audio_processor_call(processor: object) -> None:
+    """Prevent zero-token trailing windows in the pinned HF processor.
+
+    Transformers splits audio into 30-second windows. A trailing window shorter
+    than three Whisper hop frames produces zero encoder tokens. The upstream
+    timestamp code then performs an out-of-range CUDA index and poisons the model
+    process. Drop only that unusable sub-30-ms tail before feature extraction.
+    """
+    processor_class = type(processor)
+    if getattr(processor_class, "_beans_next_safe_tail_patch", False):
+        return
+
+    original_call = processor_class.__call__
+
+    def safe_call(
+        self: _AudioProcessor,
+        text: object,
+        audio: object | None = None,
+        **kwargs: object,
+    ) -> object:
+        if audio is not None:
+            from transformers.audio_utils import make_list_of_audio
+
+            feature_extractor = self.feature_extractor
+            window_size = int(
+                feature_extractor.sampling_rate * feature_extractor.chunk_length
+            )
+            min_tail_samples = int(
+                feature_extractor.hop_length * _MIN_VALID_AUDIO_FRAMES_PER_WINDOW
+            )
+            audio = [
+                _drop_zero_token_audio_tail(
+                    item,
+                    window_size=window_size,
+                    min_tail_samples=min_tail_samples,
+                )
+                for item in make_list_of_audio(audio)
+            ]
+        return original_call(self, text, audio=audio, **kwargs)
+
+    processor_class.__call__ = safe_call
+    processor_class._beans_next_safe_tail_patch = True
 
 
 def _resolve_audio_path(audio: HttpAudioInput, tmp_dir: str) -> str:
