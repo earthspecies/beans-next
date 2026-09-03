@@ -40,6 +40,12 @@ LAUNCHER_NAME: str = "beans-next-naturelm-v1.1"
 #   export NATURELM_GCS_CHECKPOINT_URI="gs://foundation-models/naturelm-audio-1.1/base_model/1290000"
 GCS_CHECKPOINT_URI: str = os.environ.get("NATURELM_GCS_CHECKPOINT_URI", "").strip()
 
+# Optional local checkpoint directory (NFS-mounted). Takes precedence over
+# `NATURELM_GCS_CHECKPOINT_URI` when set — the GCS download step is skipped
+# and the model loader reads weights directly from this path. Useful for
+# evaluating in-progress checkpoints not yet published to GCS.
+LOCAL_CHECKPOINT_DIR: str = os.environ.get("NATURELM_LOCAL_CHECKPOINT_DIR", "").strip()
+
 # Optional HuggingFace identity for /info when not using a GCS checkpoint.
 # (Used by tests and by setups that want /info to reflect gated repo identity.)
 HF_REPO_ID: str = os.environ.get("NATURELM_HF_REPO_ID", "").strip()
@@ -446,6 +452,15 @@ def _maybe_load_naturelm(snapshot_path: str) -> Any | None:  # noqa: ANN401
             config=cfg_path,
         ).to(torch.device(device)).eval()
     except Exception as exc:  # noqa: BLE001
+        # Also emit the full traceback on stderr — without this, a silent load
+        # failure looks identical to a stall in the Slurm log.
+        import traceback as _tb
+        print(
+            f"[naturelm launcher] model load failed for checkpoint_dir={ckpt_dir!r} "
+            f"cfg_path={cfg_path!r}:",
+            flush=True,
+        )
+        _tb.print_exc()
         raise HTTPException(
             status_code=503,
             detail=f"weights downloaded but NatureLM model failed to load: {exc}",
@@ -510,26 +525,42 @@ def _ensure_ready_or_raise() -> None:
     snapshot_path: str
     model: Any | None
     try:
-        if not GCS_CHECKPOINT_URI:
-            raise HTTPException(
-                status_code=503,
-                detail=(
-                    "NATURELM_GCS_CHECKPOINT_URI is not set. "
-                    "Export it to point at a GCS checkpoint directory, e.g. "
-                    "gs://foundation-models/naturelm-audio-1.1/base_model/1290000"
-                ),
-            )
+        if LOCAL_CHECKPOINT_DIR:
+            if not os.path.isdir(LOCAL_CHECKPOINT_DIR):
+                raise HTTPException(
+                    status_code=503,
+                    detail=(
+                        f"NATURELM_LOCAL_CHECKPOINT_DIR={LOCAL_CHECKPOINT_DIR!r} "
+                        "does not exist or is not a directory."
+                    ),
+                )
+            with _lock:
+                _state.loading_stage = "loading_model_runtime"
+                _state.loading_stage_started_at = time.time()
+            resolved_revision = os.path.basename(LOCAL_CHECKPOINT_DIR.rstrip("/"))
+            snapshot_path = LOCAL_CHECKPOINT_DIR
+            model = _maybe_load_naturelm(snapshot_path)
+        else:
+            if not GCS_CHECKPOINT_URI:
+                raise HTTPException(
+                    status_code=503,
+                    detail=(
+                        "Neither NATURELM_LOCAL_CHECKPOINT_DIR nor "
+                        "NATURELM_GCS_CHECKPOINT_URI is set. Export one of them "
+                        "to point at the checkpoint directory."
+                    ),
+                )
 
-        with _lock:
-            _state.loading_stage = "downloading_gcs_checkpoint"
-            _state.loading_stage_started_at = time.time()
-        resolved_revision = _gcs_checkpoint_basename(GCS_CHECKPOINT_URI)
-        snapshot_path = _ensure_gcs_checkpoint_available(GCS_CHECKPOINT_URI)
+            with _lock:
+                _state.loading_stage = "downloading_gcs_checkpoint"
+                _state.loading_stage_started_at = time.time()
+            resolved_revision = _gcs_checkpoint_basename(GCS_CHECKPOINT_URI)
+            snapshot_path = _ensure_gcs_checkpoint_available(GCS_CHECKPOINT_URI)
 
-        with _lock:
-            _state.loading_stage = "loading_model_runtime"
-            _state.loading_stage_started_at = time.time()
-        model = _maybe_load_naturelm(snapshot_path)
+            with _lock:
+                _state.loading_stage = "loading_model_runtime"
+                _state.loading_stage_started_at = time.time()
+            model = _maybe_load_naturelm(snapshot_path)
     except HTTPException as exc:
         with _lock:
             _state.last_error = str(exc.detail)
@@ -708,34 +739,63 @@ def _predict_real(
                 ),
             )
 
-        # Resample/truncate/pad on our side to enforce BEANS per-subset clip length.
+        # Preprocess audio to match the reference `_prepare_audio` in
+        # esp-research/projects/NatureLM-audio-v1.5/beans_zero_eval.py:
+        #   1. Stereo -> mono (average across the smaller dim, i.e. channels).
+        #   2. Resample via librosa.resample(res_type="kaiser_best", scale=True).
+        #   3. Crop or right-pad with zeros to exactly `target_sr * seconds` samples.
+        #   4. Clamp to [-1.0, 1.0].
+        #   5. Build padding_mask: True on padded (post-signal) positions.
         wav = np.asarray(decoded_audios[0], dtype=np.float32)
         sr_in = int(decoded_srs[0])
+
+        # 1. Stereo -> mono
+        if wav.ndim == 2:
+            axis = 1 if wav.shape[1] <= wav.shape[0] else 0
+            wav = wav.mean(axis=axis).astype(np.float32)
+        wav = wav.squeeze()
+
+        # 2. Resample to model target SR
         if sr_in != sample_rate:
             try:
-                import resampy  # type: ignore[import-not-found]
+                import librosa  # type: ignore[import-not-found]
             except Exception as exc:
                 return PredictionsV1ResponseItem(
                     sample_id=sample_id,
                     predictions=[],
                     latency_sec=time.perf_counter() - started,
                     error=(
-                        "resampy is required for resampling "
+                        "librosa is required for resampling "
                         f"(sr_in={sr_in} -> {sample_rate}): {exc}"
                     ),
                 )
-            wav = resampy.resample(wav, sr_in, sample_rate).astype(np.float32)
+            wav = librosa.resample(
+                wav,
+                orig_sr=sr_in,
+                target_sr=sample_rate,
+                res_type="kaiser_best",
+                scale=True,
+            ).astype(np.float32)
 
+        # 3. Crop or right-pad to target length; remember original signal length.
         target_len = int(max_length_seconds * sample_rate)
-        if wav.shape[0] < target_len:
-            pad = target_len - wav.shape[0]
-            wav = np.pad(wav, (0, pad), mode="constant")
-        elif wav.shape[0] > target_len:
+        sig_len = wav.shape[0]
+        if sig_len > target_len:
             wav = wav[:target_len]
+            sig_len = target_len
+        elif sig_len < target_len:
+            wav = np.pad(wav, (0, target_len - sig_len), mode="constant")
 
-        # Move to torch and call model.generate (esp-research implementation).
+        # 4. Clamp to [-1, 1]
+        wav = np.clip(wav, -1.0, 1.0)
+
+        # 5. Padding mask: True on padded positions.
+        pad_mask_np = np.zeros(target_len, dtype=bool)
+        if sig_len < target_len:
+            pad_mask_np[sig_len:] = True
+
         raw_wav = torch.from_numpy(wav).unsqueeze(0)  # (1, T)
-        padding_mask = torch.zeros_like(raw_wav, dtype=torch.bool)
+        padding_mask = torch.from_numpy(pad_mask_np).unsqueeze(0)  # (1, T)
         raw_wav = raw_wav.to(device)
         padding_mask = padding_mask.to(device)
 
@@ -867,11 +927,13 @@ def health() -> dict[str, Any]:
     fastapi.HTTPException
         When the model is still loading or failed to load.
     """
+    checkpoint_source = LOCAL_CHECKPOINT_DIR or GCS_CHECKPOINT_URI
+
     if STUB_MODE:
         return {
             "status": "ok",
             "mode": "stub",
-            "checkpoint_uri": GCS_CHECKPOINT_URI or "(not set)",
+            "checkpoint_uri": checkpoint_source or "(not set)",
         }
 
     _start_async_load()
@@ -880,7 +942,7 @@ def health() -> dict[str, Any]:
             return {
                 "status": "ok",
                 "mode": "real" if _state.model is not None else "weights-only",
-                "checkpoint_uri": GCS_CHECKPOINT_URI,
+                "checkpoint_uri": checkpoint_source,
                 "model_revision": _state.resolved_revision or "",
             }
 
@@ -900,7 +962,7 @@ def health() -> dict[str, Any]:
                 status_code=503,
                 detail=(
                     "model loading in progress; "
-                    f"checkpoint_uri={GCS_CHECKPOINT_URI!r}; stage={stage}; "
+                    f"checkpoint_uri={checkpoint_source!r}; stage={stage}; "
                     f"stage_elapsed={stage_s}; waited={started_s}"
                 ),
             )
@@ -911,13 +973,13 @@ def health() -> dict[str, Any]:
                 detail=f"model failed: {_state.last_error}",
             )
 
-    if not GCS_CHECKPOINT_URI:
+    if not checkpoint_source:
         raise HTTPException(
             status_code=503,
             detail=(
-                "NATURELM_GCS_CHECKPOINT_URI is not set. "
-                "Export it to point at a GCS checkpoint directory, e.g. "
-                "gs://foundation-models/naturelm-audio-1.1/base_model/1290000"
+                "Neither NATURELM_LOCAL_CHECKPOINT_DIR nor "
+                "NATURELM_GCS_CHECKPOINT_URI is set. Export one of them to "
+                "point at the checkpoint directory."
             ),
         )
 
@@ -934,12 +996,18 @@ def info() -> InfoResponse:
     InfoResponse
         Capability document advertised by this launcher.
     """
-    model_id = GCS_CHECKPOINT_URI if GCS_CHECKPOINT_URI else HF_REPO_ID
-    revision = _state.resolved_revision or (
-        _gcs_checkpoint_basename(GCS_CHECKPOINT_URI)
-        if GCS_CHECKPOINT_URI
-        else HF_REVISION
-    )
+    if LOCAL_CHECKPOINT_DIR:
+        model_id = LOCAL_CHECKPOINT_DIR
+        revision = _state.resolved_revision or os.path.basename(
+            LOCAL_CHECKPOINT_DIR.rstrip("/")
+        )
+    else:
+        model_id = GCS_CHECKPOINT_URI if GCS_CHECKPOINT_URI else HF_REPO_ID
+        revision = _state.resolved_revision or (
+            _gcs_checkpoint_basename(GCS_CHECKPOINT_URI)
+            if GCS_CHECKPOINT_URI
+            else HF_REVISION
+        )
     sample_rate = int(os.environ.get("NATURELM_SAMPLE_RATE", "16000"))
     load_status: str | None = None
     loading_stage: str | None = None

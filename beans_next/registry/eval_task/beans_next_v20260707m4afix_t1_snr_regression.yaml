@@ -1,0 +1,11 @@
+beans_next_v20260707m4afix_t1_snr_regression:
+  task_type: regression
+  data_source: esp_data
+  dataset: beans_next
+  subset: v20260707m4afix-t1-snr-regression
+  split: v20260707m4afix-t1-snr-regression
+  prompt: classification_beans_zero_official_v1
+  generation_config:
+    max_length_seconds: 10
+  metrics:
+    - name: mean_absolute_error

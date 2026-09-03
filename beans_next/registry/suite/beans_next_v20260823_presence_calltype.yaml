@@ -1,0 +1,17 @@
+beans_next_v20260823_presence_calltype:
+  description: >
+    Raw v20260823 split family; these four tasks are included in `beans_next_tier2`.
+
+    BEANS-Next v20260823 refresh — regenerated v21 splits of the four
+    presence / call-type tasks (alarm_call, begging_call, flight_call,
+    call_type_fixed_vocab). Rows sourced from
+    gs://esp-data-ingestion/beans-pro-v2-eval/*_v21.jsonl (2026-08-23).
+    Row counts vs. v20260707: alarm 658→974, begging 410→586,
+    flight 1588→2000, call_type 1000→1000 (bytes +1%).
+    The other four presence tasks (bird / mammal / insect / amphibian)
+    were not regenerated at v21 and are not included here.
+  eval_tasks:
+    - beans_next_v20260823_alarm_call_presence
+    - beans_next_v20260823_begging_call_presence
+    - beans_next_v20260823_flight_call_presence
+    - beans_next_v20260823_call_type_fixed_vocab

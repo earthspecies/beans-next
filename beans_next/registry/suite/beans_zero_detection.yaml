@@ -1,0 +1,11 @@
+beans_zero_detection:
+  description: >
+    BEANS-Zero detection tasks (5 tasks). Used to re-run detection with the
+    pass-through prompt (dataset-shipped instructions), avoiding the row-GT
+    leak from the older detection_bioacoustic_v1 template.
+  eval_tasks:
+    - beans_zero_enabirds
+    - beans_zero_hiceas
+    - beans_zero_gibbons
+    - beans_zero_rfcx
+    - beans_zero_dcase

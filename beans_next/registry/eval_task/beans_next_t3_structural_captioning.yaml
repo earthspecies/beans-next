@@ -5,5 +5,7 @@ beans_next_t3_structural_captioning:
   subset: t3-structural-captioning
   split: t3-structural-captioning
   prompt: captioning_bioacoustic_v1
+  generation_config:
+    max_length_seconds: 30
   metrics:
     - name: cider

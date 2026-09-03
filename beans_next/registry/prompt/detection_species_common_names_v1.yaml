@@ -1,0 +1,15 @@
+# Fixed detection prompt for tasks whose shipped label vocab exceeds
+# THRESHOLD_TOO_MANY_DETECTION_LABELS (=8). Used when listing the full vocab in
+# the instruction would be too long / would leak too much to the model.
+prompt_id: beans_next.prompt.detection_species_common_names.v1
+messages:
+  - role: user
+    content: |
+      {{ audio_placeholder }} What are the common names for the species in the audio, if any?
+audio_slots:
+  - metadata_key: audio_path
+    payload_type: file_path
+    sample_rate: 16000
+generation_config:
+  max_tokens: 128
+  temperature: 0.0

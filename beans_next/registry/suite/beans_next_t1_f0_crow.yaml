@@ -1,0 +1,15 @@
+beans_next_t1_f0_crow:
+  description: >
+    Subset helper; these tasks are included in `beans_next_tier1`.
+
+    Tier-1 tasks that do NOT live on the v20260707 splits and were therefore
+    missed by the v20260707m4afix sweep: mean-F0 regression (seen vs held-out
+    taxa) and the carrion-crow call-type description set. The f0 pair is a
+    generalization probe -- `seen` covers 9 taxa present in training, `heldout`
+    is spotted hyena only. Audio comes from the shared f0-prediction root and
+    the beans-pro v0.1.0 crow description set, not from beanspro/v20260707.
+    Run at the same 10 s cap as the other Tier-1/Tier-2 columns.
+  eval_tasks:
+    - beans_next_f0_mean_seen_taxa
+    - beans_next_f0_mean_heldout_taxa
+    - beans_next_crow_description

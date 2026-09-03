@@ -1,0 +1,23 @@
+# BEANS-Next Tier 3 (structural / relational / counting) — Qwen3-Omni via vLLM adapter.
+# Uses examples/slurm/serve_qwen3_omni.sh (VLLM_MODEL_ID=Qwen/Qwen3-Omni-30B-A3B-Instruct).
+#
+# Submit env:
+#   export VLLM_MODEL_ID=Qwen/Qwen3-Omni-30B-A3B-Instruct
+#   export HF_HOME=/scratch/$USER/hf_cache
+
+models:
+  - inline:
+      name: "qwen3-omni-tier3"
+      description: "Qwen3-Omni-30B-A3B-Instruct via vLLM on beans_next_tier_3_hf (full N)"
+      predict_url: http://127.0.0.1:8000/predict
+      info_url: http://127.0.0.1:8000/info
+      health_url: http://127.0.0.1:8000/health
+      response_schema: predictions_v1
+      audio_payload: base64_wav
+      retry_policy:
+        max_attempts: 12
+        backoff_initial: 0.5
+        backoff_max: 10.0
+
+suite: beans_next_tier_3_hf
+data_source: esp_data

@@ -46,6 +46,13 @@ PREDICTIONS_V1: Literal["predictions_v1"] = "predictions_v1"
 LAUNCHER_NAME: str = "beans-next-af-next"
 _DEFAULT_MODEL_ID: str = "nvidia/audio-flamingo-next-hf"
 _DEFAULT_MAX_NEW_TOKENS: int = 512
+# Optional cap on input audio length. AF-Next itself has no length guard, so a
+# single long recording can blow past the processor's windowing and trip a CUDA
+# index assert. BEANS-Next also needs a *uniform* cap across launchers so models
+# are compared on the same input. 0 / unset means "no cap".
+_DEFAULT_MAX_AUDIO_SECONDS: float = float(
+    os.environ.get("AF3_MAX_AUDIO_SECONDS", "0") or 0
+)
 _DEFAULT_REPETITION_PENALTY: float = 1.2
 
 MAX_BATCH_SIZE: int = int(os.environ.get("AF3_MAX_BATCH_SIZE", "4"))
@@ -75,6 +82,13 @@ class _LoadState:
 
 _LOAD_STATE = _LoadState()
 _LOAD_LOCK = threading.Lock()
+
+# FastAPI runs the sync `/predict` handler in a threadpool, so several requests
+# can reach the model at once. A single CUDA model instance is not thread-safe:
+# concurrent `model.generate()` calls corrupt the processor's windowing indices
+# and trip `IndexKernel.cu: index out of bounds`, which poisons the CUDA context
+# so every later request returns empty. Serialize all GPU work behind one lock.
+_INFER_LOCK = threading.Lock()
 
 
 def _stub_enabled() -> bool:
@@ -306,6 +320,37 @@ def _resolve_audio_path(audio: HttpAudioInput, tmp_dir: str) -> str:
     raise ValueError(f"Unsupported audio payload_type: {audio.payload_type!r}")
 
 
+def _truncate_audio(path: str, max_seconds: float, tmp_dir: str) -> str:
+    """Return a path whose audio is at most `max_seconds` long.
+
+    Parameters
+    ----------
+    path
+        Path to the source audio file.
+    max_seconds
+        Maximum duration to keep. Values <= 0 disable truncation.
+    tmp_dir
+        Directory for the truncated copy.
+
+    Returns
+    -------
+    str
+        `path` when no truncation is needed, else the path of a truncated WAV.
+    """
+    if max_seconds is None or max_seconds <= 0:
+        return path
+    import soundfile as sf
+
+    info = sf.info(path)
+    if info.frames <= int(max_seconds * info.samplerate):
+        return path
+    data, sr = sf.read(path, frames=int(max_seconds * info.samplerate), dtype="float32")
+    fd, out = tempfile.mkstemp(suffix=".wav", dir=tmp_dir)
+    os.close(fd)
+    sf.write(out, data, sr)
+    return out
+
+
 def _build_conversation(
     messages: list[HttpChatMessage],
     audio_paths: list[str],
@@ -363,6 +408,14 @@ def _run_inference(item: PredictionsV1RequestItem) -> PredictionsV1ResponseItem:
     tmp_dir = tempfile.mkdtemp(prefix="af3-audio-")
     try:
         audio_paths = [_resolve_audio_path(a, tmp_dir) for a in item.audio_inputs]
+        # Contract value wins over the env default so a suite can pin its own cap.
+        req_max = getattr(item.generation_config, "max_length_seconds", None)
+        max_audio_sec = (
+            float(req_max) if req_max is not None else _DEFAULT_MAX_AUDIO_SECONDS
+        )
+        audio_paths = [
+            _truncate_audio(p, max_audio_sec, tmp_dir) for p in audio_paths
+        ]
         conversation = [_build_conversation(item.messages, audio_paths)]
 
         gen_cfg = item.generation_config
@@ -378,29 +431,32 @@ def _run_inference(item: PredictionsV1RequestItem) -> PredictionsV1ResponseItem:
             else:
                 generate_kwargs["do_sample"] = False
 
-        batch = _processor.apply_chat_template(
-            conversation,
-            tokenize=True,
-            add_generation_prompt=True,
-            return_dict=True,
-        )
-        batch = {
-            k: (v.to(_model.device) if hasattr(v, "to") else v)
-            for k, v in batch.items()
-        }
-        if "input_features" in batch:
-            batch["input_features"] = batch["input_features"].to(_model.dtype)
+        # Serialize processor + model work: a single CUDA model instance is not
+        # safe to drive from FastAPI's threadpool concurrently (see _INFER_LOCK).
+        with _INFER_LOCK:
+            batch = _processor.apply_chat_template(
+                conversation,
+                tokenize=True,
+                add_generation_prompt=True,
+                return_dict=True,
+            )
+            batch = {
+                k: (v.to(_model.device) if hasattr(v, "to") else v)
+                for k, v in batch.items()
+            }
+            if "input_features" in batch:
+                batch["input_features"] = batch["input_features"].to(_model.dtype)
 
-        with torch.inference_mode():
-            generated = _model.generate(**batch, **generate_kwargs)
+            with torch.inference_mode():
+                generated = _model.generate(**batch, **generate_kwargs)
 
-        prompt_len = batch["input_ids"].shape[1]
-        completion = generated[:, prompt_len:]
-        text = _processor.batch_decode(
-            completion,
-            skip_special_tokens=True,
-            clean_up_tokenization_spaces=False,
-        )[0]
+            prompt_len = batch["input_ids"].shape[1]
+            completion = generated[:, prompt_len:]
+            text = _processor.batch_decode(
+                completion,
+                skip_special_tokens=True,
+                clean_up_tokenization_spaces=False,
+            )[0]
 
         return PredictionsV1ResponseItem(
             sample_id=item.sample_id,

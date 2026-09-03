@@ -1,0 +1,11 @@
+beans_next_v20260823_flight_call_presence:
+  task_type: presence_binary
+  data_source: esp_data
+  dataset: beans_next
+  subset: v20260823-flight-call-presence
+  split: v20260823-flight-call-presence
+  prompt: classification_beans_zero_official_v1
+  generation_config:
+    max_length_seconds: 10
+  metrics:
+    - name: top1_accuracy
