@@ -217,6 +217,14 @@ export GEMMA4_MAX_AUDIO_SECONDS="${BEANS_NEXT_GEMMA4_MAX_AUDIO_SECONDS:-30}"
 export GEMMA4_AUDIO_POSITION="${BEANS_NEXT_GEMMA4_AUDIO_POSITION:-after_text}"
 export PORT="$ADAPTER_PORT"
 
+# vllm==0.28.0's bundled native extension (_C_stable_libtorch) links against
+# libcudart.so.13 even though the resolved torch wheel is cu129 (so.12); the
+# cu13 runtime ships as its own pip package (nvidia-cu13) but isn't on the
+# loader path by default. Without this, `vllm serve` dies at import time
+# with "ImportError: libcudart.so.13: cannot open shared object file".
+readonly SERVER_SITE_PACKAGES="$SERVER_RUNTIME/.venv/lib/python3.12/site-packages"
+export LD_LIBRARY_PATH="$SERVER_SITE_PACKAGES/nvidia/cu13/lib:$SERVER_SITE_PACKAGES/nvidia/cuda_runtime/lib:${LD_LIBRARY_PATH:-}"
+
 if [[ "$GEMMA4_BACKEND" == "vllm" ]]; then
   "$VLLM_BIN" serve "$MODEL_PATH" \
     --served-model-name gemma4_audio \
