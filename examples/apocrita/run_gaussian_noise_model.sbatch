@@ -149,11 +149,12 @@ run_eval() {
   fi
   if [[ "$MODEL_KIND" == "audio-flamingo-next" ]]; then
     # This one 120.013875-second recording deterministically triggers an upstream
-    # AF-NeXT CUDA indexing assertion. It occurs as four benchmark rows. Exclude
-    # the same rows from real and noise conditions to preserve matched pairing.
+    # AF-NeXT CUDA indexing assertion. Two recordings occur as five benchmark rows.
+    # Exclude the same rows from real and noise conditions to preserve pairing.
     args+=(
       --exclude-sample-id "t1-description-mcq:1267:664"
       --exclude-sample-id "t1-description-mcq:2343:656"
+      --exclude-sample-id "t1-description-mcq:2094:553"
       --exclude-sample-id "t1-caption:2059:422"
       --exclude-sample-id "t1-caption:964:423"
     )
