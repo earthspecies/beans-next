@@ -90,7 +90,6 @@ def _env_int(name: str, *, default: int) -> int:
         return default
 
 
-
 class _AlarmTimeout:
     """Best-effort wall-clock timeout using `SIGALRM` (Unix main thread only).
 

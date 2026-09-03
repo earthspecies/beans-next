@@ -204,6 +204,13 @@ def test_audex_stub_mode_conforms() -> None:
     )
 
 
+def test_gemma4_stub_mode_conforms() -> None:
+    _run_launcher_conformance(
+        app="examples.servers.gemma4.serve:app",
+        env={"GEMMA4_ADAPTER_STUB": "1"},
+    )
+
+
 def test_naturelm_v1_0_stub_mode_conforms() -> None:
     _run_launcher_conformance(
         app="serve:app",

@@ -16,6 +16,7 @@ import argparse
 import json
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -23,6 +24,24 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 BASE_URL = "https://storage.googleapis.com/esp-data-274503/beans-zero/v0.1.0/raw"
+
+
+def _url_for(rel: str) -> str:
+    """Build a fetch URL for a relative path, percent-encoding it for HTTP.
+
+    Some upstream filenames already contain literal ``%`` characters (themselves
+    a pre-percent-encoded space, e.g. ``%20``); the GCS object name is exactly
+    that literal string, so the ``%`` itself must be re-encoded as ``%25`` to
+    fetch it over HTTP. The local destination path stays unencoded (the literal
+    relative path), matching what ``alp_data`` expects when reading it back.
+
+    Returns
+    -------
+    str
+        The fully qualified, percent-encoded fetch URL.
+    """
+    return f"{BASE_URL}/{urllib.parse.quote(rel, safe='/')}"
+
 
 SUBSETS = [
     "esc50",
@@ -94,7 +113,7 @@ def _download_jsonl_files(raw_root: Path, *, retries: int) -> dict[str, list[dic
     for subset in SUBSETS:
         name = f"{subset}_test.jsonl"
         dest = raw_root / name
-        _fetch(f"{BASE_URL}/{name}", dest, retries=retries)
+        _fetch(_url_for(name), dest, retries=retries)
         lines = dest.read_text().splitlines()
         rows_by_subset[subset] = [json.loads(line) for line in lines if line.strip()]
     return rows_by_subset
@@ -130,7 +149,7 @@ def main() -> int:
 
     def _download_one(rel: str) -> tuple[str, int]:
         dest = raw_root / rel
-        n = _fetch(f"{BASE_URL}/{rel}", dest, retries=args.retries)
+        n = _fetch(_url_for(rel), dest, retries=args.retries)
         return rel, n
 
     with ThreadPoolExecutor(max_workers=max(1, args.workers)) as pool:

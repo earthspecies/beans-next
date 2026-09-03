@@ -1,0 +1,29 @@
+# BEANS-Next tiers 1-3 (single-audio) evaluation — Google Gemma 4 12B.
+#
+# Run:
+#   uv run beans-next run --config configs/benchmarks/beans_next_tiers_1_3_gemma4_12b.yaml \
+#     --preserve-file-paths \
+#     -o results/beans_next_tiers_1_3_gemma4_12b_$(date +%Y%m%d)
+#
+# Prereqs: launcher + upstream vllm serve running locally (example ports
+# 8000/8001) — see examples/servers/gemma4/README.md.
+#   cd examples/servers/gemma4
+#   GEMMA4_ADAPTER_STUB=0 GEMMA4_BACKEND=vllm GEMMA4_UPSTREAM_BASE_URL=http://127.0.0.1:8001 \
+#     GEMMA4_MODEL_ID=gemma4_12b PORT=8000 ./serve.sh
+
+models:
+  - inline:
+      name: "gemma4_12b"
+      description: "Google Gemma 4 12B (local launcher)"
+      predict_url: http://127.0.0.1:8000/predict
+      info_url: http://127.0.0.1:8000/info
+      health_url: http://127.0.0.1:8000/health
+      response_schema: predictions_v1
+      audio_payload: file_path
+      retry_policy:
+        max_attempts: 12
+        backoff_initial: 0.5
+        backoff_max: 10.0
+
+suite: beans_next_tiers_1_3_hf
+data_source: huggingface
