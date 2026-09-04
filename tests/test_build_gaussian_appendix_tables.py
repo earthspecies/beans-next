@@ -75,7 +75,7 @@ def test_build_tables_contains_tier_task_and_parse_tables(
         "beans_next_t1_description_mcq": _row(),
         "beans_next_bird_presence": _row(),
         "beans_next_t3_species_by_highest_pitch_mcq": _row(),
-        "beans_next_gibbon_fewshot_detection_balanced": _row(),
+        "beans_next_gibbon_fewshot_detection_balanced": _row("macro_f1"),
         "beans_next_t1_snr_regression": numeric,
     }
     latex = table_module.build_tables({"naturelm": {"tasks": tasks}})

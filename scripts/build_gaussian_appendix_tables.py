@@ -35,6 +35,11 @@ PRIMARY_METRICS = (
     "species_f1",
 )
 CLASSIFICATION_METRICS = ("top1_accuracy", "accuracy", "macro_f1", "species_f1")
+MACRO_F1_TASKS = {
+    "beans_next_call_type_fixed_vocab",
+    "beans_next_dcase_fewshot_detection_balanced",
+    "beans_next_gibbon_fewshot_detection_balanced",
+}
 
 
 def task_tier(task_id: str) -> int:
@@ -61,9 +66,15 @@ def _display_task(task_id: str) -> str:
 
 def _primary(task_id: str, row: dict[str, Any]) -> tuple[str, str, float, int]:
     metrics = row["metrics"]
-    key = next(name for name in PRIMARY_METRICS if name in metrics)
+    if task_id in MACRO_F1_TASKS:
+        key = "macro_f1"
+    else:
+        key = next(name for name in PRIMARY_METRICS if name in metrics)
     scale = (
-        100 if key in {"accuracy", "species_f1", "coverage_aware_freq_mean_iou"} else 1
+        100
+        if key
+        in {"accuracy", "macro_f1", "species_f1", "coverage_aware_freq_mean_iou"}
+        else 1
     )
     unit = "Hz" if "f0_mean" in task_id else ("dB" if "snr" in task_id else "count")
     labels = {
@@ -72,6 +83,7 @@ def _primary(task_id: str, row: dict[str, Any]) -> tuple[str, str, float, int]:
         "count_mae": "Count MAE",
         "cider": "CIDEr",
         "species_f1": r"Species F1 (\%)",
+        "macro_f1": r"Macro F1 (\%)",
         "coverage_aware_freq_mean_iou": r"IoU (\%)",
     }
     precision = 5 if key == "cider" else 2
@@ -144,30 +156,43 @@ def _tier_tables(data: dict[str, Any]) -> list[str]:
     ]
     for model, report in data.items():
         for tier in range(1, 5):
-            rows = [
-                row for task, row in report["tasks"].items() if task_tier(task) == tier
+            tier_rows = [
+                (task, row)
+                for task, row in report["tasks"].items()
+                if task_tier(task) == tier
             ]
             pairs = []
-            for row in rows:
-                metric = next(
-                    (name for name in CLASSIFICATION_METRICS if name in row["metrics"]),
-                    None,
-                )
+            for task_id, row in tier_rows:
+                if task_id in MACRO_F1_TASKS:
+                    metric = "macro_f1"
+                else:
+                    metric = next(
+                        (
+                            name
+                            for name in CLASSIFICATION_METRICS
+                            if name in row["metrics"]
+                        ),
+                        None,
+                    )
                 if metric:
                     pairs.append(row["metrics"][metric])
             real_class = 100 * sum(pair["real"] for pair in pairs) / len(pairs)
             noise_class = 100 * sum(pair["noise"] for pair in pairs) / len(pairs)
             real_n = sum(
-                row["real_diagnostics"]["non_error_denominator"] for row in rows
+                row["real_diagnostics"]["non_error_denominator"]
+                for _, row in tier_rows
             )
             noise_n = sum(
-                row["noise_diagnostics"]["non_error_denominator"] for row in rows
+                row["noise_diagnostics"]["non_error_denominator"]
+                for _, row in tier_rows
             )
             real_ref = sum(
-                row["real_diagnostics"]["refusal_heuristic_count"] for row in rows
+                row["real_diagnostics"]["refusal_heuristic_count"]
+                for _, row in tier_rows
             )
             noise_ref = sum(
-                row["noise_diagnostics"]["refusal_heuristic_count"] for row in rows
+                row["noise_diagnostics"]["refusal_heuristic_count"]
+                for _, row in tier_rows
             )
             lines.append(
                 f"{MODEL_NAMES[model]} & {tier} & {real_class:.2f} & {noise_class:.2f} & "
