@@ -180,12 +180,12 @@ def _metric_means(summary: Mapping[str, Any], task_id: str) -> Mapping[str, Any]
     metrics = summary.get("metrics")
     if not isinstance(metrics, Mapping):
         raise MatchedAnalysisError(f"{task_id}: summary has no metrics.mean")
-    per_task = metrics.get("per_task_mean")
-    if isinstance(per_task, Mapping) and isinstance(per_task.get(task_id), Mapping):
-        return per_task[task_id]
     mean = metrics.get("mean")
     if isinstance(mean, Mapping):
         return mean
+    per_task = metrics.get("per_task_mean")
+    if isinstance(per_task, Mapping) and isinstance(per_task.get(task_id), Mapping):
+        return per_task[task_id]
     raise MatchedAnalysisError(f"{task_id}: summary has no metric means")
 
 
