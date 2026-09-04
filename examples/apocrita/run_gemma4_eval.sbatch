@@ -164,7 +164,19 @@ export TOKENIZERS_PARALLELISM=false
 # trimmed-clip cache) that lives outside $DATA_ROOT, so it needs its own
 # allowed root.
 if [[ "$DATA_BACKEND" == "huggingface" || "$DATA_BACKEND" == "hf" ]]; then
-  readonly ALLOWED_MEDIA_PATH="$DATA_ROOT"
+  # Any clip over Gemma's 30s cap (tiers 1-3 sends no per-subset protocol
+  # cap, so this is the only limit in play here) still needs a trimmed-clip
+  # cache dir, and it must fall under the same allowed root as $DATA_ROOT --
+  # otherwise vLLM 400s every trimmed request with "must be a subpath of
+  # --allowed-local-media-path", which silently zeroes out predictions for
+  # every over-cap row (data lost this way is not visible until someone
+  # greps predictions.jsonl for a non-null "error"). Use the common scratch
+  # root as the allowed path so both $DATA_ROOT and the trimmed-cache dir
+  # (which lives outside $DATA_ROOT, a shared read-only-in-spirit HF
+  # dataset snapshot) are covered.
+  readonly ALLOWED_MEDIA_PATH="$SCRATCH_ROOT"
+  mkdir -p "$GEMMA4_RUN_ROOT/trimmed"
+  export GEMMA4_TRIMMED_CACHE_DIR="$GEMMA4_RUN_ROOT/trimmed"
 else
   readonly ALLOWED_MEDIA_PATH="$GEMMA4_RUN_ROOT"
   mkdir -p "$GEMMA4_RUN_ROOT/audio-cache" "$GEMMA4_RUN_ROOT/trimmed" \
