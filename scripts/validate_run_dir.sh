@@ -278,7 +278,10 @@ elif [[ ! -d "$run_dir" ]]; then
   die "path is not a directory: $run_dir"
 fi
 
-mapfile -t leaf_dirs < <(discover_leaf_run_dirs "$run_dir")
+leaf_dirs=()
+while IFS= read -r leaf_dir; do
+  leaf_dirs+=("$leaf_dir")
+done < <(discover_leaf_run_dirs "$run_dir")
 if [[ ${#leaf_dirs[@]} -eq 0 ]]; then
   die "no leaf run directories found under: $run_dir (expected either predictions.jsonl in this directory, or subdirs like <model>/<run_id>/predictions.jsonl or <run_id>/predictions.jsonl)"
 fi
@@ -293,4 +296,3 @@ done
 
 echo "PASS: artifacts directory looks usable (warnings=${warnings})."
 exit 0
-

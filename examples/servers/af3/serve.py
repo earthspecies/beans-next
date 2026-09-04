@@ -68,12 +68,16 @@ class _AudioArray(Protocol):
 
 
 class _FeatureExtractor(Protocol):
+    """Type contract for the Audio Flamingo feature extractor fields."""
+
     sampling_rate: int
     chunk_length: int
     hop_length: int
 
 
 class _AudioProcessor(Protocol):
+    """Type contract for processors that expose an audio feature extractor."""
+
     feature_extractor: _FeatureExtractor
 
 
