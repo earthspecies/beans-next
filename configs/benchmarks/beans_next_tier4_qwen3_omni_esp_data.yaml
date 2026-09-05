@@ -8,10 +8,11 @@
 #   export VLLM_MODEL_ID=Qwen/Qwen3-Omni-30B-A3B-Instruct
 #   export VLLM_OMNI=1
 #   export VLLM_AUDIO_CONTENT_FORMAT=audio_url_data
-#   export VLLM_LIMIT_MM_PER_PROMPT=audio=6   # rows carry up to 6 audios
+#   export VLLM_LIMIT_MM_PER_PROMPT='{"audio": 6}'   # rows carry up to 6 audios
 #
-# `audio=6` is required: vLLM defaults to one multimodal item per prompt and
-# rejects the rest, which would silently degrade this to a query-only run.
+# The JSON form is required by vLLM 0.18, which rejects the `audio=6` syntax.
+# Setting it matters: vLLM defaults to one multimodal item per prompt and drops
+# the rest, which would silently degrade this back to a query-only run.
 
 models:
   - inline:
