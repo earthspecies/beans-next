@@ -1895,9 +1895,14 @@ _MULTIAUDIO_SPLIT_JSONL_AND_ROOT: dict[str, tuple[str, str]] = {
         f"{_MULTIAUDIO_GCS_BASE}/unseen_species_4way/test.jsonl",
         "gs://esp-data-ingestion/",
     ),
+    # Unlike unseen-species-4way (xeno-canto/inaturalist paths under the
+    # ingestion bucket), the "hard" rows carry BEANS-Zero relative paths such as
+    # `audio/unseen-species-sci/32KHz/<id>.flac`, which live under the BEANS-Zero
+    # raw base. Pointing this at the ingestion bucket resolved nothing, so every
+    # row lost its audio and came back empty.
     "unseen-species-4way-hard": (
         f"{_MULTIAUDIO_GCS_BASE}/unseen_species_4way_hard/test.jsonl",
-        "gs://esp-data-ingestion/",
+        f"{_MULTIAUDIO_GIBBON_BASE}/",
     ),
     "unseen-genus-4way": (
         f"{_MULTIAUDIO_GCS_BASE}/unseen_genus_4way/test.jsonl",
