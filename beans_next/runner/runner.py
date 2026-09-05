@@ -1195,6 +1195,12 @@ def _prompt_spec_from_eval_task(
     -------
     beans_next.prompts.renderer.PromptSpec
         Prompt specification to render examples.
+
+    Raises
+    ------
+    ValueError
+        If the eval task's `generation_config` contains a field that is not
+        recognised by the prompt spec's generation config model.
     """
     from beans_next.prompts.renderer import (
         load_builtin_prompt_yaml,
@@ -1219,6 +1225,28 @@ def _prompt_spec_from_eval_task(
         spec = load_builtin_prompt_yaml(name)
     else:
         spec = load_builtin_prompt_yaml("classification_bioacoustic_v1.yaml")
+
+    # An eval task may pin its own generation settings (notably the audio length
+    # policy for a benchmark tier). These win over the prompt defaults and over
+    # the BEANS-Zero subset hints applied below, so a suite reproduces its
+    # published numbers without relying on per-launcher defaults or submit-time
+    # environment variables.
+    task_gen = eval_task.get("generation_config")
+    has_gen = spec.generation_config is not None
+    if isinstance(task_gen, Mapping) and task_gen and has_gen:
+        allowed = set(type(spec.generation_config).model_fields)
+        update = {k: v for k, v in task_gen.items() if k in allowed}
+        unknown = sorted(set(task_gen) - allowed)
+        if unknown:
+            raise ValueError(
+                "Unknown generation_config field(s) in eval task "
+                f"{eval_task.get('name', '<unnamed>')!r}: {', '.join(unknown)}"
+            )
+        if update:
+            spec = replace(
+                spec,
+                generation_config=spec.generation_config.model_copy(update=update),
+            )
 
     # If this is a BEANS-Zero eval task with a known subset duration, attach the
     # per-subset clip length so model servers can match the official preprocessing.

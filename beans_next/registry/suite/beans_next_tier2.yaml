@@ -1,0 +1,20 @@
+beans_next_tier2:
+  description: >
+    BEANS-Next Tier 2 (current). Semantic single-audio tasks: taxon- and
+    call-type presence detection, behaviour classification, and captioning.
+    Audio is capped at 10 s by each eval task's `generation_config`.
+
+    Uses the m4a-fixed v20260707 splits, except for the four xeno-canto tasks
+    regenerated in v20260823 (alarm/begging/flight call presence and fixed-vocab
+    call type), which supersede their v20260707m4afix counterparts.
+  eval_tasks:
+    - beans_next_v20260707m4afix_t2_behavior
+    - beans_next_v20260707m4afix_t2_captioning
+    - beans_next_v20260707m4afix_bird_presence
+    - beans_next_v20260707m4afix_mammal_presence
+    - beans_next_v20260707m4afix_amphibian_presence
+    - beans_next_v20260707m4afix_insect_presence
+    - beans_next_v20260823_alarm_call_presence
+    - beans_next_v20260823_begging_call_presence
+    - beans_next_v20260823_flight_call_presence
+    - beans_next_v20260823_call_type_fixed_vocab

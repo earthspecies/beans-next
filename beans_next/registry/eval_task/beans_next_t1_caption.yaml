@@ -5,5 +5,7 @@ beans_next_t1_caption:
   subset: t1-caption
   split: t1-caption
   prompt: classification_beans_zero_official_v1
+  generation_config:
+    max_length_seconds: 10
   metrics:
     - name: cider

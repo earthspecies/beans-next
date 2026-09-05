@@ -1,5 +1,7 @@
 beans_next_tier_1_hf:
   description: >
+    SUPERSEDED by `beans_next_tier1` - use that for current Tier 1 numbers.
+
     BEANS-Next tier 1 (single-audio) suite for tasks present in the HuggingFace
     Hub Parquet bundle (EarthSpeciesProject/BEANS-Next).
   eval_tasks:

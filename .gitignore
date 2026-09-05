@@ -36,3 +36,9 @@ beans-next-results/
 .DS_Store
 .Trashes
 Thumbs.db
+
+# SLURM job logs (written into the repo root by sbatch)
+slurm-*.out
+
+# Local prediction exports (generated)
+beans-next-predictions-export/

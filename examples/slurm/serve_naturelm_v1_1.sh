@@ -76,9 +76,12 @@ if [[ -z "${GITHUB_TOKEN:-}" && -f "$HOME/.config/github/github_token" ]]; then
   export GITHUB_TOKEN="$(< "$HOME/.config/github/github_token")"
 fi
 
-if [[ "${NATURELM_STUB_MODE:-0}" != "1" && -z "${NATURELM_GCS_CHECKPOINT_URI:-}" ]]; then
-  echo "ERROR: NATURELM_GCS_CHECKPOINT_URI must be set for real inference." >&2
-  echo "Example: NATURELM_GCS_CHECKPOINT_URI=gs://foundation-models/naturelm-audio-1.1/base_model/1290000" >&2
+if [[ "${NATURELM_STUB_MODE:-0}" != "1" \
+      && -z "${NATURELM_GCS_CHECKPOINT_URI:-}" \
+      && -z "${NATURELM_LOCAL_CHECKPOINT_DIR:-}" ]]; then
+  echo "ERROR: one of NATURELM_GCS_CHECKPOINT_URI / NATURELM_LOCAL_CHECKPOINT_DIR must be set for real inference." >&2
+  echo "  GCS example:   NATURELM_GCS_CHECKPOINT_URI=gs://foundation-models/naturelm-audio-1.1/base_model/1290000" >&2
+  echo "  local example: NATURELM_LOCAL_CHECKPOINT_DIR=/home/\$USER/checkpoints/naturelm-v1.5-qwen35/.../100000" >&2
   echo "For conformance-only, set NATURELM_STUB_MODE=1." >&2
   exit 1
 fi
@@ -183,12 +186,33 @@ if [[ "${NATURELM_STUB_MODE:-0}" != "1" ]]; then
 
       # esp-research frequently imports esp-data. Install the matching packaged
       # version from ESP PyPI (avoid local checkout drift).
+      # The `oauth2accesstoken@` form requires the gcloud keyring plugin, which
+      # is not installed on all compute nodes. Fall back to embedding a fresh
+      # ADC access token directly (ADC works when interactive `gcloud auth` is
+      # expired) so pip auth does not depend on keyring.
+      # The index URL below carries a live OAuth token, so keep xtrace off for
+      # this whole block: with BEANS_NEXT_DEBUG=1 bash would otherwise echo the
+      # expanded `uv pip install --index-url ...` line into the Slurm log and
+      # leak the credential. Restore the previous xtrace state afterwards.
+      _xtrace_was_on=0
+      case "$-" in *x*) _xtrace_was_on=1 ;; esac
+      { set +x; } 2>/dev/null
+
+      if [[ -z "${BEANS_NEXT_ESP_PYPI_INDEX_URL:-}" ]]; then
+        _ADC_TOKEN="$(gcloud auth application-default print-access-token 2>/dev/null || true)"
+        if [[ -n "$_ADC_TOKEN" ]]; then
+          BEANS_NEXT_ESP_PYPI_INDEX_URL="https://oauth2accesstoken:${_ADC_TOKEN}@us-central1-python.pkg.dev/okapi-274503/esp-pypi/simple/"
+        fi
+      fi
       ESP_PYPI_INDEX_URL="${BEANS_NEXT_ESP_PYPI_INDEX_URL:-https://oauth2accesstoken@us-central1-python.pkg.dev/okapi-274503/esp-pypi/simple/}"
       # esp-data is on esp-pypi, but its transitive deps (e.g. gcsfs) are on PyPI.
       uv pip install --python "$UV_PROJECT_ENVIRONMENT" \
         --index-url "${ESP_PYPI_INDEX_URL}" \
         --extra-index-url "https://pypi.org/simple" \
         esp-data
+
+      unset _ADC_TOKEN ESP_PYPI_INDEX_URL BEANS_NEXT_ESP_PYPI_INDEX_URL
+      [[ "$_xtrace_was_on" == "1" ]] && set -x
 
       # esp-research audio encoders depend on avex (flashbeats branch).
       # Install without deps to avoid pulling tensorflow/CUDA-native stacks.

@@ -1,0 +1,11 @@
+beans_next_v20260707m4afix_t1_caption:
+  task_type: captioning
+  data_source: esp_data
+  dataset: beans_next
+  subset: v20260707m4afix-t1-caption
+  split: v20260707m4afix-t1-caption
+  prompt: classification_beans_zero_official_v1
+  generation_config:
+    max_length_seconds: 10
+  metrics:
+    - name: cider

@@ -5,6 +5,8 @@ beans_next_f0_mean_heldout_taxa:
   subset: f0-mean-heldout-taxa
   split: f0-mean-heldout-taxa
   prompt: classification_beans_zero_official_v1
+  generation_config:
+    max_length_seconds: 10
   metrics:
     - name: mean_absolute_error
 

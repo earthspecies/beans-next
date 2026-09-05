@@ -5,5 +5,7 @@ beans_next_t3_ordered_species_summary:
   subset: t3-ordered-species-summary
   split: t3-ordered-species-summary
   prompt: classification_beans_zero_official_v1
+  generation_config:
+    max_length_seconds: 30
   metrics:
     - name: species_f1

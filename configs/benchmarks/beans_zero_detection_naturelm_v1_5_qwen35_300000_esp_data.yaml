@@ -1,0 +1,19 @@
+# BEANS-Zero detection tasks — NatureLM v1.5 qwen35 step 300000
+# Prompt fixed to use dataset-shipped instructions (no row-GT leak).
+
+models:
+  - inline:
+      name: "naturelm-v1.5-qwen35-300000-noleak"
+      description: "NatureLM v1.5 qwen35 step 300000 on beans-zero detection with pass-through prompt"
+      predict_url: http://127.0.0.1:8001/predict
+      info_url: http://127.0.0.1:8001/info
+      health_url: http://127.0.0.1:8001/health
+      response_schema: predictions_v1
+      audio_payload: base64_wav
+      retry_policy:
+        max_attempts: 12
+        backoff_initial: 0.5
+        backoff_max: 10.0
+
+suite: beans_zero_detection
+data_source: esp_data

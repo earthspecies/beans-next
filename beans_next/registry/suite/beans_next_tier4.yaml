@@ -1,0 +1,22 @@
+beans_next_tier4:
+  description: >
+    BEANS-Next Tier 4 (current): genuine in-context multi-audio evaluation.
+    Each example presents N-1 labelled support clips followed by a query clip,
+    and the model must use the support audio to answer. Audio is interleaved at
+    the `<Audio><AudioHere></Audio>` placeholder positions via the
+    `beans_next_multiaudio_passthrough_v1` prompt, so each choice label stays
+    bound to its own clip. Each clip is capped at 10 s.
+
+    Requires a launcher that accepts several audios in one request (vllm
+    adapter, openai_compatible_proxy, af3). Single-audio servers such as
+    NatureLM v1.1 cannot run this suite - use `beans_next_tier_4_hf`, whose
+    query-only reformulation drops the support audio and is therefore near
+    chance on the 4-way tasks.
+  eval_tasks:
+    - beans_next_multiaudio_crow_4way
+    - beans_next_multiaudio_zebra_4way
+    - beans_next_multiaudio_giant_otter_4way
+    - beans_next_multiaudio_unseen_species_4way
+    - beans_next_multiaudio_unseen_species_4way_hard
+    - beans_next_multiaudio_gibbon_fewshot_detection_balanced
+    - beans_next_multiaudio_dcase_fewshot_detection_balanced

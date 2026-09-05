@@ -1,5 +1,9 @@
 beans_next_tier_4_hf:
   description: >
+    QUERY-ONLY reformulation for single-audio servers: the support/choice
+    audios are NOT sent, so the 4-way tasks are near chance. For genuine
+    in-context multi-audio evaluation use `beans_next_tier4`.
+
     BEANS-Next tier 4 (in-context multi-audio) suite for tasks present in the
     HuggingFace Hub Parquet bundle (EarthSpeciesProject/BEANS-Next).
   eval_tasks:
