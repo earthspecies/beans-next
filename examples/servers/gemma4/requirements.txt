@@ -1,0 +1,26 @@
+# Gemma 4 adapter sidecar deps (isolated venv; GPU-free stub mode supported).
+fastapi==0.115.12
+uvicorn[standard]==0.34.2
+pydantic==2.11.7
+httpx==0.28.1
+soundfile==0.13.1
+
+# Real inference deps (GPU required; install when GEMMA4_ADAPTER_STUB is not
+# set). Two backends select which of the below is actually exercised:
+#
+# GEMMA4_BACKEND=vllm (default): the upstream `vllm serve google/gemma-4-12B-it`
+# process needs vLLM >= 0.23.0 with the `audio` extra (`vllm[audio]`) for
+# encoder-free Gemma 4 Unified support. That process runs from its own
+# dedicated runtime venv (examples/apocrita/setup_gemma4_runtime.sbatch),
+# kept separate from this sidecar's deps — this adapter never imports vllm
+# itself, it only proxies HTTP to it.
+#
+# GEMMA4_BACKEND=transformers (costed fallback, see the plan's Decision 1):
+# loads Gemma4UnifiedForConditionalGeneration + AutoProcessor in-process.
+# Needs a transformers release with Gemma 4 Unified support, plus torch,
+# accelerate, and librosa (defensive resampling). Uncomment/pin once
+# validated on-cluster:
+# torch
+# transformers
+# accelerate
+# librosa

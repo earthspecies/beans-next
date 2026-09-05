@@ -32,8 +32,11 @@ The core library never loads model weights. All inference is over HTTP (`predict
 | Qwen3-Omni-7B | ≥24 GB | `serve_qwen3_omni.sh` | `submit_beans_zero_core_qwen3_omni.sh` | `beans_zero_core_qwen3_omni.yaml` |
 | GPT-4o-audio | None | `openai_compatible_proxy` | — (CPU only) | `beans_zero_core_gpt4o.yaml` |
 | Gemini | None | `openai_compatible_proxy` | — (CPU only) | `beans_zero_core_gemini.yaml` |
+| NVIDIA Audex 30B-A3B | 2x80 GB (TP=2) | `examples/servers/audex/serve.sh` | `examples/apocrita/run_audex_eval.sbatch` (`BEANS_NEXT_RUN_MODE=beans_zero`) | `beans_zero_core_audex.yaml` |
 
-All scripts and configs are under `examples/slurm/` and `configs/benchmarks/` respectively.
+All scripts and configs are under `examples/slurm/` and `configs/benchmarks/` respectively, except
+Audex which is Apocrita-only (`examples/apocrita/`) — see `examples/apocrita/README.md` and
+`examples/servers/audex/README.md`.
 
 ---
 

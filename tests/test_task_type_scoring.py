@@ -11,8 +11,8 @@ import pytest
 
 from beans_next.api.types import DatasetExample
 from beans_next.metrics import score_sample
-from beans_next.metrics.regression import extract_frequency_range
 from beans_next.metrics.base import MetricsError
+from beans_next.metrics.regression import extract_frequency_range
 from beans_next.post_process.pipeline import PostProcessResult
 from beans_next.runner._utils import compute_dataset_level_metrics
 
@@ -480,7 +480,7 @@ class TestCaptiongTaskType:
             "A chaffinch calls repeatedly from a perch.",
             "Rhythmic drumming from a woodpecker is audible.",
         ]
-        result = compute_dataset_level_metrics(list(zip(hyps, refs)), "captioning")
+        result = compute_dataset_level_metrics(list(zip(hyps, refs, strict=False)), "captioning")
         assert "cider" in result
         assert isinstance(result["cider"], float)
 
