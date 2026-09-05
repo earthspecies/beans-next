@@ -122,10 +122,15 @@ fi
 if [[ "${NATURELM_V1_0_STUB:-}" != "1" ]]; then
   echo "NatureLM v1.0 real mode selected (NATURELM_V1_0_STUB not set to 1)."
   if [[ -z "${HF_TOKEN:-}" ]]; then
-    echo "ERROR: HF_TOKEN must be set for real NatureLM inference." >&2
-    echo "ERROR: You need HuggingFace access to the gated base model:" >&2
-    echo "  meta-llama/Meta-Llama-3.1-8B-Instruct" >&2
-    exit 1
+    nature_cache="$HUGGINGFACE_HUB_CACHE/models--EarthSpeciesProject--NatureLM-audio/snapshots/${NATURELM_V1_0_MODEL_REVISION:-}"
+    llama_cache="$HUGGINGFACE_HUB_CACHE/models--meta-llama--Meta-Llama-3.1-8B-Instruct/snapshots/0e9e39f249a16976918f6564b8830bc894c89659"
+    if [[ ! -d "$nature_cache" || ! -d "$llama_cache" ]]; then
+      echo "ERROR: HF_TOKEN is unset and an exact cached NatureLM snapshot is missing." >&2
+      echo "ERROR: Required NatureLM cache: $nature_cache" >&2
+      echo "ERROR: Required Llama cache: $llama_cache" >&2
+      exit 1
+    fi
+    echo "HF_TOKEN is unset; using the exact cached NatureLM and Llama snapshots"
   fi
   if [[ "${BEANS_NEXT_SKIP_REAL_DEPS_INSTALL:-0}" == "1" ]]; then
     echo "BEANS_NEXT_SKIP_REAL_DEPS_INSTALL=1 set; skipping real-mode dependency install"
@@ -149,25 +154,29 @@ if [[ "${NATURELM_V1_0_STUB:-}" != "1" ]]; then
     exit 1
   fi
 
-  # Install NatureLM-audio itself (without letting it re-resolve torch).
-  # Then install a minimal set of runtime deps it expects.
-  uv pip install --python "$UV_PROJECT_ENVIRONMENT" --no-deps -e "$NATURELM_CODE_DIR"
-  uv pip install --python "$UV_PROJECT_ENVIRONMENT" \
-    "cloudpathlib[gs]>=0.20.0" \
-    "einops>=0.8.0" \
-    "librosa>=0.9.2" \
-    "resampy>=0.3.1" \
-    "scipy>=1.14.0" \
-    "pyyaml>=6.0.0" \
-    "pydantic-settings>=2.7.1" \
-    "datasets>=2.20.0" \
-    "peft==0.11.1" \
-    "tqdm>=4.66.4" \
-    "click>=8.1.7"
+  if [[ "${BEANS_NEXT_SKIP_NATURELM_RUNTIME_INSTALL:-0}" != "1" ]]; then
+    # Install NatureLM-audio itself (without letting it re-resolve torch).
+    # Then install a minimal set of runtime deps it expects.
+    uv pip install --python "$UV_PROJECT_ENVIRONMENT" --no-deps -e "$NATURELM_CODE_DIR"
+    uv pip install --python "$UV_PROJECT_ENVIRONMENT" \
+      "cloudpathlib[gs]>=0.20.0" \
+      "einops>=0.8.0" \
+      "librosa>=0.9.2" \
+      "resampy>=0.3.1" \
+      "scipy>=1.14.0" \
+      "pyyaml>=6.0.0" \
+      "pydantic-settings>=2.7.1" \
+      "datasets>=2.20.0" \
+      "peft==0.11.1" \
+      "tqdm>=4.66.4" \
+      "click>=8.1.7"
 
-  # beans-zero is referenced by NatureLM-audio (install via https to avoid ssh).
-  uv pip install --python "$UV_PROJECT_ENVIRONMENT" \
-    "beans-zero @ git+https://github.com/earthspecies/beans-zero.git@31d4487ee6452ae6c31853d45fd38b7d4150372d"
+    # beans-zero is referenced by NatureLM-audio (install via https to avoid ssh).
+    uv pip install --python "$UV_PROJECT_ENVIRONMENT" \
+      "beans-zero @ git+https://github.com/earthspecies/beans-zero.git@31d4487ee6452ae6c31853d45fd38b7d4150372d"
+  else
+    echo "BEANS_NEXT_SKIP_NATURELM_RUNTIME_INSTALL=1; using staged runtime"
+  fi
 else
   echo "NatureLM v1.0 stub mode selected (NATURELM_V1_0_STUB=1)."
   if [[ "${BEANS_NEXT_SKIP_UV_SYNC:-0}" != "1" ]]; then
@@ -177,7 +186,7 @@ else
     exit 1
   fi
 fi
-PORT="$PORT" URL_FILE="$URL_FILE" uv run --python "$UV_PROJECT_ENVIRONMENT" python - <<'PY'
+PORT="$PORT" URL_FILE="$URL_FILE" "$UV_PROJECT_ENVIRONMENT/bin/python" - <<'PY'
 import os
 import signal
 import socket

@@ -1,0 +1,51 @@
+{
+  "schema_version": "beans_next.gaussian_noise_run_ledger.v1",
+  "dataset_revision": "eee57626950ffa95a76e39c87a1de46b113dce4c",
+  "beans_zero_revision": "e9e45ffff7500867c885ef74c245c07e66677084",
+  "protocol_version": "beans-next.gaussian-noise.v1",
+  "global_seed": 0,
+  "rms_dbfs": -20,
+  "remote_root": "/gpfs/scratch/acw777/beans-next-gaussian",
+  "full_runs": [
+    {
+      "model": "NatureLM-audio v1.0",
+      "model_revision": "77855d9b0acd039f90798dcf0861f626bfefbd6f",
+      "code_commit": "e16adb39fd69e4f2c596899663c01f043227e374",
+      "real_job": 25087865,
+      "noise_job": 25087864,
+      "real_output": "results/naturelm-v1.0/full-real/job_25087865",
+      "noise_output": "results/naturelm-v1.0/full-noise/job_25087864",
+      "attempted_per_condition": 56637,
+      "errors_per_condition": 0
+    },
+    {
+      "model": "Qwen3-Omni-30B-A3B-Instruct",
+      "model_revision": "26291f793822fb6be9555850f06dfe95f2d7e695",
+      "code_commit": "d663995c5ed68bb8a0ad41eb365a95f7c41f69dd",
+      "real_job": 25119166,
+      "noise_job": 25119163,
+      "real_output": "results/qwen3-omni/full-real/job_25119166",
+      "noise_output": "results/qwen3-omni/full-noise/job_25119163",
+      "attempted_per_condition": 56637,
+      "errors_per_condition": 0
+    },
+    {
+      "model": "Audio Flamingo NeXT",
+      "model_revision": "5634886e2615c2f587dcf8b93c6edfe9907930ca",
+      "code_commit": "3891d8622a667bb88fbbb60453d711dca6cf03ae",
+      "real_job": 25240833,
+      "noise_job": 25240829,
+      "real_output": "results/audio-flamingo-next/full-real/job_25240833",
+      "noise_output": "results/audio-flamingo-next/full-noise/job_25240829",
+      "attempted_per_condition": 56637,
+      "errors_per_condition": 1,
+      "paired_error_sample": "t2-captioning:001778",
+      "paired_error_reason": "The 16-ms source clip is shorter than the model processor minimum."
+    }
+  ],
+  "pilots_and_superseded_runs": [
+    {"job": 25096759, "purpose": "Qwen smoke, BEANS-Zero, sensitivity, and throughput pilot", "status": "passed"},
+    {"job": 25198518, "purpose": "Audio Flamingo 30/60/120-second boundary pilot", "status": "passed"},
+    {"jobs": [25087866, 25087867, 25119844, 25119847, 25128278, 25128296, 25136898, 25136902], "purpose": "superseded Audio Flamingo attempts", "status": "invalid; excluded from analysis"}
+  ]
+}

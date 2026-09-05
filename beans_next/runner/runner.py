@@ -8,6 +8,7 @@ import importlib.metadata
 import json
 import logging
 import os
+import subprocess
 import sys
 import time
 from argparse import Namespace
@@ -36,6 +37,7 @@ from beans_next.api.types import (
     ScoredPrediction,
     TokenUsage,
 )
+from beans_next.audio.gaussian_noise import GaussianNoiseConfig
 from beans_next.cache.two_layer import TwoLayerRunCache, scoring_cache_key
 from beans_next.judges.scorer import JudgeScorer
 from beans_next.models.http import HttpClient
@@ -84,8 +86,7 @@ class _MetricsScoreSampleFn(Protocol):
         post: PostProcessResult,
         raw_predictions: list[str],
         task_type: str | None = None,
-    ) -> Mapping[str, float]:
-        ...
+    ) -> Mapping[str, float]: ...
 
 
 _DEFAULT_WIRE_SAMPLE_RATE_HZ: int = 16_000
@@ -162,6 +163,67 @@ def _package_version() -> str:
         return importlib.metadata.version("beans-next")
     except importlib.metadata.PackageNotFoundError:
         return "0.0.0"
+
+
+def _code_git_sha() -> str | None:
+    """Return the explicitly recorded or locally resolved source revision.
+
+    Returns
+    -------
+    str or None
+        Git commit SHA when it can be resolved.
+    """
+    recorded = os.environ.get("BEANS_NEXT_CODE_COMMIT", "").strip()
+    if recorded:
+        return recorded
+    try:
+        return (
+            subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=5,
+            ).stdout.strip()
+            or None
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+def _gaussian_noise_config(
+    args: Namespace,
+    eval_task: Mapping[str, Any] | None = None,
+) -> GaussianNoiseConfig | None:
+    """Build the explicit noise protocol only when that modality is selected.
+
+    Returns
+    -------
+    GaussianNoiseConfig or None
+        Noise configuration for Gaussian-noise mode, otherwise ``None``.
+    """
+    if getattr(args, "modality_mode", "audio") != "gaussian-noise":
+        return None
+    task = eval_task or {}
+    dataset_revision = str(
+        getattr(args, "hf_revision", None) or task.get("revision") or "main"
+    )
+    kwargs: dict[str, Any] = {
+        "dataset_revision": dataset_revision,
+        "global_seed": int(getattr(args, "gaussian_noise_seed", 0)),
+        "protocol_version": str(
+            getattr(
+                args,
+                "gaussian_noise_protocol_version",
+                "beans-next.gaussian-noise.v1",
+            )
+        ),
+        "rms_dbfs": float(getattr(args, "gaussian_noise_rms_dbfs", -20.0)),
+    }
+    cache_dir = getattr(args, "gaussian_noise_cache_dir", None)
+    if cache_dir is not None:
+        kwargs["cache_dir"] = Path(cache_dir).expanduser().resolve()
+    return GaussianNoiseConfig(**kwargs)
 
 
 def _wire_sample_rate_hz(audio: ModelRequest) -> int:
@@ -553,6 +615,14 @@ class BenchmarkRunner:
                 _logger.info("Uploaded %d artifact(s) to GCS", len(uploaded))
             return summary
         finally:
+            write_noise_manifest = getattr(
+                self._renderer, "write_gaussian_noise_manifest", None
+            )
+            if callable(write_noise_manifest):
+                write_noise_manifest(
+                    out / "gaussian_noise_manifest.json",
+                    code_commit=self._config.code_git_sha,
+                )
             if _pool is not None:
                 _pool.shutdown(wait=True)
             if run_cache is not None:
@@ -650,9 +720,7 @@ class BenchmarkRunner:
                 for tid, scores in zip(scored_task_ids, scored_scores, strict=True):
                     buckets.setdefault(tid, []).append(scores)
                 per_task = {
-                    (tid if tid is not None else "default"): aggregate_score_means(
-                        rows
-                    )
+                    (tid if tid is not None else "default"): aggregate_score_means(rows)
                     for tid, rows in sorted(
                         buckets.items(),
                         key=lambda kv: (kv[0] is None, kv[0] or ""),
@@ -962,9 +1030,7 @@ class BenchmarkRunner:
     ) -> RunSummary:
         means = aggregate_score_means(score_rows)
         means.update(
-            compute_dataset_level_metrics(
-                processed_pairs or [], self._config.task_type
-            )
+            compute_dataset_level_metrics(processed_pairs or [], self._config.task_type)
         )
         per_task = per_task_score_means(rows, score_rows) if rows else {}
         prompt_v = self._config.prompt_version or self._renderer_prompt_id()
@@ -1337,9 +1403,7 @@ def _prompt_spec_from_eval_task(
     )
 
     if getattr(args, "prompt_yaml", None):
-        spec = load_prompt_spec_from_path(
-            Path(args.prompt_yaml).expanduser().resolve()
-        )
+        spec = load_prompt_spec_from_path(Path(args.prompt_yaml).expanduser().resolve())
         return spec
     prompt_key = (
         eval_task.get("prompt_yaml")
@@ -1419,6 +1483,25 @@ def _beans_zero_max_length_seconds_for_subset(subset: str) -> int | None:
     return iv if iv > 0 else None
 
 
+def _exclude_requested_sample_ids(
+    examples: list[DatasetExample], *, args: Namespace
+) -> list[DatasetExample]:
+    """Remove explicitly documented sample ids from an evaluation task.
+
+    Returns
+    -------
+    list[DatasetExample]
+        Input examples whose exact sample ids were not requested for exclusion.
+    """
+    raw_ids = getattr(args, "exclude_sample_id", None) or []
+    excluded = {
+        str(sample_id).strip() for sample_id in raw_ids if str(sample_id).strip()
+    }
+    if not excluded:
+        return examples
+    return [example for example in examples if example.sample_id not in excluded]
+
+
 def _load_examples_for_eval_task(
     eval_task: Mapping[str, Any], *, args: Namespace
 ) -> list[DatasetExample]:
@@ -1459,7 +1542,7 @@ def _load_examples_for_eval_task(
     if data_source == "hf":
         data_source = "huggingface"
     modality_mode = str(getattr(args, "modality_mode", "audio") or "audio")
-    load_audio = modality_mode == "audio"
+    load_audio = modality_mode in {"audio", "gaussian-noise"}
 
     hf_path = cast(
         str,
@@ -1648,9 +1731,7 @@ def _load_examples_for_eval_task(
                 "huggingface backend requires a non-empty `subset` in the eval task."
             )
         revision = str(
-            getattr(args, "hf_revision", None)
-            or eval_task.get("revision")
-            or "main"
+            getattr(args, "hf_revision", None) or eval_task.get("revision") or "main"
         )
         # BEANS-Next on Hugging Face is a single-table Parquet dataset. We treat the
         # benchmark split as "test" by default (older configs sometimes used
@@ -1706,11 +1787,7 @@ def _load_examples_for_eval_task(
         revision=(
             str(args.hf_revision)
             if getattr(args, "hf_revision", None)
-            else (
-                str(eval_task.get("revision"))
-                if eval_task.get("revision")
-                else None
-            )
+            else (str(eval_task.get("revision")) if eval_task.get("revision") else None)
         ),
         task_id=task_id,
         row_filter=row_filter,
@@ -2010,9 +2087,8 @@ def run_from_cli_namespace(args: Namespace) -> None:
     """
     config_path = getattr(args, "config", None)
     run_id = (
-        (getattr(args, "run_id", None) or "beans-next-cli").strip()
-        or "beans-next-cli"
-    )
+        getattr(args, "run_id", None) or "beans-next-cli"
+    ).strip() or "beans-next-cli"
     raw_workers = getattr(args, "workers", 1)
     try:
         workers = max(1, int(raw_workers))
@@ -2095,9 +2171,7 @@ def run_from_cli_namespace(args: Namespace) -> None:
             loaded_plan = loaded.plan
 
         cfg_run_id = (
-            loaded.config.run_id
-            or getattr(args, "run_id", None)
-            or "beans-next-config"
+            loaded.config.run_id or getattr(args, "run_id", None) or "beans-next-config"
         )
         cfg_run_id = str(cfg_run_id).strip() or "beans-next-config"
         run_id = cfg_run_id
@@ -2157,8 +2231,9 @@ def run_from_cli_namespace(args: Namespace) -> None:
                     task_cfg.setdefault("eval_task_id", eval_task_id)
 
                     try:
-                        examples = _load_examples_for_eval_task(
-                            task_cfg, args=args_for_tasks
+                        examples = _exclude_requested_sample_ids(
+                            _load_examples_for_eval_task(task_cfg, args=args_for_tasks),
+                            args=args_for_tasks,
                         )
                     except ImportError as exc:
                         raise SystemExit(str(exc)) from exc
@@ -2175,7 +2250,13 @@ def run_from_cli_namespace(args: Namespace) -> None:
                     )
                     spec = _prompt_spec_from_eval_task(task_cfg, args=args_for_tasks)
                     modality_mode = getattr(args_for_tasks, "modality_mode", "audio")
-                    renderer = PromptRenderer(spec, modality_mode=modality_mode)
+                    renderer = PromptRenderer(
+                        spec,
+                        modality_mode=modality_mode,
+                        gaussian_noise_config=_gaussian_noise_config(
+                            args_for_tasks, task_cfg
+                        ),
+                    )
                     task_run_id = f"{run_id}__{model.name}__{eval_task_id}"
                     out_dir = (base_out / model.name / eval_task_id).resolve()
                     out_dir.mkdir(parents=True, exist_ok=True)
@@ -2190,6 +2271,7 @@ def run_from_cli_namespace(args: Namespace) -> None:
                         task_type=task_cfg.get("task_type") or None,
                         prompt_version=f"{spec.prompt_id}:{modality_mode}",
                         seed=int(getattr(args_for_tasks, "seed", 0) or 0),
+                        code_git_sha=_code_git_sha(),
                         gcs_upload_prefix=(
                             f"{_gcs_base}/{task_run_id}" if _upload_gcs else None
                         ),
@@ -2284,7 +2366,9 @@ def run_from_cli_namespace(args: Namespace) -> None:
             else:
                 single_task_cfg = {}
             try:
-                examples = _load_examples_for_eval_task(single_task_cfg, args=args)
+                examples = _exclude_requested_sample_ids(
+                    _load_examples_for_eval_task(single_task_cfg, args=args), args=args
+                )
             except ImportError as exc:
                 raise SystemExit(str(exc)) from exc
             if not examples:
@@ -2299,7 +2383,11 @@ def run_from_cli_namespace(args: Namespace) -> None:
             spec = _prompt_spec_from_eval_task(single_task_cfg, args=args)
 
             modality_mode = getattr(args, "modality_mode", "audio")
-            renderer = PromptRenderer(spec, modality_mode=modality_mode)
+            renderer = PromptRenderer(
+                spec,
+                modality_mode=modality_mode,
+                gaussian_noise_config=_gaussian_noise_config(args, single_task_cfg),
+            )
             cfg = RunnerConfig(
                 output_dir=base_out,
                 run_id=run_id,
@@ -2313,10 +2401,9 @@ def run_from_cli_namespace(args: Namespace) -> None:
                 or None,
                 prompt_version=f"{spec.prompt_id}:{modality_mode}",
                 seed=int(getattr(args, "seed", 0) or 0),
+                code_git_sha=_code_git_sha(),
                 gcs_upload_prefix=f"{_gcs_base}/{run_id}" if _upload_gcs else None,
-                preserve_file_paths=bool(
-                    getattr(args, "preserve_file_paths", False)
-                ),
+                preserve_file_paths=bool(getattr(args, "preserve_file_paths", False)),
             )
             judge = _judge_from_args_and_task(args, single_task_cfg)
             runner = BenchmarkRunner(client, renderer, cfg, judge=judge)
@@ -2339,7 +2426,9 @@ def run_from_cli_namespace(args: Namespace) -> None:
 
             # Load examples (limit applies per task).
             try:
-                examples = _load_examples_for_eval_task(task_cfg, args=args)
+                examples = _exclude_requested_sample_ids(
+                    _load_examples_for_eval_task(task_cfg, args=args), args=args
+                )
             except ImportError as exc:
                 raise SystemExit(str(exc)) from exc
             if not examples:
@@ -2355,7 +2444,11 @@ def run_from_cli_namespace(args: Namespace) -> None:
             )
             spec = _prompt_spec_from_eval_task(task_cfg, args=args)
             modality_mode = getattr(args, "modality_mode", "audio")
-            renderer = PromptRenderer(spec, modality_mode=modality_mode)
+            renderer = PromptRenderer(
+                spec,
+                modality_mode=modality_mode,
+                gaussian_noise_config=_gaussian_noise_config(args, task_cfg),
+            )
             task_run_id = f"{run_id}__{eval_task_id}"
             out_dir = (suite_out / eval_task_id).resolve()
             cfg = RunnerConfig(
@@ -2369,12 +2462,11 @@ def run_from_cli_namespace(args: Namespace) -> None:
                 task_type=task_cfg.get("task_type") or None,
                 prompt_version=f"{spec.prompt_id}:{modality_mode}",
                 seed=int(getattr(args, "seed", 0) or 0),
+                code_git_sha=_code_git_sha(),
                 gcs_upload_prefix=(
                     f"{_gcs_base}/{task_run_id}" if _upload_gcs else None
                 ),
-                preserve_file_paths=bool(
-                    getattr(args, "preserve_file_paths", False)
-                ),
+                preserve_file_paths=bool(getattr(args, "preserve_file_paths", False)),
             )
             judge = _judge_from_args_and_task(args, task_cfg)
             runner = BenchmarkRunner(client, renderer, cfg, judge=judge)

@@ -197,6 +197,33 @@ def test_af3_stub_mode_conforms() -> None:
     )
 
 
+def test_af3_drops_only_zero_token_trailing_window() -> None:
+    """AF-Next drops a sub-three-frame tail but keeps valid trailing audio."""
+    import numpy as np
+
+    from examples.servers.af3.serve import _drop_zero_token_audio_tail
+
+    window_size = 480_000
+    unsafe = np.zeros(window_size * 2 + 319, dtype=np.float32)
+    safe = np.zeros(window_size * 2 + 480, dtype=np.float32)
+    short = np.zeros(319, dtype=np.float32)
+
+    trimmed = _drop_zero_token_audio_tail(
+        unsafe, window_size=window_size, min_tail_samples=480
+    )
+    assert trimmed.shape == (window_size * 2,)
+    assert (
+        _drop_zero_token_audio_tail(safe, window_size=window_size, min_tail_samples=480)
+        is safe
+    )
+    assert (
+        _drop_zero_token_audio_tail(
+            short, window_size=window_size, min_tail_samples=480
+        )
+        is short
+    )
+
+
 def test_audex_stub_mode_conforms() -> None:
     _run_launcher_conformance(
         app="examples.servers.audex.serve:app",
