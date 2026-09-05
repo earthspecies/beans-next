@@ -4,6 +4,8 @@ beans_next_multiaudio_unseen_species_4way:
   dataset: beans_next_multiaudio
   subset: unseen-species-4way
   split: unseen-species-4way
-  prompt: beans_next_multiaudio_query_only_v1
+  prompt: beans_next_multiaudio_passthrough_v1
+  generation_config:
+    max_length_seconds: 10
   metrics:
     - name: accuracy
