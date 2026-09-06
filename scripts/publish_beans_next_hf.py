@@ -46,6 +46,7 @@ import json
 import os
 import subprocess
 import sys
+import uuid
 from collections.abc import Iterable, Mapping
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -219,10 +220,19 @@ def _stage_one(
     sha = hashlib.sha256(wav).hexdigest()
     dest = out_dir / "test" / "audio" / sha[:2] / f"{sha}.wav"
     if not dest.exists():
+        # Distinct source files can decode to identical bytes and therefore
+        # share a hash, so several workers may stage the same destination at
+        # once. Give each attempt its own temp name: with a shared one the
+        # first `os.replace` moves the file out from under the others, which
+        # then die with FileNotFoundError and take the whole pool down.
         dest.parent.mkdir(parents=True, exist_ok=True)
-        tmp = dest.with_suffix(".wav.tmp")
-        tmp.write_bytes(wav)
-        os.replace(tmp, dest)
+        tmp = dest.with_name(f"{sha}.{uuid.uuid4().hex}.tmp")
+        try:
+            tmp.write_bytes(wav)
+            os.replace(tmp, dest)  # atomic; content is identical either way
+        finally:
+            if tmp.exists():
+                tmp.unlink()
     return uri, sha, None
 
 
@@ -252,10 +262,25 @@ def stage_audio(
     sha_by_uri: dict[str, str] = {}
     errors: dict[str, str] = {}
     done = 0
+
+    def _safe(uri: str) -> tuple[str, str | None, str | None]:
+        """Stage one file, converting any unexpected error into a result row.
+
+        A raised exception inside `ThreadPoolExecutor.map` aborts the whole
+        run, discarding work already done, so failures are reported per file.
+
+        Returns
+        -------
+        tuple of (str, str or None, str or None)
+            As :func:`_stage_one`, with unexpected errors in the third slot.
+        """
+        try:
+            return _stage_one(uri, out_dir, token)
+        except Exception as exc:  # noqa: BLE001 - recorded, never fatal
+            return uri, None, f"{type(exc).__name__}: {exc}"
+
     with ThreadPoolExecutor(max_workers=workers) as pool:
-        for uri, sha, err in pool.map(
-            lambda u: _stage_one(u, out_dir, token), todo
-        ):
+        for uri, sha, err in pool.map(_safe, todo):
             done += 1
             if sha is not None:
                 sha_by_uri[uri] = sha
