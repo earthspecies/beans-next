@@ -44,7 +44,7 @@ beans-next run --suite beans_zero_esc50_official --predict-url http://localhost:
 |---|---|---:|---:|---|---:|---|
 | `openai_compatible_proxy` | **Yes-ish** (OpenAI-compat multimodal content parts) | **Yes** (multiple `audio_inputs`) | **Yes** (placeholder replacement; fallback append) | Accept `payloads` and convert to the same internal `audio_inputs` / audio content parts | Low | **implement** |
 | `vllm` adapter (OpenAI-compat upstream) | **Maybe** (depends on upstream model + OpenAI-compat variant) | **Yes** (multiple `audio_inputs`) | **No (today)** (does not replace placeholders; always attaches to last user) | Accept `payloads`; optionally add placeholder-aware injection to align with `<AudioHere>` | Medium | **implement** |
-| `af3` (Audio Flamingo Next) | **No** (processor is one-audio-per-conversation; see 2026-09-06 note) | **Yes** (accepts multiple `audio_inputs`, but the processor then rejects them) | Launcher splits on placeholder correctly; the **model processor** raises `Got 1 text but N audios; they must match 1:1` | Would need upstream processor support for N audios in one conversation | High | **skip/document** |
+| `af3` (Audio Flamingo Next) | **Yes** (trained for it: "1M multi-audio instruction examples"; canonical form is one audio per conversation turn) | **Yes** | Launcher currently packs every clip into ONE turn, which the chat template renders as a single `<sound>` - four of five audios are silently dropped | Emit the canonical multi-turn shape; then only an over-strict `validate_inputs` batch-parity check blocks it (upstream bug) | Medium | **fix launcher + report upstream** |
 | `naturelm-v1.0` | **No** (effective single-audio input per request) | **Stub: yes** / **Real: no** (uses `audio_inputs[0]`) | **No** (real inference ignores >1) | Either hard-reject multi-audio (len!=1) or implement a lossy “mix/concat to one waveform” policy | High | **skip/document** |
 | `naturelm-v1.1` | **No** (explicit single-audio enforcement) | **Stub: yes** / **Real: no** (rejects len!=1) | **No** (real inference returns error on >1) | Same as v1.0; would require upstream/model redesign or lossy merge | High | **skip/document** |
 | `dummy` | N/A | **Yes** (accepts list; hashes metadata) | N/A | Accept `payloads` and fold into existing deterministic stub metadata | Low | **implement** |
@@ -65,50 +65,31 @@ beans-next run --suite beans_zero_esc50_official --predict-url http://localhost:
 - **Minimal change to support Option A `payloads`**
   - Extend request schema for this launcher to accept `payloads` (list of `{payload_type, payload}`) in addition to existing `audio_inputs` (or replace `audio_inputs` with a compatibility layer).
   - Convert `payloads` into the same internal list used today (conceptually identical to `audio_inputs`) and reuse existing placeholder-count validation + `_inject_audio_items`.
-- **Hard limitations (upstream interface)**
-  - OpenAI-compatible upstream support varies:
-    - Some upstreams accept multiple `input_audio` parts; others accept only one or apply strict size/time limits.
-  - This launcher also enforces `base64_wav` in proxy mode, so multi-audio via file paths/URLs would require additional server-side fetch/decode logic (or runner-side base64 encode).
+- **Multi-audio support (re-tested 2026-09-06, superseding an earlier wrong entry)**
+  - The AF-Next paper states the model was trained "to enable reasoning over multiple audio inputs …
+    interleaved audio-text instruction following" on "multi-turn, multi-audio conversational data", and the
+    model card lists "1M multi-audio instruction examples". The capability is real.
+  - The **canonical form is one audio per conversation turn**, matching the checkpoint's own system prompt
+    ("On each turn you receive an optional audio clip"). Probing `AutoProcessor` directly:
 
-### `vllm` adapter (`examples/servers/vllm/adapter.py`)
+    | conversation shape | `<sound>` tokens rendered | result |
+    | --- | --- | --- |
+    | one turn carrying 5 audios | 1 | 4 audios silently dropped |
+    | 5 turns, 1 audio each | 5 | blocked only by `validate_inputs` |
+    | 5 consecutive user turns | 5 | blocked only by `validate_inputs` |
+    | batch of 5 conversations | 5 | works, but they are independent - not in-context |
 
-- **Current support for multiple audio payloads per item**
-  - Accepts `audio_inputs: list[HttpAudioInput]` and converts each to an audio content part (`input_audio` or `audio_url` via env `VLLM_AUDIO_CONTENT_FORMAT`).
-- **How it maps `<AudioHere>` today**
-  - It **does not** parse or replace `<Audio><AudioHere></Audio>` within message text.
-  - Instead, it attaches audio parts to the last user message content (and **prepends audio before text**), regardless of placeholder positions.
-- **Minimal change to support Option A `payloads`**
-  - Accept `payloads` and convert each entry into an audio content part as it does for `audio_inputs`.
-  - If strict `<AudioHere>` alignment is required for MultiAudio prompts, add placeholder-aware injection similar to the OpenAI proxy (split message string by placeholder and splice audio parts at those positions).
-- **Hard limitations (upstream interface)**
-  - Multi-audio support depends on:
-    - vLLM OpenAI-compat support for multimodal content for the chosen model,
-    - the model’s own instruction-tuning expectations (some may implicitly assume one audio).
-  - Adapter already allows modality config (`VLLM_OUTPUT_MODALITIES`) and may be constrained by upstream’s validation of content parts.
-
-### `af3` (`examples/servers/af3/serve.py`)
-
-- **Current support for multiple audio payloads per item**
-  - Accepts `audio_inputs: list[HttpAudioInput]`; in real mode it resolves each entry to a local WAV file path (decoding base64/download URL into a temp dir).
-- **How it maps `<AudioHere>` today**
-  - Splits each message content on **`<Audio><AudioHere></Audio>`** and inserts `{"type": "audio", "path": ...}` content items sequentially.
-  - If there are **extra audio inputs** beyond placeholders, it appends them to a target user message content.
-- **Minimal change to support Option A `payloads`**
-  - Add `payloads` support and feed it through the same resolution path used by `_resolve_audio_path`, producing `audio_paths`.
-  - Reuse `_build_conversation` for placeholder placement; keep current fallback of appending extras.
-- **Hard limitations (upstream interface)**
-  - AF-Next uses audio file paths in its processor chat template. This section previously assumed that
-    "is compatible with multiple audio segments as long as the processor/model supports multiple audio
-    items", and that the practical limit was request size / GPU memory. **That assumption was tested on
-    2026-09-06 against `nvidia/audio-flamingo-next-hf` and is false.**
-  - `_processor.apply_chat_template` raises `Got 1 text but N audios; they must match 1:1` for every
-    multi-audio conversation shape tried: one message with interleaved text/audio, five messages each
-    carrying one audio, and one message with all placeholders appended. A single-audio request on the
-    same server succeeds, so this is a processor constraint, not a launcher bug.
-  - The processor appears to pair one audio with one conversation (batch-style), so N audios in a single
-    conversation is not expressible. AF3 therefore **cannot run `beans_next_tier4`** and belongs in the
-    same category as NatureLM v1.1 - though it fails loudly, which is preferable to v1.0's silent
-    truncation to `audio_inputs[0]`.
+  - **Our launcher builds the first shape**, so even without the validation error it would show the model a
+    single clip. `_build_conversation` must emit one turn per clip instead.
+  - The remaining blocker is an upstream bug, not a model limit: `validate_inputs` raises
+    `Got 1 text but N audios; they must match 1:1`, comparing *batch size* to audio count. It rejects a
+    conversation the same library's chat template just produced. With only that assertion neutralised, the
+    multi-turn conversation processes correctly - `input_features` (5, 128, 3000), `input_ids` 135 -> 307
+    with 125 `<sound>` positions expanded and none left over, exactly the per-clip duration-based expansion
+    the paper describes. Everything downstream of the check already works.
+  - Report upstream (no existing issue found; the check likely arrived with transformers PR #45493, which
+    modularised `ProcessorMixin` and converted the AudioFlamingo processors). NatureLM v1.0's silent
+    truncation to `audio_inputs[0]` remains the more dangerous case, since it fails quietly.
 
 ### `naturelm-v1.0` (`examples/servers/naturelm-v1.0/serve.py`)
 

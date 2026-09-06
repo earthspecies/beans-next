@@ -8,12 +8,21 @@ beans_next_tier4:
     bound to its own clip. Each clip is capped at 10 s.
 
     Requires a launcher AND a model that accept several audios in one request.
-    Verified working: the vllm adapter with Qwen3-Omni. Verified NOT working:
-    af3 (its processor raises `Got 1 text but N audios; they must match 1:1`
-    for every conversation shape), NatureLM v1.1 (rejects len != 1) and
-    NatureLM v1.0 (silently keeps `audio_inputs[0]`, which for tier 4 is
-    option A's clip rather than the query - it would return confident-looking
-    predictions having never heard the query audio).
+    Verified working: the vllm adapter with Qwen3-Omni.
+
+    af3 (Audio Flamingo Next) is trained for this - the paper describes
+    interleaved audio-text, multi-turn multi-audio data - but its canonical
+    form is one audio per conversation turn, and our launcher currently packs
+    every clip into a single turn, which the chat template renders as one
+    `<sound>` placeholder while silently dropping the rest. Fixing that leaves
+    one upstream bug: `validate_inputs` compares batch size to audio count and
+    raises `Got 1 text but N audios; they must match 1:1`. See
+    docs/beans_next_multiaudio_decisions.md.
+
+    NatureLM cannot run this suite at all: v1.1 rejects len != 1, and v1.0
+    silently keeps `audio_inputs[0]`, which for tier 4 is option A's clip
+    rather than the query - it would return confident-looking predictions
+    having never heard the query audio.
 
     Single-audio models should use `beans_next_tier_4_hf` instead, whose
     query-only reformulation drops the support audio and is therefore near
