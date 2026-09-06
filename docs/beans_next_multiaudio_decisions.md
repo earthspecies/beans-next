@@ -44,7 +44,7 @@ beans-next run --suite beans_zero_esc50_official --predict-url http://localhost:
 |---|---|---:|---:|---|---:|---|
 | `openai_compatible_proxy` | **Yes-ish** (OpenAI-compat multimodal content parts) | **Yes** (multiple `audio_inputs`) | **Yes** (placeholder replacement; fallback append) | Accept `payloads` and convert to the same internal `audio_inputs` / audio content parts | Low | **implement** |
 | `vllm` adapter (OpenAI-compat upstream) | **Maybe** (depends on upstream model + OpenAI-compat variant) | **Yes** (multiple `audio_inputs`) | **No (today)** (does not replace placeholders; always attaches to last user) | Accept `payloads`; optionally add placeholder-aware injection to align with `<AudioHere>` | Medium | **implement** |
-| `af3` (Audio Flamingo Next) | **Yes** (conversation supports multiple audio items) | **Yes** (multiple `audio_inputs`) | **Yes** (splits on placeholder, inserts audio paths, appends extras) | Accept `payloads` and resolve to audio paths list (same flow as current `audio_inputs`) | Low | **implement** |
+| `af3` (Audio Flamingo Next) | **No** (processor is one-audio-per-conversation; see 2026-09-06 note) | **Yes** (accepts multiple `audio_inputs`, but the processor then rejects them) | Launcher splits on placeholder correctly; the **model processor** raises `Got 1 text but N audios; they must match 1:1` | Would need upstream processor support for N audios in one conversation | High | **skip/document** |
 | `naturelm-v1.0` | **No** (effective single-audio input per request) | **Stub: yes** / **Real: no** (uses `audio_inputs[0]`) | **No** (real inference ignores >1) | Either hard-reject multi-audio (len!=1) or implement a lossy “mix/concat to one waveform” policy | High | **skip/document** |
 | `naturelm-v1.1` | **No** (explicit single-audio enforcement) | **Stub: yes** / **Real: no** (rejects len!=1) | **No** (real inference returns error on >1) | Same as v1.0; would require upstream/model redesign or lossy merge | High | **skip/document** |
 | `dummy` | N/A | **Yes** (accepts list; hashes metadata) | N/A | Accept `payloads` and fold into existing deterministic stub metadata | Low | **implement** |
@@ -97,8 +97,18 @@ beans-next run --suite beans_zero_esc50_official --predict-url http://localhost:
   - Add `payloads` support and feed it through the same resolution path used by `_resolve_audio_path`, producing `audio_paths`.
   - Reuse `_build_conversation` for placeholder placement; keep current fallback of appending extras.
 - **Hard limitations (upstream interface)**
-  - AF-Next uses audio file paths in its processor chat template; this is compatible with multiple audio segments as long as the processor/model supports multiple audio items in the conversation.
-  - Practical limitation is likely request size / GPU memory rather than strict API constraints.
+  - AF-Next uses audio file paths in its processor chat template. This section previously assumed that
+    "is compatible with multiple audio segments as long as the processor/model supports multiple audio
+    items", and that the practical limit was request size / GPU memory. **That assumption was tested on
+    2026-09-06 against `nvidia/audio-flamingo-next-hf` and is false.**
+  - `_processor.apply_chat_template` raises `Got 1 text but N audios; they must match 1:1` for every
+    multi-audio conversation shape tried: one message with interleaved text/audio, five messages each
+    carrying one audio, and one message with all placeholders appended. A single-audio request on the
+    same server succeeds, so this is a processor constraint, not a launcher bug.
+  - The processor appears to pair one audio with one conversation (batch-style), so N audios in a single
+    conversation is not expressible. AF3 therefore **cannot run `beans_next_tier4`** and belongs in the
+    same category as NatureLM v1.1 - though it fails loudly, which is preferable to v1.0's silent
+    truncation to `audio_inputs[0]`.
 
 ### `naturelm-v1.0` (`examples/servers/naturelm-v1.0/serve.py`)
 
