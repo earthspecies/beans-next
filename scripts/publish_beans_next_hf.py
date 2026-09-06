@@ -46,6 +46,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 import uuid
 from collections.abc import Iterable, Mapping
 from concurrent.futures import ThreadPoolExecutor
@@ -171,8 +172,9 @@ def _to_published_wav(raw: bytes, source_name: str) -> bytes:
     Raises
     ------
     ValueError
-        If the source could not be decoded.
-    """
+        If the source could not be decoded, propagated from the ffmpeg
+        fallback.
+    """  # noqa: DOC502 - ValueError reaches callers via _ffmpeg_to_wav
     if source_name.lower().endswith(".wav"):
         return raw
     import numpy as np
@@ -180,13 +182,64 @@ def _to_published_wav(raw: bytes, source_name: str) -> bytes:
 
     try:
         data, sr = sf.read(io.BytesIO(raw), dtype="float32", always_2d=True)
-    except Exception as exc:  # noqa: BLE001 - surfaced as ValueError below
-        msg = f"could not decode {source_name!r}"
-        raise ValueError(msg) from exc
+    except Exception:  # noqa: BLE001 - fall back to ffmpeg below
+        return _ffmpeg_to_wav(raw, source_name)
     mono = data.mean(axis=1) if data.shape[1] > 1 else data[:, 0]
     buf = io.BytesIO()
     sf.write(buf, np.asarray(mono, dtype="float32"), sr, format="WAV", subtype="PCM_16")
     return buf.getvalue()
+
+
+def _ffmpeg_to_wav(raw: bytes, source_name: str) -> bytes:
+    """Decode a source libsndfile cannot read, using a bundled ffmpeg.
+
+    Some files in the corpus are mislabelled containers -- AAC streams carrying
+    a `.mp3` extension -- and others are 320 kbps MP3 or ID3v2.4-tagged files
+    that libsndfile rejects. ffmpeg decodes all of them. This matters beyond
+    tidiness: for at least one of these files libsndfile does not always fail
+    loudly, it returns a fraction of a second of audio from a 585 KB file, so
+    falling back is safer than trusting a short read.
+
+    Parameters
+    ----------
+    raw
+        Source file bytes.
+    source_name
+        Source file name, used for error messages and the temp suffix.
+
+    Returns
+    -------
+    bytes
+        Mono PCM_16 WAV bytes at the source's native sample rate.
+
+    Raises
+    ------
+    ValueError
+        If ffmpeg is unavailable or could not decode the source.
+    """
+    try:
+        import imageio_ffmpeg
+
+        exe = imageio_ffmpeg.get_ffmpeg_exe()
+    except Exception as exc:  # noqa: BLE001 - reported as ValueError
+        msg = f"could not decode {source_name!r} (no ffmpeg available)"
+        raise ValueError(msg) from exc
+
+    suffix = Path(source_name).suffix or ".bin"
+    with tempfile.TemporaryDirectory(prefix="bn-hf-dec-") as tmpdir:
+        src = Path(tmpdir) / f"in{suffix}"
+        dst = Path(tmpdir) / "out.wav"
+        src.write_bytes(raw)
+        proc = subprocess.run(
+            [exe, "-v", "error", "-i", str(src), "-ac", "1",
+             "-c:a", "pcm_s16le", "-f", "wav", str(dst), "-y"],
+            capture_output=True,
+        )
+        if proc.returncode != 0 or not dst.exists() or dst.stat().st_size <= 44:
+            detail = proc.stderr.decode("utf-8", "replace").strip()[:120]
+            msg = f"could not decode {source_name!r} via ffmpeg: {detail}"
+            raise ValueError(msg)
+        return dst.read_bytes()
 
 
 def _stage_one(
