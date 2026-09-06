@@ -4,6 +4,7 @@ beans_next_v20260707m4afix_amphibian_presence:
   dataset: beans_next
   subset: v20260707m4afix-amphibian-presence
   split: v20260707m4afix-amphibian-presence
+  hf_subset: amphibian-presence
   prompt: classification_beans_zero_official_v1
   generation_config:
     max_length_seconds: 10

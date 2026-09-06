@@ -1510,12 +1510,22 @@ def _load_examples_for_eval_task(
         # Use eval task hf_path if set; else canonical BEANS-Next repo (not CLI hf-path
         # default EarthSpeciesProject/BEANS-Zero).
         repo_id = (eval_task.get("hf_path") or "").strip() or BEANS_NEXT_HUB_REPO_ID
-        subset_name = eval_task.get("subset") or split
+        # `subset` names the esp_data split, which is version-prefixed
+        # (e.g. "v20260823-alarm-call-presence"), while the Hub `task` column
+        # uses bare names ("alarm-call-presence"). `hf_subset` lets one eval
+        # task serve both backends instead of needing a parallel registry.
+        subset_name = eval_task.get("hf_subset") or eval_task.get("subset") or split
         if not isinstance(subset_name, str) or not subset_name.strip():
             raise SystemExit(
                 "huggingface backend requires a non-empty `subset` in the eval task."
             )
-        revision = str(eval_task.get("revision") or "main")
+        # Env override so a whole suite can be pointed at a candidate branch
+        # without editing every task definition.
+        revision = str(
+            os.environ.get("BEANS_NEXT_HF_REVISION", "").strip()
+            or eval_task.get("revision")
+            or "main"
+        )
         # BEANS-Next on Hugging Face is a single-table Parquet dataset. We treat the
         # benchmark split as "test" by default (older configs sometimes used
         # subset-named splits, and HF defaults can be "train" depending on the card).

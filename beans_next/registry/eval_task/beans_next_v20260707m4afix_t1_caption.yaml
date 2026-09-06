@@ -4,6 +4,7 @@ beans_next_v20260707m4afix_t1_caption:
   dataset: beans_next
   subset: v20260707m4afix-t1-caption
   split: v20260707m4afix-t1-caption
+  hf_subset: t1-caption
   prompt: classification_beans_zero_official_v1
   generation_config:
     max_length_seconds: 10

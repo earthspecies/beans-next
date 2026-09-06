@@ -4,6 +4,7 @@ beans_next_v20260707m4afix_mammal_presence:
   dataset: beans_next
   subset: v20260707m4afix-mammal-presence
   split: v20260707m4afix-mammal-presence
+  hf_subset: mammal-presence
   prompt: classification_beans_zero_official_v1
   generation_config:
     max_length_seconds: 10

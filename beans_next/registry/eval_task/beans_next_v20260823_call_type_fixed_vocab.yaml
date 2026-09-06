@@ -4,6 +4,7 @@ beans_next_v20260823_call_type_fixed_vocab:
   dataset: beans_next
   subset: v20260823-call-type-fixed-vocab
   split: v20260823-call-type-fixed-vocab
+  hf_subset: call-type-fixed-vocab
   prompt: classification_beans_zero_official_v1
   generation_config:
     max_length_seconds: 10

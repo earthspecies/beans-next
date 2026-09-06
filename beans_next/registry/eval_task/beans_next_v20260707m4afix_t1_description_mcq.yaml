@@ -4,6 +4,7 @@ beans_next_v20260707m4afix_t1_description_mcq:
   dataset: beans_next
   subset: v20260707m4afix-t1-description-mcq
   split: v20260707m4afix-t1-description-mcq
+  hf_subset: t1-description-mcq
   prompt: classification_beans_zero_official_v1
   generation_config:
     max_length_seconds: 10

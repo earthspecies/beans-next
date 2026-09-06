@@ -4,6 +4,7 @@ beans_next_v20260823_alarm_call_presence:
   dataset: beans_next
   subset: v20260823-alarm-call-presence
   split: v20260823-alarm-call-presence
+  hf_subset: alarm-call-presence
   prompt: classification_beans_zero_official_v1
   generation_config:
     max_length_seconds: 10

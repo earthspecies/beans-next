@@ -4,6 +4,7 @@ beans_next_v20260823_flight_call_presence:
   dataset: beans_next
   subset: v20260823-flight-call-presence
   split: v20260823-flight-call-presence
+  hf_subset: flight-call-presence
   prompt: classification_beans_zero_official_v1
   generation_config:
     max_length_seconds: 10

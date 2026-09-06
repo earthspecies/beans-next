@@ -4,6 +4,7 @@ beans_next_v20260707m4afix_bird_presence:
   dataset: beans_next
   subset: v20260707m4afix-bird-presence
   split: v20260707m4afix-bird-presence
+  hf_subset: bird-presence
   prompt: classification_beans_zero_official_v1
   generation_config:
     max_length_seconds: 10
