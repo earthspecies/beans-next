@@ -311,9 +311,26 @@ def stage_audio(
     """
     token = _access_token()
     todo = sorted(set(uris))
-    _log(f"staging {len(todo)} unique audio files with {workers} workers")
     sha_by_uri: dict[str, str] = {}
     errors: dict[str, str] = {}
+
+    # Reuse a previous run's map so rebuilding the metadata does not re-download
+    # tens of gigabytes. Entries are only trusted while their file is still on
+    # disk, so a pruned bundle re-stages rather than emitting dangling rows.
+    cache_path = out_dir / "staging_sha_map.json"
+    if cache_path.exists():
+        try:
+            cached = json.loads(cache_path.read_text())
+        except (OSError, ValueError):
+            cached = {}
+        for uri, sha in cached.items():
+            if (out_dir / "test" / "audio" / sha[:2] / f"{sha}.wav").exists():
+                sha_by_uri[uri] = sha
+        if sha_by_uri:
+            _log(f"reusing {len(sha_by_uri)} cached hashes from {cache_path.name}")
+        todo = [u for u in todo if u not in sha_by_uri]
+
+    _log(f"staging {len(todo)} audio files with {workers} workers")
     done = 0
 
     def _safe(uri: str) -> tuple[str, str | None, str | None]:
@@ -342,7 +359,52 @@ def stage_audio(
             if done % 500 == 0:
                 _log(f"  {done}/{len(todo)} staged ({len(errors)} failed)")
     _log(f"staged {len(sha_by_uri)}; {len(errors)} failed")
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    cache_path.write_text(json.dumps(sha_by_uri))
     return sha_by_uri, errors
+
+
+_LICENSE_MAP: dict[str, str] = {
+    "https://creativecommons.org/licenses/by-nc-sa/4.0/": "CC-BY-NC-SA-4.0",
+    "https://creativecommons.org/licenses/by-nc/4.0/": "CC-BY-NC-4.0",
+    "https://creativecommons.org/licenses/by-sa/4.0/": "CC-BY-SA-4.0",
+    "https://creativecommons.org/licenses/by/4.0/": "CC-BY-4.0",
+    "https://creativecommons.org/publicdomain/zero/1.0/": "CC0-1.0",
+    "cc-by-nc-sa-4.0": "CC-BY-NC-SA-4.0",
+    "cc-by-nc-4.0": "CC-BY-NC-4.0",
+    "cc-by-sa-4.0": "CC-BY-SA-4.0",
+    "cc-by-4.0": "CC-BY-4.0",
+    "cc0-1.0": "CC0-1.0",
+}
+
+
+def normalize_license(value: object) -> object:
+    """Map a licence string onto the release's SPDX-style short form.
+
+    Manifests carry a mix of bare URLs and lower-case identifiers; the
+    published table predominantly uses upper-case SPDX-like codes such as
+    `CC-BY-NC-4.0`. Unrecognised values are passed through untouched rather
+    than guessed at, since licence metadata should never be invented.
+
+    Parameters
+    ----------
+    value
+        Raw licence value from a manifest row.
+
+    Returns
+    -------
+    object
+        The normalised licence string, or `value` unchanged.
+    """
+    if not isinstance(value, str):
+        return value
+    key = value.strip()
+    mapped = _LICENSE_MAP.get(key) or _LICENSE_MAP.get(key.lower())
+    if mapped:
+        return mapped
+    if key.rstrip("/") + "/" in _LICENSE_MAP:
+        return _LICENSE_MAP[key.rstrip("/") + "/"]
+    return value
 
 
 def rows_from_manifest(
@@ -394,7 +456,7 @@ def rows_from_manifest(
                 "instruction_text": src.get("instruction_text"),
                 "output": src.get("output"),
                 "label": src.get("output"),
-                "license": src.get("license"),
+                "license": normalize_license(src.get("license")),
                 "source_dataset": src.get("source_dataset"),
                 "metadata": meta
                 if isinstance(meta, str) or meta is None
