@@ -8,11 +8,18 @@ pydantic==2.11.7
 # PyTorch: use the PyTorch cu124 index so the wheel matches the cluster driver
 # (see pyproject.toml [tool.uv]; prefer `uv sync --group gpu` in this directory).
 torch==2.5.1
-# NOTE: AF-Next (`nvidia/audio-flamingo-next-hf`) may require unreleased Transformers support.
-# The upstream model card documents a known-good fork branch for AudioFlamingoNext.
-transformers @ git+https://github.com/lashahub/transformers.git@205f8c852db63e03c4d05a0e28ceee25f80806da
+# AF-Next (`nvidia/audio-flamingo-next-hf`) needed an unreleased fork when this
+# launcher was written. Released Transformers now ships the model
+# (`AutoProcessor` resolves to `MusicFlamingoProcessor`), so we use the canonical
+# release rather than a personal fork -- results from a fork are hard to defend,
+# and the fork also inlines the multi-audio batch-parity check inside
+# `__call__`, where it cannot be corrected without reimplementing the whole
+# processing routine. Upstream keeps that check in `validate_inputs`, which the
+# launcher replaces with the correct placeholder/audio parity test (see
+# `_install_multi_audio_validation` in serve.py).
+transformers==5.16.1
 huggingface-hub>=1.5.0,<2.0
-accelerate>=0.27.0
+accelerate>=1.1.0
 soundfile>=0.12.1
 librosa>=0.11.0
 
