@@ -1,0 +1,24 @@
+# BEANS-Zero core — NatureLM-audio v1.5 qwen35 step 200000
+# (stage_2.5_v3_qwen35_32khz_v0.00/200000, Qwen3.5-9B, 32 kHz 2x-trick BEATs)
+#
+# Submit env:
+#   export NATURELM_LOCAL_CHECKPOINT_DIR=/home/$USER/checkpoints/naturelm-v1.5-qwen35/stage_2.5_v3_qwen35_32khz_v0.00/200000
+#   export NATURELM_SAMPLE_RATE=32000
+#   export ESP_RESEARCH_LOCAL_PATH=/home/$USER/esp-research-main
+
+models:
+  - inline:
+      name: "naturelm-v1.5-qwen35-200000"
+      description: "NatureLM v1.5 qwen35 stage_2.5_v3 step 200000 on beans-zero core"
+      predict_url: http://127.0.0.1:8001/predict
+      info_url: http://127.0.0.1:8001/info
+      health_url: http://127.0.0.1:8001/health
+      response_schema: predictions_v1
+      audio_payload: base64_wav
+      retry_policy:
+        max_attempts: 12
+        backoff_initial: 0.5
+        backoff_max: 10.0
+
+suite: beans_zero_core
+data_source: esp_data

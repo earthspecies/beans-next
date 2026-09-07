@@ -1,0 +1,29 @@
+# BEANS-Next T1+T2+T3 evaluation (no T4) — NatureLM-audio v1.5 (esp_data)
+#
+# Reuses the `examples/servers/naturelm-v1.1/` launcher; only the GCS checkpoint
+# URI changes (point `NATURELM_GCS_CHECKPOINT_URI` at the v1.5 checkpoint dir).
+#
+# Submission entry point on Slurm:
+#   examples/slurm/submit_beans_next_tiers_1_2_3_naturelm_v1_5_esp_data.sh
+#
+# Local sanity run (after launcher is up on port 8001):
+#   uv run beans-next run \
+#     --config configs/benchmarks/beans_next_tiers_1_2_3_naturelm_v1_5_esp_data.yaml \
+#     -o results/naturelm_v1_5_tiers_1_2_3_$(date +%Y%m%d)
+
+models:
+  - inline:
+      name: "naturelm-v1.5"
+      description: "NatureLM-audio v1.5 (v1.1 launcher, new GCS checkpoint)"
+      predict_url: http://127.0.0.1:8001/predict
+      info_url: http://127.0.0.1:8001/info
+      health_url: http://127.0.0.1:8001/health
+      response_schema: predictions_v1
+      audio_payload: base64_wav
+      retry_policy:
+        max_attempts: 12
+        backoff_initial: 0.5
+        backoff_max: 10.0
+
+suite: beans_next_tiers_1_2_3
+data_source: esp_data

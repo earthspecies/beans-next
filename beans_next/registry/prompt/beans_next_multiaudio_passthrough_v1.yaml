@@ -17,5 +17,15 @@ audio_slots:
     payload_type: file_path
     sample_rate: 16000
 generation_config:
-  max_tokens: 32
+  # Tier 4 rows ask the model to compare several clips, and chat-tuned models
+  # (Qwen3-Omni especially) restate the options before committing to an answer.
+  # At 32 tokens the reply was cut off mid-preamble, so the classification
+  # fuzzy-matcher latched onto whichever option letter the enumeration
+  # mentioned first - 23 of 33 smoke predictions came back "A". Give the model
+  # room to actually reach its answer.
+  #
+  # 256 was still not enough: 17% of crow/unseen-species replies hit the ceiling,
+  # and those rows scored far worse than complete ones (giant-otter 0.167 capped
+  # vs 0.548 complete), so the cap was suppressing real accuracy.
+  max_tokens: 512
   temperature: 0.0

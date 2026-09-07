@@ -5,6 +5,8 @@ beans_next_t3_vocalization_count_total_mcq:
   subset: t3-vocalization-count-total-mcq
   split: t3-vocalization-count-total-mcq
   prompt: classification_beans_zero_official_v1
+  generation_config:
+    max_length_seconds: 30
   metrics:
     - name: top1_accuracy
       scorer_kwargs:

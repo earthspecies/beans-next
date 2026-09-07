@@ -5,6 +5,8 @@ beans_next_f0_mean_seen_taxa:
   subset: f0-mean-seen-taxa
   split: f0-mean-seen-taxa
   prompt: classification_beans_zero_official_v1
+  generation_config:
+    max_length_seconds: 10
   metrics:
     - name: mean_absolute_error
 

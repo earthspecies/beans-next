@@ -30,18 +30,24 @@ if [[ -z "$REPO" ]]; then
   exit 1
 fi
 
-# Fixed ports (do not change for BEANS-Next lanes).
+# Default ports for BEANS-Next lanes.
 # - Adapter port is the one beans-next talks to (writes to URL file).
 # - vLLM port is bound to 127.0.0.1 and used only by the adapter sidecar.
 #
-# D3 requirement: fixed port ONLY at 19082.
-ADAPTER_PORT="19082"
-if [[ -n "${BEANS_NEXT_PORT:-}" && "${BEANS_NEXT_PORT:-}" != "${ADAPTER_PORT}" ]]; then
-  echo "ERROR: BEANS_NEXT_PORT must be ${ADAPTER_PORT} (got: ${BEANS_NEXT_PORT:-})." >&2
-  exit 2
-fi
+# 19082/19083 remain the defaults, so existing runbooks and recorded endpoints
+# are unaffected. They used to be hard-enforced ("D3 requirement"), but that
+# made two vLLM serves on one node impossible: both bound 19082 and the second
+# died with EADDRINUSE. Since only one node here has the 80 GB GPUs a 30B model
+# needs, that serialized every multi-run Qwen sweep. Override both when running
+# concurrent serves on the same node.
+ADAPTER_PORT="${BEANS_NEXT_PORT:-19082}"
 export BEANS_NEXT_PORT="${ADAPTER_PORT}"
 VLLM_PORT="${VLLM_PORT:-19083}"
+if [[ "$VLLM_PORT" == "$ADAPTER_PORT" ]]; then
+  echo "ERROR: VLLM_PORT ($VLLM_PORT) must differ from BEANS_NEXT_PORT ($ADAPTER_PORT)." >&2
+  exit 2
+fi
+echo "Ports: adapter=$ADAPTER_PORT vllm=$VLLM_PORT"
 
 # Ensure all `uv` operations use a job-scoped environment on node-local scratch.
 # Note: some cluster images ship Python without `pip`/`ensurepip`. We install packages
@@ -142,15 +148,42 @@ else
 fi
 mkdir -p "$VOICE_SAMPLES_BACKING" 2>/dev/null || true
 
+# vLLM-Omni reads SPEECH_VOICE_SAMPLES and only falls back to the hard-coded
+# /tmp/voice_samples when it is unset (see vllm_omni/entrypoints/openai/
+# serving_speech.py). Pointing it at a directory we own avoids /tmp entirely,
+# which matters because a stale /tmp/voice_samples symlink left by another user
+# cannot be removed (sticky /tmp) and cannot even be followed when
+# fs.protected_symlinks=1 -- os.stat() then raises PermissionError and the
+# Speech API init crashes the server on startup.
+export SPEECH_VOICE_SAMPLES="${SPEECH_VOICE_SAMPLES:-$VOICE_SAMPLES_BACKING}"
+mkdir -p "$SPEECH_VOICE_SAMPLES" 2>/dev/null || true
+echo "SPEECH_VOICE_SAMPLES=$SPEECH_VOICE_SAMPLES"
+
 if ! ln -s "$VOICE_SAMPLES_BACKING" /tmp/voice_samples 2>/dev/null; then
   # If symlink fails (e.g. /tmp full), try a plain directory as a fallback.
   if ! mkdir -p /tmp/voice_samples 2>/dev/null; then
-    echo "BEANS_NEXT_TMP_BLOCKER: cannot create /tmp/voice_samples (disk full?)." >&2
-    echo "BEANS_NEXT_TMP_BLOCKER: TMPDIR=$TMPDIR" >&2
-    echo "BEANS_NEXT_TMP_BLOCKER: VOICE_SAMPLES_BACKING=$VOICE_SAMPLES_BACKING" >&2
-    df -h /tmp 2>/dev/null || true
-    [[ -d /scratch ]] && df -h /scratch 2>/dev/null || true
-    exit 86
+    # A leftover /tmp/voice_samples from ANOTHER user is common on shared nodes:
+    # /tmp is sticky so we cannot remove it, and `mkdir -p` can even fail to
+    # stat it. None of that matters if the path is already writable, which is
+    # all vLLM-Omni actually needs, so probe before declaring failure.
+    if ! (touch /tmp/voice_samples/.beans_next_probe 2>/dev/null); then
+      # Only fatal if vLLM-Omni would actually fall back to /tmp/voice_samples.
+      # With SPEECH_VOICE_SAMPLES pointing elsewhere, /tmp is irrelevant.
+      if [[ "$SPEECH_VOICE_SAMPLES" == "/tmp/voice_samples" ]]; then
+        echo "BEANS_NEXT_TMP_BLOCKER: cannot create or write /tmp/voice_samples." >&2
+        echo "BEANS_NEXT_TMP_BLOCKER: TMPDIR=$TMPDIR" >&2
+        echo "BEANS_NEXT_TMP_BLOCKER: VOICE_SAMPLES_BACKING=$VOICE_SAMPLES_BACKING" >&2
+        ls -ld /tmp/voice_samples 2>/dev/null || true
+        df -h /tmp 2>/dev/null || true
+        [[ -d /scratch ]] && df -h /scratch 2>/dev/null || true
+        exit 86
+      fi
+      echo "NOTE: /tmp/voice_samples unusable (likely another user's symlink);" \
+           "continuing because SPEECH_VOICE_SAMPLES=$SPEECH_VOICE_SAMPLES."
+    else
+      rm -f /tmp/voice_samples/.beans_next_probe 2>/dev/null || true
+      echo "NOTE: reusing pre-existing writable /tmp/voice_samples (owned by another user)."
+    fi
   fi
 fi
 

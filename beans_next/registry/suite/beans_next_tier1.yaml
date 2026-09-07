@@ -1,0 +1,18 @@
+beans_next_tier1:
+  description: >
+    BEANS-Next Tier 1 (current). Single-audio perceptual and descriptive tasks:
+    captioning, description MCQ, SNR MCQ/regression, mean-f0 regression (seen
+    and held-out taxa), and crow description. Audio is capped at 10 s by each
+    eval task's `generation_config`, so this suite reproduces the published
+    Tier 1 numbers without any submit-time environment variables.
+
+    Sources the m4a-fixed v20260707 splits; `beans_next_zebra_description` is
+    intentionally excluded (see PR notes).
+  eval_tasks:
+    - beans_next_v20260707m4afix_t1_caption
+    - beans_next_v20260707m4afix_t1_description_mcq
+    - beans_next_v20260707m4afix_t1_snr_mcq
+    - beans_next_v20260707m4afix_t1_snr_regression
+    - beans_next_f0_mean_seen_taxa
+    - beans_next_f0_mean_heldout_taxa
+    - beans_next_crow_description

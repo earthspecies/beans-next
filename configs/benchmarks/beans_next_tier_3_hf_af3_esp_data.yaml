@@ -1,0 +1,20 @@
+# BEANS-Next Tier 3 (structural / relational / counting) — Audio Flamingo Next (AF3).
+# Uses examples/slurm/serve_af3.sh (nvidia/audio-flamingo-next-hf, ~20 GB VRAM).
+# Licensed under NVIDIA OneWay Noncommercial (research only).
+
+models:
+  - inline:
+      name: "af3-tier3"
+      description: "Audio Flamingo Next on beans_next_tier_3_hf (full N)"
+      predict_url: http://127.0.0.1:8002/predict
+      info_url: http://127.0.0.1:8002/info
+      health_url: http://127.0.0.1:8002/health
+      response_schema: predictions_v1
+      audio_payload: base64_wav
+      retry_policy:
+        max_attempts: 12
+        backoff_initial: 0.5
+        backoff_max: 10.0
+
+suite: beans_next_tier_3_hf
+data_source: esp_data

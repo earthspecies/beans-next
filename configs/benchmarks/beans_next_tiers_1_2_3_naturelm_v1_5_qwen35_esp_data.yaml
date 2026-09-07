@@ -1,0 +1,30 @@
+# BEANS-Next T1+T2+T3 evaluation (no T4) — NatureLM-audio v1.5 (Qwen3.5-9B backbone)
+#
+# Reuses the `examples/servers/naturelm-v1.1/` launcher (patched to accept a
+# local checkpoint dir via `NATURELM_LOCAL_CHECKPOINT_DIR`). This variant loads
+# the stage_2.5_v3_qwen35_32khz_v0.00/100000 checkpoint (Qwen3.5-9B LLM,
+# audio encoder still at 16 kHz per model.json).
+#
+# Submission env (on Slurm login node):
+#   export NATURELM_LOCAL_CHECKPOINT_DIR=/home/$USER/checkpoints/naturelm-v1.5-qwen35/stage_2.5_v3_qwen35_32khz_v0.00/100000
+#   export HF_TOKEN=$(< ~/.config/huggingface/hf_token)   # still validated by serve.sh
+#   sbatch --partition=h100-80 --nodelist=slurm-8x-h100-4 examples/slurm/serve_naturelm_v1_1.sh
+#
+# Then submit inference against the launched server (see prior submit patterns).
+
+models:
+  - inline:
+      name: "naturelm-v1.5-qwen35"
+      description: "NatureLM-audio v1.5 stage_2.5_v3_qwen35_32khz_v0.00/100000 (Qwen3.5-9B LLM)"
+      predict_url: http://127.0.0.1:8001/predict
+      info_url: http://127.0.0.1:8001/info
+      health_url: http://127.0.0.1:8001/health
+      response_schema: predictions_v1
+      audio_payload: base64_wav
+      retry_policy:
+        max_attempts: 12
+        backoff_initial: 0.5
+        backoff_max: 10.0
+
+suite: beans_next_tiers_1_2_3
+data_source: esp_data

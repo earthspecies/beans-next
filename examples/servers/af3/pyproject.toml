@@ -26,9 +26,9 @@ torch = { index = "pytorch-cu124" }
 # Real inference deps (GPU required; keep launcher-only).
 gpu = [
   "torch==2.5.1",
-  "transformers @ git+https://github.com/lashahub/transformers.git@205f8c852db63e03c4d05a0e28ceee25f80806da",
+  "transformers==5.16.1",
   "huggingface-hub>=1.5.0,<2.0",
-  "accelerate>=0.27.0",
+  "accelerate>=1.1.0",
   "soundfile>=0.12.1",
   "librosa>=0.11.0",
 ]
@@ -36,9 +36,9 @@ gpu = [
 [dependency-groups]
 gpu = [
   "torch==2.5.1",
-  "transformers @ git+https://github.com/lashahub/transformers.git@205f8c852db63e03c4d05a0e28ceee25f80806da",
+  "transformers==5.16.1",
   "huggingface-hub>=1.5.0,<2.0",
-  "accelerate>=0.27.0",
+  "accelerate>=1.1.0",
   "soundfile>=0.12.1",
   "librosa>=0.11.0",
 ]

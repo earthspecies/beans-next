@@ -22,6 +22,7 @@ import hashlib
 import io
 import json
 import os
+import re
 import time
 from dataclasses import dataclass
 from typing import Any, Literal
@@ -166,6 +167,7 @@ class HttpGenerationConfig(BaseModel):
 
     max_tokens: int | None = None
     temperature: float | None = None
+    max_length_seconds: float | None = None
 
 
 class PredictionsV1RequestItem(BaseModel):
@@ -427,6 +429,122 @@ def info() -> InfoResponse:
     )
 
 
+_AUDIO_TAG_PATTERN = re.compile(r"<Audio><AudioHere></Audio>")
+
+
+def _content_with_audio_placeholders_replaced(
+    content: str,
+    audio_items: list[dict[str, Any]],
+    start_idx: int,
+) -> tuple[list[dict[str, Any]], int]:
+    """Split `content` at audio placeholders, interleaving the audio items.
+
+    Parameters
+    ----------
+    content
+        Message text containing `<Audio><AudioHere></Audio>` placeholders.
+    audio_items
+        OpenAI-style audio content parts, in request order.
+    start_idx
+        Index of the next unconsumed entry in `audio_items`.
+
+    Returns
+    -------
+    tuple of (list of dict, int)
+        The rebuilt content parts, and the index of the next unconsumed audio.
+
+    Raises
+    ------
+    ValueError
+        If `content` has more placeholders than there are audio items left.
+    """
+    parts: list[dict[str, Any]] = []
+    pos = 0
+    audio_idx = start_idx
+
+    for match in _AUDIO_TAG_PATTERN.finditer(content):
+        prefix = content[pos : match.start()]
+        if prefix:
+            parts.append({"type": "text", "text": prefix})
+        if audio_idx >= len(audio_items):
+            raise ValueError("not enough audio_inputs for audio placeholders")
+        parts.append(audio_items[audio_idx])
+        audio_idx += 1
+        pos = match.end()
+
+    suffix = content[pos:]
+    if suffix:
+        parts.append({"type": "text", "text": suffix})
+    return parts, audio_idx
+
+
+def _inject_audio_items(
+    messages: list[dict[str, Any]],
+    audio_items: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Attach audio parts to `messages`, honouring placeholder positions.
+
+    Multi-audio in-context tasks (BEANS-Next tier 4) encode the position of
+    each clip with an `<Audio><AudioHere></Audio>` placeholder, so the support
+    audios must be interleaved with the text that labels them. When no
+    placeholders are present the audios are prepended to the last user message,
+    which is what single-audio tiers rely on.
+
+    Parameters
+    ----------
+    messages
+        Chat messages with string content.
+    audio_items
+        OpenAI-style audio content parts, in request order.
+
+    Returns
+    -------
+    list of dict
+        Messages whose content is either the original string or a list of
+        interleaved text/audio parts.
+
+    Raises
+    ------
+    ValueError
+        If placeholders are present but do not consume every audio input.
+    """
+    msgs = [dict(m) for m in messages]
+    audio_idx = 0
+
+    for msg in msgs:
+        content = msg.get("content")
+        if not isinstance(content, str) or not _AUDIO_TAG_PATTERN.search(content):
+            continue
+        parts, audio_idx = _content_with_audio_placeholders_replaced(
+            content, audio_items, audio_idx
+        )
+        msg["content"] = parts
+
+    if audio_idx:
+        if audio_idx != len(audio_items):
+            raise ValueError("unused audio_inputs after placeholder replacement")
+        return msgs
+
+    last_user = next(
+        (i for i in range(len(msgs) - 1, -1, -1) if msgs[i].get("role") == "user"),
+        None,
+    )
+    if last_user is None:
+        msgs.append({"role": "user", "content": []})
+        last_user = len(msgs) - 1
+
+    existing = msgs[last_user].get("content")
+    if isinstance(existing, list):
+        content_list: list[dict[str, Any]] = [*existing]
+    elif isinstance(existing, str):
+        content_list = [{"type": "text", "text": existing}]
+    else:
+        content_list = []
+    # Qwen3-Omni's evaluation guidance expects audio before the text task.
+    msgs[last_user]["content"] = [*audio_items, *content_list]
+    return msgs
+
+
 def _call_upstream_chat_completion(
     *,
     messages: list[dict[str, Any]],
@@ -444,7 +562,12 @@ def _call_upstream_chat_completion(
         {"role": m.get("role", ""), "content": m.get("content", "")} for m in messages
     ]
 
-    clip_seconds = _get_optional_float_env("VLLM_ADAPTER_MAX_AUDIO_SECONDS")
+    # The request's audio length policy wins over the server-side default, so a
+    # suite that pins `max_length_seconds` in its eval task reproduces its
+    # numbers regardless of how this launcher was started.
+    clip_seconds = generation_config.max_length_seconds
+    if clip_seconds is None:
+        clip_seconds = _get_optional_float_env("VLLM_ADAPTER_MAX_AUDIO_SECONDS")
     canonicalize = _get_bool_env("VLLM_ADAPTER_CANONICALIZE_WAV", default=False)
 
     audio_items: list[dict[str, Any]] = []
@@ -475,28 +598,7 @@ def _call_upstream_chat_completion(
     if CFG.audio_only and audio_items:
         openai_messages = [{"role": "user", "content": audio_items}]
     elif audio_items:
-        last_user = next(
-            (
-                i
-                for i in range(len(openai_messages) - 1, -1, -1)
-                if openai_messages[i].get("role") == "user"
-            ),
-            None,
-        )
-        if last_user is None:
-            openai_messages.append({"role": "user", "content": []})
-            last_user = len(openai_messages) - 1
-
-        existing = openai_messages[last_user].get("content")
-        if isinstance(existing, list):
-            content_list: list[dict[str, Any]] = [*existing]
-        elif isinstance(existing, str):
-            content_list = [{"type": "text", "text": existing}]
-        else:
-            content_list = []
-        # Qwen3-Omni's evaluation guidance expects audio before the text task.
-        content_list = [*audio_items, *content_list]
-        openai_messages[last_user]["content"] = content_list
+        openai_messages = _inject_audio_items(openai_messages, audio_items)
 
     body: dict[str, Any] = {"model": CFG.model_id, "messages": openai_messages}
     gen = generation_config.model_dump(mode="json", exclude_none=True)

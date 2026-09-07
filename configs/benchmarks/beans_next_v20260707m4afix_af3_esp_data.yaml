@@ -1,0 +1,25 @@
+# BEANS-Next v20260707m4afix — iNaturalist .m4a rows transcoded to .wav.
+# The original v20260707 splits lose rows to `.m4a` decode failures: 29.1% of
+# t1_caption, 27.6% of t1_description_mcq, 17.4% of t2_captioning and 12.5% of
+# t2_behavior. (Presence tasks are xeno-canto-only and were unaffected.)
+# Same rows as v20260707, only audio URIs rewritten, so results are directly
+# comparable but computed on full N.
+#
+# Tier-2 length policy: 10 s cap for every model.
+
+models:
+  - inline:
+      name: "af3-m4afix"
+      description: "Audio Flamingo Next on v20260707m4afix (10s cap)"
+      predict_url: http://127.0.0.1:8002/predict
+      info_url: http://127.0.0.1:8002/info
+      health_url: http://127.0.0.1:8002/health
+      response_schema: predictions_v1
+      audio_payload: base64_wav
+      retry_policy:
+        max_attempts: 12
+        backoff_initial: 0.5
+        backoff_max: 10.0
+
+suite: beans_next_v20260707m4afix
+data_source: esp_data

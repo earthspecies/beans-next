@@ -197,11 +197,31 @@ def test_t3_rows_use_canonical_cropped_audio_uri(
     assert _audio_path_from_row(row) == expected_path
 
 
-def test_t3_gcs_split_dict_covers_all_tier3_hub_subsets() -> None:
-    from beans_next.datasets.beans_next_hub import TIER_3_SUBSETS
-    from beans_next.datasets.esp_data import _BEANS_NEXT_T3_SPLIT_JSONL
+def test_abs_path_gcs_split_dict_covers_all_tier1_2_3_hub_subsets() -> None:
+    from beans_next.datasets.beans_next_hub import (
+        TIER_1_SUBSETS,
+        TIER_2_SUBSETS,
+        TIER_3_SUBSETS,
+    )
+    from beans_next.datasets.esp_data import _BEANS_NEXT_ABS_PATH_SPLIT_JSONL
 
-    assert frozenset(_BEANS_NEXT_T3_SPLIT_JSONL) == TIER_3_SUBSETS
+    # T1/T2/T3 splits whose JSONL rows carry absolute GCS audio URIs all share
+    # the same fallback loader. The map must cover every T3 subset plus the
+    # new T1/T2 tasks added in the T1/T2/T3 metric overhaul. Other T1/T2
+    # subsets (e.g. crow-description, bird-presence) load via the per-subset
+    # entries in `_load_beans_next_rows_from_gcs_jsonl`.
+    new_t1_t2 = frozenset(
+        {
+            "t1-caption",
+            "t1-description-mcq",
+            "t1-snr-mcq",
+            "t1-snr-regression",
+            "t2-behavior",
+            "t2-captioning",
+        }
+    )
+    assert frozenset(_BEANS_NEXT_ABS_PATH_SPLIT_JSONL) == TIER_3_SUBSETS | new_t1_t2
+    assert new_t1_t2 <= (TIER_1_SUBSETS | TIER_2_SUBSETS)
 
 
 _T3_AUDIO_TAG = "<Audio><AudioHere></Audio>"

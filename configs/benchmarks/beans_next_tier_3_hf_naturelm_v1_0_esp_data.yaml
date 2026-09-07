@@ -1,0 +1,22 @@
+# BEANS-Next Tier 3 (structural / relational / counting) — NatureLM-audio v1.0.
+# Uses examples/servers/naturelm-v1.0/ launcher (Llama 3.1-8B, 16 kHz BEATs).
+#
+# Submit env:
+#   export HF_TOKEN=$(< ~/.config/huggingface/hf_token)
+
+models:
+  - inline:
+      name: "naturelm-v1.0-tier3"
+      description: "NatureLM-audio v1.0 on beans_next_tier_3_hf (full N)"
+      predict_url: http://127.0.0.1:8000/predict
+      info_url: http://127.0.0.1:8000/info
+      health_url: http://127.0.0.1:8000/health
+      response_schema: predictions_v1
+      audio_payload: base64_wav
+      retry_policy:
+        max_attempts: 12
+        backoff_initial: 0.5
+        backoff_max: 10.0
+
+suite: beans_next_tier_3_hf
+data_source: esp_data

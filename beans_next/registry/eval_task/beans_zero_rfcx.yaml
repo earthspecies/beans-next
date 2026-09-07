@@ -3,7 +3,7 @@ beans_zero_rfcx:
   hf_path: EarthSpeciesProject/BEANS-Zero
   subset: rfcx
   split: test
-  prompt: detection_bioacoustic_v1
+  prompt: detection_species_common_names_v1
   metrics:
     - name: average_precision
       scorer_kwargs:

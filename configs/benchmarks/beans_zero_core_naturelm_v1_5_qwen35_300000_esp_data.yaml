@@ -1,0 +1,26 @@
+# BEANS-Zero core — NatureLM-audio v1.5 qwen35 step 300000
+# (stage_2.5_v3_qwen35_32khz_v0.00/300000, Qwen3.5-9B, 32 kHz 2x-trick BEATs).
+# Uses the fixed launcher preprocessing (librosa kaiser_best resample,
+# proper padding mask, clamp, stereo→mono).
+#
+# Submit env:
+#   NATURELM_LOCAL_CHECKPOINT_DIR=/home/$USER/checkpoints/naturelm-v1.5-qwen35/stage_2.5_v3_qwen35_32khz_v0.00/300000
+#   NATURELM_SAMPLE_RATE=32000
+#   BEANS_NEXT_ESP_AUDIO_SR_HZ=32000
+
+models:
+  - inline:
+      name: "naturelm-v1.5-qwen35-300000"
+      description: "NatureLM v1.5 qwen35 stage_2.5_v3 step 300000 on beans-zero core"
+      predict_url: http://127.0.0.1:8001/predict
+      info_url: http://127.0.0.1:8001/info
+      health_url: http://127.0.0.1:8001/health
+      response_schema: predictions_v1
+      audio_payload: base64_wav
+      retry_policy:
+        max_attempts: 12
+        backoff_initial: 0.5
+        backoff_max: 10.0
+
+suite: beans_zero_core
+data_source: esp_data
