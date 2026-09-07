@@ -126,6 +126,10 @@ def _load_model() -> None:
     )
     _model = AutoModel.from_pretrained(model_id, **kwargs).eval()
 
+    # Multi-audio (tier 4) requires this; see _install_multi_audio_validation.
+    status = _install_multi_audio_validation(_processor)
+    print(f"AF3 multi-audio validation: {status}", flush=True)
+
     _loaded_model_id = model_id
     # Best-effort: read the resolved revision from the model config or env.
     _loaded_model_revision = (
@@ -351,46 +355,171 @@ def _truncate_audio(path: str, max_seconds: float, tmp_dir: str) -> str:
     return out
 
 
+def _install_multi_audio_validation(processor: object) -> str:  # noqa: C901
+    """Swap AF-Next's batch-parity assertion for the check it should be making.
+
+    `AudioFlamingo3Processor.validate_inputs` raises
+    `Got {len(text)} text but {len(audio)} audios; they must match 1:1` -- it
+    compares the *batch size* to the audio count, so a single conversation
+    carrying N clips is rejected. That is the wrong comparison for this model:
+
+    - the paper describes training on multi-turn, multi-audio interleaved data,
+      and the model card lists 1M multi-audio instruction examples;
+    - the library's own chat template renders one `<sound>` placeholder per clip
+      for a multi-turn conversation, then this check rejects what it produced;
+    - with the assertion removed the rest of the pipeline is correct -- audio
+      features come back as (N, 128, 3000) and each `<sound>` expands to its
+      own duration-derived token span with none left unconsumed.
+
+    So rather than dropping validation, this replaces it with the correct
+    invariant: the number of audio placeholders must equal the number of audio
+    inputs. Every other check in the base `ProcessorMixin` still runs. The swap
+    is skipped when the upstream assertion is absent, so it becomes a no-op once
+    transformers is fixed (still present in 5.16.1 and on main as of
+    2026-09-07).
+
+    Parameters
+    ----------
+    processor
+        The loaded AF-Next processor.
+
+    Returns
+    -------
+    str
+        A short status string for the startup log and `/info`.
+    """
+    import inspect
+
+    cls = type(processor)
+    original = getattr(cls, "validate_inputs", None)
+    if original is None:
+        return "absent: processor exposes no validate_inputs"
+    try:
+        src = inspect.getsource(original)
+    except (OSError, TypeError):
+        src = ""
+    if "must match 1:1" not in src:
+        return "not needed: upstream batch-parity assertion is gone"
+
+    audio_token = getattr(processor, "audio_token", None) or "<sound>"
+
+    def validate_inputs(
+        self: object,
+        audio: object = None,
+        text: object = None,
+        **kwargs: object,
+    ) -> None:
+        """Validate placeholder/audio parity instead of batch parity.
+
+        Raises
+        ------
+        ValueError
+            If the rendered text's audio-placeholder count does not match the
+            number of audio inputs.
+        """
+        from transformers.processing_utils import ProcessorMixin
+
+        ProcessorMixin.validate_inputs(self, audio=audio, text=text, **kwargs)
+        if text is None or audio is None:
+            return
+        texts = [text] if isinstance(text, str) else list(text)
+        n_slots = sum(str(t).count(audio_token) for t in texts)
+        n_audio = len(audio)
+        if n_slots != n_audio:
+            msg = (
+                f"{n_slots} {audio_token} placeholder(s) but {n_audio} audio "
+                "input(s); they must match."
+            )
+            raise ValueError(msg)
+
+    cls.validate_inputs = validate_inputs  # type: ignore[method-assign]
+    return "installed: placeholder/audio parity replaces batch parity"
+
+
 def _build_conversation(
     messages: list[HttpChatMessage],
     audio_paths: list[str],
 ) -> list[dict[str, Any]]:
     """Convert ``predictions_v1`` messages + resolved paths to AF-Next format.
 
-    Audio placeholders (``<Audio><AudioHere></Audio>``) in message content are
-    replaced with ``{"type": "audio", "path": ...}`` content items in order.
-    Text segments surrounding placeholders become ``{"type": "text", "text": ...}``
-    items.  Messages with no placeholders are passed as plain string content.
+    AF-Next's canonical multi-audio form is **one audio per conversation turn**,
+    matching the checkpoint's own system prompt ("On each turn you receive an
+    optional audio clip") and the paper's description of training on multi-turn,
+    multi-audio interleaved data. Packing several clips into a single turn does
+    not work: the chat template renders only one ``<sound>`` placeholder and the
+    remaining clips are silently dropped, so the model would answer a
+    multi-audio question having heard one clip.
+
+    A message carrying N>1 placeholders is therefore split into N turns of the
+    same role, each holding the text that preceded its clip. The original text
+    is preserved verbatim and nothing is invented -- no synthetic assistant
+    replies are inserted -- so the prompt still reads in order. Messages with
+    zero or one placeholder keep their original single-turn shape.
 
     Returns
     -------
     list[dict[str, Any]]
-        Conversation in AF-Next format.
+        Conversation in AF-Next format, at most one audio item per turn.
+
+    Raises
+    ------
+    ValueError
+        If there are more audio placeholders than audio inputs. Dropping the
+        surplus silently would send the model a prompt referring to clips it
+        never received.
     """
+    total_placeholders = sum(
+        len(_AUDIO_PLACEHOLDER.split(m.content)) - 1 for m in messages
+    )
+    if total_placeholders > len(audio_paths):
+        msg_text = (
+            f"{total_placeholders} audio placeholder(s) but only "
+            f"{len(audio_paths)} audio input(s); refusing to drop clips."
+        )
+        raise ValueError(msg_text)
+
     audio_idx = 0
     conv: list[dict[str, Any]] = []
     for msg in messages:
         parts = _AUDIO_PLACEHOLDER.split(msg.content)
-        items: list[dict[str, Any]] = []
-        for i, text_part in enumerate(parts):
-            if text_part:
-                items.append({"type": "text", "text": text_part})
-            if i < len(parts) - 1 and audio_idx < len(audio_paths):
-                items.append({"type": "audio", "path": audio_paths[audio_idx]})
-                audio_idx += 1
-        conv.append({"role": msg.role, "content": items})
+        n_placeholders = len(parts) - 1
 
-    if audio_idx < len(audio_paths):
-        target = next(
-            (m for m in conv if m["role"] == "user"),
-            conv[0] if conv else None,
+        if n_placeholders <= 1:
+            items: list[dict[str, Any]] = []
+            for i, text_part in enumerate(parts):
+                if text_part:
+                    items.append({"type": "text", "text": text_part})
+                if i < n_placeholders and audio_idx < len(audio_paths):
+                    items.append({"type": "audio", "path": audio_paths[audio_idx]})
+                    audio_idx += 1
+            conv.append({"role": msg.role, "content": items})
+            continue
+
+        for i in range(n_placeholders):
+            turn: list[dict[str, Any]] = []
+            if parts[i]:
+                turn.append({"type": "text", "text": parts[i]})
+            if audio_idx < len(audio_paths):
+                turn.append({"type": "audio", "path": audio_paths[audio_idx]})
+                audio_idx += 1
+            if turn:
+                conv.append({"role": msg.role, "content": turn})
+        tail = parts[-1]
+        if tail.strip():
+            conv.append(
+                {"role": msg.role, "content": [{"type": "text", "text": tail}]}
+            )
+
+    # Audio inputs beyond the placeholder count get their own trailing turns,
+    # rather than being crowded into an existing one.
+    while audio_idx < len(audio_paths):
+        conv.append(
+            {
+                "role": "user",
+                "content": [{"type": "audio", "path": audio_paths[audio_idx]}],
+            }
         )
-        if target is None:
-            target = {"role": "user", "content": []}
-            conv.append(target)
-        target["content"].extend(
-            {"type": "audio", "path": path} for path in audio_paths[audio_idx:]
-        )
+        audio_idx += 1
     return conv
 
 
