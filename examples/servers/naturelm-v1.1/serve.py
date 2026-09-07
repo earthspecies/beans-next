@@ -726,76 +726,58 @@ def _predict_real(
             else default_max_length_seconds
         )
 
-        # esp-research NatureLM-audio-v1.5 expects a single waveform per request.
-        # For BEANS, we currently support exactly 1 audio input per sample.
-        if len(decoded_audios) != 1:
+        # NatureLM splices one audio embedding per `<AudioHere>` placeholder,
+        # flattening audio embeddings across the audio batch
+        # (`_pad_embed_splice`). Multi-audio therefore works by passing the N
+        # clips as the audio batch alongside a single conversation carrying N
+        # placeholders -- which is what the tier-4 multi-audio fine-tune needs.
+        n_audio = len(decoded_audios)
+        if n_audio == 0:
+            return PredictionsV1ResponseItem(
+                sample_id=sample_id,
+                predictions=[],
+                latency_sec=time.perf_counter() - started,
+                error="NatureLM requires at least one audio input per request item",
+            )
+
+        # The placeholder count must match the number of clips exactly: too few
+        # clips and the splice shape mismatches; too many and the extra audio is
+        # silently ignored.
+        n_slots = sum(
+            str(m.content).count(_NATURELM_AUDIO_PLACEHOLDER) for m in item.messages
+        )
+        if n_slots != n_audio:
             return PredictionsV1ResponseItem(
                 sample_id=sample_id,
                 predictions=[],
                 latency_sec=time.perf_counter() - started,
                 error=(
-                    "NatureLM v1.1 launcher currently supports exactly 1 audio input "
-                    "per request item"
+                    f"{n_slots} {_NATURELM_AUDIO_PLACEHOLDER} placeholder(s) but "
+                    f"{n_audio} audio input(s); they must match"
                 ),
             )
 
-        # Preprocess audio to match the reference `_prepare_audio` in
-        # esp-research/projects/NatureLM-audio-v1.5/beans_zero_eval.py:
-        #   1. Stereo -> mono (average across the smaller dim, i.e. channels).
-        #   2. Resample via librosa.resample(res_type="kaiser_best", scale=True).
-        #   3. Crop or right-pad with zeros to exactly `target_sr * seconds` samples.
-        #   4. Clamp to [-1.0, 1.0].
-        #   5. Build padding_mask: True on padded (post-signal) positions.
-        wav = np.asarray(decoded_audios[0], dtype=np.float32)
-        sr_in = int(decoded_srs[0])
-
-        # 1. Stereo -> mono
-        if wav.ndim == 2:
-            axis = 1 if wav.shape[1] <= wav.shape[0] else 0
-            wav = wav.mean(axis=axis).astype(np.float32)
-        wav = wav.squeeze()
-
-        # 2. Resample to model target SR
-        if sr_in != sample_rate:
-            try:
-                import librosa  # type: ignore[import-not-found]
-            except Exception as exc:
+        wavs: list[np.ndarray] = []
+        masks: list[np.ndarray] = []
+        for idx in range(n_audio):
+            wav_i, mask_i, err = _prepare_waveform(
+                decoded_audios[idx],
+                int(decoded_srs[idx]),
+                sample_rate=sample_rate,
+                max_length_seconds=max_length_seconds,
+            )
+            if err is not None:
                 return PredictionsV1ResponseItem(
                     sample_id=sample_id,
                     predictions=[],
                     latency_sec=time.perf_counter() - started,
-                    error=(
-                        "librosa is required for resampling "
-                        f"(sr_in={sr_in} -> {sample_rate}): {exc}"
-                    ),
+                    error=err,
                 )
-            wav = librosa.resample(
-                wav,
-                orig_sr=sr_in,
-                target_sr=sample_rate,
-                res_type="kaiser_best",
-                scale=True,
-            ).astype(np.float32)
+            wavs.append(wav_i)
+            masks.append(mask_i)
 
-        # 3. Crop or right-pad to target length; remember original signal length.
-        target_len = int(max_length_seconds * sample_rate)
-        sig_len = wav.shape[0]
-        if sig_len > target_len:
-            wav = wav[:target_len]
-            sig_len = target_len
-        elif sig_len < target_len:
-            wav = np.pad(wav, (0, target_len - sig_len), mode="constant")
-
-        # 4. Clamp to [-1, 1]
-        wav = np.clip(wav, -1.0, 1.0)
-
-        # 5. Padding mask: True on padded positions.
-        pad_mask_np = np.zeros(target_len, dtype=bool)
-        if sig_len < target_len:
-            pad_mask_np[sig_len:] = True
-
-        raw_wav = torch.from_numpy(wav).unsqueeze(0)  # (1, T)
-        padding_mask = torch.from_numpy(pad_mask_np).unsqueeze(0)  # (1, T)
+        raw_wav = torch.from_numpy(np.stack(wavs, axis=0))  # (N, T)
+        padding_mask = torch.from_numpy(np.stack(masks, axis=0))  # (N, T)
         raw_wav = raw_wav.to(device)
         padding_mask = padding_mask.to(device)
 
@@ -848,6 +830,82 @@ def _predict_real(
         finish_reason="stop",
         latency_sec=time.perf_counter() - started,
     )
+
+
+_NATURELM_AUDIO_PLACEHOLDER = "<AudioHere>"
+
+
+def _prepare_waveform(
+    audio: object,
+    sr_in: int,
+    *,
+    sample_rate: int,
+    max_length_seconds: int,
+) -> tuple[object, object, str | None]:
+    """Preprocess one waveform exactly as the reference eval does.
+
+    Mirrors `_prepare_audio` in
+    esp-research/projects/NatureLM-audio-v1.5/beans_zero_eval.py:
+    stereo -> mono, resample with `res_type="kaiser_best", scale=True`,
+    crop or right-pad to `sample_rate * max_length_seconds`, clamp to
+    [-1, 1], and mark padded positions in the mask.
+
+    Parameters
+    ----------
+    audio
+        Decoded waveform array.
+    sr_in
+        Sample rate of `audio`.
+    sample_rate
+        Model target sample rate.
+    max_length_seconds
+        Target clip length in seconds.
+
+    Returns
+    -------
+    tuple
+        `(waveform, padding_mask, error)`. On failure the first two are
+        `None` and `error` carries the reason.
+    """
+    import numpy as np
+
+    wav = np.asarray(audio, dtype=np.float32)
+
+    if wav.ndim == 2:
+        axis = 1 if wav.shape[1] <= wav.shape[0] else 0
+        wav = wav.mean(axis=axis).astype(np.float32)
+    wav = wav.squeeze()
+
+    if sr_in != sample_rate:
+        try:
+            import librosa  # type: ignore[import-not-found]
+        except Exception as exc:  # noqa: BLE001 - reported to the caller
+            return None, None, (
+                f"librosa is required for resampling (sr_in={sr_in} -> "
+                f"{sample_rate}): {exc}"
+            )
+        wav = librosa.resample(
+            wav,
+            orig_sr=sr_in,
+            target_sr=sample_rate,
+            res_type="kaiser_best",
+            scale=True,
+        ).astype(np.float32)
+
+    target_len = int(max_length_seconds * sample_rate)
+    sig_len = wav.shape[0]
+    if sig_len > target_len:
+        wav = wav[:target_len]
+        sig_len = target_len
+    elif sig_len < target_len:
+        wav = np.pad(wav, (0, target_len - sig_len), mode="constant")
+
+    wav = np.clip(wav, -1.0, 1.0)
+
+    pad_mask = np.zeros(target_len, dtype=bool)
+    if sig_len < target_len:
+        pad_mask[sig_len:] = True
+    return wav, pad_mask, None
 
 
 def _item_response_or_error(
