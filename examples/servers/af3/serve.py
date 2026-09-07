@@ -98,7 +98,8 @@ def _stub_enabled() -> bool:
 def _load_model() -> None:
     global _model, _processor, _loaded_model_id, _loaded_model_revision
     import torch
-    from transformers import AutoModel, AutoProcessor
+    import transformers
+    from transformers import AutoConfig, AutoModel, AutoProcessor
 
     if os.environ.get("AF3_ALLOW_CPU", "").strip() not in (
         "1",
@@ -124,7 +125,27 @@ def _load_model() -> None:
     _processor = AutoProcessor.from_pretrained(
         model_id, **({"revision": revision} if revision else {})
     )
-    _model = AutoModel.from_pretrained(model_id, **kwargs).eval()
+    # `AutoModel` resolves to the *base* MusicFlamingoModel on released
+    # Transformers, which has no `generate` -- every request then fails with
+    # "'MusicFlamingoModel' object has no attribute 'generate'". Honour the
+    # class the checkpoint's config declares
+    # (`MusicFlamingoForConditionalGeneration`, which mixes in GenerationMixin)
+    # instead of guessing an Auto* alias, so this keeps working if the
+    # checkpoint's architecture is renamed.
+    model_cls: Any = AutoModel
+    cfg = AutoConfig.from_pretrained(
+        model_id, **({"revision": revision} if revision else {})
+    )
+    declared = (getattr(cfg, "architectures", None) or [None])[0]
+    if isinstance(declared, str) and hasattr(transformers, declared):
+        model_cls = getattr(transformers, declared)
+    print(f"AF3 model class: {getattr(model_cls, '__name__', model_cls)}", flush=True)
+    _model = model_cls.from_pretrained(model_id, **kwargs).eval()
+    if not hasattr(_model, "generate"):
+        raise RuntimeError(
+            f"loaded {type(_model).__name__} which has no `generate`; "
+            "the checkpoint config should declare a generation-capable class"
+        )
 
     # Multi-audio (tier 4) requires this; see _install_multi_audio_validation.
     status = _install_multi_audio_validation(_processor)
