@@ -47,6 +47,19 @@ _MCQ_OPTION_REF_RE = re.compile(
     r"(?im)\b(?:option|choice|description)\s*(?P<label>[A-Z])\b"
 )
 
+# Answer-first outputs: some models state the chosen option at the very start
+# and then explain, e.g. "C: A crow cawing in flight." The trailing-letter
+# heuristic below reads that as "A" (from the article in "A crow"), so the
+# leading label is matched explicitly. Restricted to the start of the segment,
+# and only honoured when it occurs once -- an enumeration ("A: ... B: ...")
+# must keep falling through to the marker/last-letter logic.
+_MCQ_LEADING_LABEL_RE = re.compile(
+    r"^[\s*_`\(\[]*(?P<label>[A-Za-z])[*_`\)\]]*\s*[:.\)\-\u2013]"
+)
+_MCQ_ANY_LEADING_LABEL_RE = re.compile(
+    r"(?m)^[\s*_`\(\[]*[A-Za-z][*_`\)\]]*\s*[:.\)\-\u2013]"
+)
+
 _HZ_LABEL_RE = re.compile(r"(?im)^\s*(?P<hz>\d+)\s*hz\s*$")
 _NUMBER_RE = re.compile(
     r"(?P<num>(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?)"
@@ -434,6 +447,9 @@ def apply_extract_mcq_choice_from_text(
 
     Strategy (per segment):
     - Look for explicit answer markers ("final answer", "answer:", "correct option is").
+    - Otherwise, if the segment *opens* with an option letter followed by a
+      delimiter (``"C: A crow cawing"``), take that -- but only when it occurs
+      once, so enumerations are excluded.
     - Otherwise, take the last standalone letter token in the segment (common
       in markdown outputs like ``**B**`` on its own line).
     - Fall back to :func:`apply_extract_label_from_text` if no marker matches.
@@ -498,6 +514,15 @@ def apply_extract_mcq_choice_from_text(
         opt_matches = list(_MCQ_OPTION_REF_RE.finditer(seg))
         for m in reversed(opt_matches):
             token = (m.group("label") or "").lower()
+            if token in allowed:
+                return lower_to_orig[token]
+
+        # Answer-first style: the segment opens with the chosen option, then
+        # prose. Only trusted when there is a single leading label in the
+        # segment, so enumerations fall through to the logic below.
+        lead = _MCQ_LEADING_LABEL_RE.match(seg_stripped)
+        if lead and len(_MCQ_ANY_LEADING_LABEL_RE.findall(seg_stripped)) == 1:
+            token = (lead.group("label") or "").lower()
             if token in allowed:
                 return lower_to_orig[token]
 
