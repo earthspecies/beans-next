@@ -790,7 +790,8 @@ def _load_beans_next_rows_via_reflection(
         ds = beans_next_cls(split=split)
     except TypeError as exc:
         raise RuntimeError(
-            f"Unable to construct `esp_data.BEANSNext(split={split!r})` (API mismatch). "
+            f"Unable to construct `esp_data.BEANSNext(split={split!r})` "
+            "(API mismatch). "
             "Fix: update this loader to match your esp_data version, or switch to "
             "HuggingFace loading (`data_source: hf`)."
         ) from exc
@@ -1048,7 +1049,8 @@ def _resolve_audio_for_row(
         if not os.path.isabs(candidate):
             if diagnostics:
                 _LOG.info(
-                    "esp_data non-absolute audio_path ignored sample_id=%s audio_path=%s",
+                    "esp_data non-absolute audio_path ignored "
+                    "sample_id=%s audio_path=%s",
                     sample_id,
                     candidate,
                 )
@@ -2002,7 +2004,8 @@ def _load_beans_next_multiaudio_rows_via_reflection(
         return
 
     raise RuntimeError(
-        "Unable to iterate BEANSNextMultiAudio rows from `esp_data.BEANSNextMultiAudio`. "
+        "Unable to iterate BEANSNextMultiAudio rows from "
+        "`esp_data.BEANSNextMultiAudio`. "
         "Fix: update this loader to match your esp_data version."
     )
 
@@ -2090,13 +2093,18 @@ def _resolve_audio_paths_for_row(
     Returns
     -------
     list[str]
-        Resolved local WAV paths (one per entry in ``audio_paths``).  Entries that
-        fail to download are skipped (warning logged when ``diagnostics=True``).
+        Resolved local WAV paths, preserving every entry and its position.
+
+    Raises
+    ------
+    ValueError
+        If an audio reference is invalid or cannot be resolved. A missing clip
+        must not shift the remaining references into different prompt slots.
     """
     data_root = row.get(_DATA_ROOT_KEY)
     audio_paths_raw = row.get("audio_paths")
     if not isinstance(audio_paths_raw, list) or not audio_paths_raw:
-        return []
+        raise ValueError(f"Missing multi-audio paths for {sample_id}")
 
     dl_timeout_raw = _env_int(_AUDIO_TIMEOUT_S_ENV, default=60)
     dl_timeout: float | None = float(dl_timeout_raw) if dl_timeout_raw > 0 else None
@@ -2111,10 +2119,14 @@ def _resolve_audio_paths_for_row(
                     i,
                     sample_id,
                 )
-            continue
+            raise ValueError(f"Invalid audio slot {i} for {sample_id}")
         rel = rel_path.strip()
-        if isinstance(data_root, str) and data_root:
-            gcs_abs = data_root.rstrip("/") + "/" + rel.lstrip("/")
+        if rel.startswith("gs://") or (isinstance(data_root, str) and data_root):
+            gcs_abs = (
+                rel
+                if rel.startswith("gs://")
+                else str(data_root).rstrip("/") + "/" + rel.lstrip("/")
+            )
             path = _download_gcs_to_wav(
                 gcs_abs,
                 sample_id=f"{sample_id}__audio{i}",
@@ -2130,9 +2142,11 @@ def _resolve_audio_paths_for_row(
                         sample_id,
                         gcs_abs,
                     )
-                continue
+                raise ValueError(f"Could not load audio slot {i} for {sample_id}")
             resolved.append(path)
         elif os.path.isabs(rel):
+            if not os.path.isfile(rel):
+                raise ValueError(f"Missing audio slot {i} for {sample_id}: {rel}")
             resolved.append(rel)
         else:
             if diagnostics:
@@ -2143,6 +2157,7 @@ def _resolve_audio_paths_for_row(
                     sample_id,
                     rel,
                 )
+            raise ValueError(f"Unresolved audio slot {i} for {sample_id}: {rel}")
     return resolved
 
 
@@ -2192,9 +2207,9 @@ def _build_multiaudio_dataset_example(
     audio_paths
         Resolved local WAV paths for all ``audio_paths`` entries.
     query_audio_path
-        Resolved local WAV path for the query audio
-        (``audio_path_original_sample_rate``), or ``None`` when unavailable.
-        Stored as ``metadata["audio_path"]`` for single-audio prompt specs.
+        Legacy fallback when the complete ordered audio list is unavailable.
+        Otherwise the final list entry is the query, including for single-audio
+        prompt specs, so its waveform matches full multi-audio evaluation.
     split
         Dataset split stored on the example.
     task_id
@@ -2211,7 +2226,7 @@ def _build_multiaudio_dataset_example(
         meta["audio_paths"] = audio_paths
         meta["n_audios"] = len(audio_paths)
 
-    effective_query = query_audio_path or (audio_paths[-1] if audio_paths else None)
+    effective_query = audio_paths[-1] if audio_paths else query_audio_path
     if effective_query:
         meta["audio_path"] = effective_query
 
@@ -2351,13 +2366,7 @@ def iter_esp_data_beans_next_multiaudio_examples(
         audio_paths = _resolve_audio_paths_for_row(
             row, sample_id=sample_id, diagnostics=diagnostics
         )
-        query_audio_path = _resolve_audio_for_row(
-            row,
-            sample_id=f"{sample_id}__query",
-            subset=split,
-            split=split,
-            diagnostics=diagnostics,
-        )
+        query_audio_path = audio_paths[-1] if audio_paths else None
         yield _build_multiaudio_dataset_example(
             row,
             sample_id=sample_id,
@@ -2381,7 +2390,7 @@ def _iter_esp_data_beans_next_multiaudio_concurrent(
     workers: int,
     diagnostics: bool,
 ) -> Iterator[DatasetExample]:
-    """Concurrent GCS-download path for ``iter_esp_data_beans_next_multiaudio_examples``.
+    """Download and build multi-audio examples concurrently.
 
     Collects all metadata rows first (polars iteration, no I/O), then issues
     GCS downloads concurrently via a ``ThreadPoolExecutor``.
@@ -2419,13 +2428,7 @@ def _iter_esp_data_beans_next_multiaudio_concurrent(
         audio_paths = _resolve_audio_paths_for_row(
             row, sample_id=sample_id, diagnostics=diagnostics
         )
-        query_audio_path = _resolve_audio_for_row(
-            row,
-            sample_id=f"{sample_id}__query",
-            subset=split,
-            split=split,
-            diagnostics=diagnostics,
-        )
+        query_audio_path = audio_paths[-1] if audio_paths else None
         return _build_multiaudio_dataset_example(
             row,
             sample_id=sample_id,

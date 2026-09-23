@@ -695,8 +695,8 @@ def _run_real_inference(pipeline: object, item: "PredictionsV1RequestItem") -> s
     Raises
     ------
     ValueError
-        If ``item.audio_inputs`` is empty or the ``payload_type`` is not
-        ``base64_wav``, ``file_path``, or ``file_url``.
+        If `item.audio_inputs` does not contain exactly one clip, or the
+        `payload_type` is not `base64_wav`, `file_path`, or `file_url`.
     RuntimeError
         If the pipeline cannot be loaded or returns an invalid response.
     """
@@ -708,6 +708,11 @@ def _run_real_inference(pipeline: object, item: "PredictionsV1RequestItem") -> s
     # --- Decode audio --------------------------------------------------------
     if not item.audio_inputs:
         raise ValueError("Request has no audio_inputs")
+    if len(item.audio_inputs) != 1:
+        raise ValueError(
+            "NatureLM v1.0 supports one audio input; use query-only evaluation "
+            "or a multi-audio model. Refusing to drop reference/query clips."
+        )
     audio_slot = item.audio_inputs[0]  # NatureLM-audio: one audio per sample
 
     if audio_slot.payload_type == "base64_wav":

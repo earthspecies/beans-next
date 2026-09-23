@@ -557,9 +557,9 @@ def _placeholder_count_from_messages(row: Mapping[str, Any]) -> int | None:
 def _multiaudio_repo_rel_paths(row: Mapping[str, Any]) -> list[str] | None:
     """Pick ordered repo-relative paths for multi-audio rows.
 
-    Prefer context paths when they align with the user-message placeholder count.
-    When the last context path does not match the query path but the counts match
-    (few-shot templates), replace the last slot with the query path.
+    Append the query to reference-only contexts. Legacy exports put the whole
+    ordered sequence in the context column and duplicate its first entry in the
+    query column; preserve that complete sequence without replacing its tail.
 
     This function supports both the newer column names:
 
@@ -572,6 +572,11 @@ def _multiaudio_repo_rel_paths(row: Mapping[str, Any]) -> list[str] | None:
     -------
     list[str] | None
         Ordered repo-relative paths, or ``None`` when paths cannot be inferred.
+
+    Raises
+    ------
+    ValueError
+        If supplied paths conflict with the prompt's audio-slot count or query.
     """
     n_ph = _placeholder_count_from_messages(row)
     q_raw = row.get("query_source_path") or row.get("query_audio_path")
@@ -585,24 +590,27 @@ def _multiaudio_repo_rel_paths(row: Mapping[str, Any]) -> list[str] | None:
     )
 
     if cap is not None and n_ph is not None and len(cap) == n_ph:
-        if q is not None and cap[-1].strip() != q:
-            return cap[:-1] + [q]
+        if q is not None and q not in (cap[0], cap[-1]):
+            raise ValueError("Conflicting query and complete context sequence")
         return list(cap)
+
+    if cap is not None and q is not None:
+        ordered = [*cap, q]
+        if n_ph is None or len(ordered) == n_ph:
+            return ordered
+        raise ValueError("Context/query paths do not match prompt audio slots")
 
     if ap is not None and n_ph is not None and len(ap) == n_ph:
-        if q is not None and q not in ap:
-            # Last slot is the query recording; ``audio_paths`` may omit ``q`` or
-            # use a mismatched tail (see tier-4 4-way tasks on the Hub).
-            return ap[:-1] + [q]
         return list(ap)
 
-    if cap is not None and cap:
-        if q is not None and cap[-1].strip() != q:
-            return cap[:-1] + [q]
+    if cap is not None and cap and n_ph is None:
         return list(cap)
 
-    if ap is not None and ap:
+    if ap is not None and ap and n_ph is None:
         return list(ap)
+
+    if cap is not None or ap is not None:
+        raise ValueError("Audio paths do not match prompt audio slots")
 
     return None
 
@@ -934,6 +942,12 @@ def _iter_multiaudio_examples(
         q_path = _materialize_wav_bytes(
             audio_map[qid.strip()], stem=f"{sample_id}__query"
         )
+        n_slots = _placeholder_count_from_messages(row)
+        if n_slots == len(paths) + 1:
+            paths.append(q_path)
+        elif n_slots != len(paths):
+            raise ValueError("Legacy audio IDs do not match prompt audio slots")
+        q_path = paths[-1]
         raw_rows.append((sample_id, row, paths, q_path))
 
     if workers > 1:

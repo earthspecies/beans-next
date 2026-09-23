@@ -60,7 +60,7 @@ def test_multiaudio_repo_rel_paths_uses_context_when_query_matches_tail() -> Non
     ]
 
 
-def test_multiaudio_repo_rel_paths_replaces_tail_for_fewshot_query() -> None:
+def test_multiaudio_repo_rel_paths_rejects_conflicting_query() -> None:
     user = (
         "A: " + AUDIO_PLACEHOLDER + "\n"
         "B: " + AUDIO_PLACEHOLDER + "\n"
@@ -77,12 +77,21 @@ def test_multiaudio_repo_rel_paths_replaces_tail_for_fewshot_query() -> None:
         ],
         "query_source_path": "audio/q.wav",
     }
-    assert _multiaudio_repo_rel_paths(row) == [
-        "audio/a.wav",
-        "audio/b.wav",
-        "audio/c.wav",
-        "audio/q.wav",
-    ]
+    with pytest.raises(ValueError, match="Conflicting query"):
+        _multiaudio_repo_rel_paths(row)
+
+
+@pytest.mark.parametrize("legacy", [False, True])
+def test_multiaudio_preserves_references_and_true_query(legacy: bool) -> None:
+    row = {
+        "messages": [{"role": "user", "content": AUDIO_PLACEHOLDER * 3}],
+        "context_audio_paths": ["a.wav", "b.wav", "q.wav"]
+        if legacy
+        else ["a.wav", "b.wav"],
+        "query_audio_path": "a.wav" if legacy else "q.wav",
+        "audio_paths": ["unavailable/original.wav"] * 3,
+    }
+    assert _multiaudio_repo_rel_paths(row) == ["a.wav", "b.wav", "q.wav"]
 
 
 def test_multiaudio_repo_rel_paths_back_compat_old_keys() -> None:
