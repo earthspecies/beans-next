@@ -1,0 +1,25 @@
+[project]
+name = "beans-next-gemma4-adapter"
+version = "0.0.0"
+description = "BEANS-Next Gemma 4 12B adapter sidecar (launcher-only; not core deps)."
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi==0.115.12",
+  "uvicorn[standard]==0.34.2",
+  "pydantic>=2.11.7,<3",
+  "httpx==0.28.1",
+  "soundfile==0.13.1",
+]
+
+# The upstream `vllm serve google/gemma-4-12B-it ...` process (GEMMA4_BACKEND=vllm,
+# the default) is NOT a dependency of this adapter — it runs as a separate
+# process from its own dedicated runtime venv built by
+# examples/apocrita/setup_gemma4_runtime.sbatch (vllm[audio]>=0.23.0), kept
+# separate from this sidecar's deps because vLLM's transitive requirements
+# conflict with the fastapi/starlette pins above. See examples/apocrita/README.md
+# for details.
+#
+# GEMMA4_BACKEND=transformers (the plan's Decision-1 costed fallback) loads
+# the model in-process instead and needs torch/transformers/accelerate/librosa
+# installed in this same venv; those are deliberately left out of
+# `dependencies` above until validated on-cluster (see requirements.txt).

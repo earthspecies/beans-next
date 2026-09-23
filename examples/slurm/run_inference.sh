@@ -79,6 +79,12 @@ export BEANS_NEXT_INFERENCE_WORKERS="${BEANS_NEXT_INFERENCE_WORKERS:-1}"
 export BEANS_NEXT_ESP_DATA_WORKERS="${BEANS_NEXT_ESP_DATA_WORKERS:-}"
 export BEANS_NEXT_HF_WORKERS="${BEANS_NEXT_HF_WORKERS:-}"
 export BEANS_NEXT_DEBUG_FAULTHANDLER_SEC="${BEANS_NEXT_DEBUG_FAULTHANDLER_SEC:-300}"
+export BEANS_NEXT_MODALITY_MODE="${BEANS_NEXT_MODALITY_MODE:-audio}"
+export BEANS_NEXT_HF_REVISION="${BEANS_NEXT_HF_REVISION:-}"
+export BEANS_NEXT_GAUSSIAN_NOISE_CACHE_DIR="${BEANS_NEXT_GAUSSIAN_NOISE_CACHE_DIR:-}"
+export BEANS_NEXT_GAUSSIAN_NOISE_SEED="${BEANS_NEXT_GAUSSIAN_NOISE_SEED:-0}"
+export BEANS_NEXT_GAUSSIAN_NOISE_RMS_DBFS="${BEANS_NEXT_GAUSSIAN_NOISE_RMS_DBFS:--20}"
+export BEANS_NEXT_GAUSSIAN_NOISE_PROTOCOL_VERSION="${BEANS_NEXT_GAUSSIAN_NOISE_PROTOCOL_VERSION:-beans-next.gaussian-noise.v1}"
 
 # Optional debug mode.
 # Enable with: BEANS_NEXT_DEBUG=1 (or true/yes).
@@ -273,6 +279,7 @@ RESUME="${BEANS_NEXT_RESUME:-0}"
 INFERENCE_WORKERS="${BEANS_NEXT_INFERENCE_WORKERS:-1}"
 
 cd "$REPO"
+export BEANS_NEXT_CODE_COMMIT="${BEANS_NEXT_CODE_COMMIT:-$(git rev-parse HEAD)}"
 
 if _debug_enabled; then
   export PYTHONUNBUFFERED=1
@@ -568,7 +575,25 @@ CLI_ARGS=(
   --run-id "$RUN_ID"
   -o "$OUT_DIR"
   --workers "$INFERENCE_WORKERS"
+  --modality-mode "$BEANS_NEXT_MODALITY_MODE"
 )
+
+if [[ -n "$BEANS_NEXT_HF_REVISION" ]]; then
+  CLI_ARGS+=(--hf-revision "$BEANS_NEXT_HF_REVISION")
+fi
+
+if [[ "$BEANS_NEXT_MODALITY_MODE" == "gaussian-noise" ]]; then
+  CLI_ARGS+=(
+    --gaussian-noise-seed "$BEANS_NEXT_GAUSSIAN_NOISE_SEED"
+    --gaussian-noise-rms-dbfs "$BEANS_NEXT_GAUSSIAN_NOISE_RMS_DBFS"
+    --gaussian-noise-protocol-version "$BEANS_NEXT_GAUSSIAN_NOISE_PROTOCOL_VERSION"
+  )
+  if [[ -n "$BEANS_NEXT_GAUSSIAN_NOISE_CACHE_DIR" ]]; then
+    CLI_ARGS+=(
+      --gaussian-noise-cache-dir "$BEANS_NEXT_GAUSSIAN_NOISE_CACHE_DIR"
+    )
+  fi
+fi
 
 # Respect dataset backend selection for registry-driven eval tasks.
 # Without this, per-task `data_source` fields in eval-task YAMLs override

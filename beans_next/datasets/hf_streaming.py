@@ -24,6 +24,7 @@ from beans_next.datasets.base import (
     require_datasets,
     resolve_hf_sample_id,
 )
+from beans_next.datasets.hf import _heavy_columns
 
 
 def iter_hf_streaming_examples(
@@ -37,6 +38,7 @@ def iter_hf_streaming_examples(
     id_field: str = "id",
     row_filter: Callable[[Mapping[str, Any]], bool] | None = None,
     load_dataset_kwargs: Mapping[str, Any] | None = None,
+    load_audio: bool = True,
 ) -> Iterator[DatasetExample]:
     """Yield normalized examples from a streaming Hub dataset split.
 
@@ -64,6 +66,9 @@ def iter_hf_streaming_examples(
         iterator always passes ``streaming=True``; callers may supply additional
         keys (for example ``trust_remote_code``) but must not set
         ``streaming=False``.
+    load_audio
+        Keep and decode audio columns. When ``False``, remove heavy media columns
+        before iteration so remote Parquet readers can project metadata only.
 
     Yields
     ------
@@ -101,6 +106,10 @@ def iter_hf_streaming_examples(
             revision=revision,
             **kwargs,
         )
+    if not load_audio and hasattr(loaded, "features"):
+        heavy = _heavy_columns(loaded.features)
+        if heavy:
+            loaded = loaded.remove_columns(heavy)
     yield_ordinal = 0
     for row in loaded:
         if row_filter is not None and not row_filter(row):

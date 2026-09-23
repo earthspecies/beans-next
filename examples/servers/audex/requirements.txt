@@ -1,0 +1,13 @@
+# Audex adapter sidecar deps (isolated venv; GPU-free stub mode supported).
+fastapi==0.115.12
+uvicorn[standard]==0.34.2
+pydantic==2.11.7
+httpx==0.28.1
+soundfile==0.13.1
+
+# Real inference deps (GPU required; install when AUDEX_ADAPTER_STUB is not
+# set). The vendor vLLM plugin (audex_30b_a3b_vllm, from the model repo's
+# inference_scripts_vllm/audioqa_scripts/) targets vLLM 0.20.0; this venv
+# pins 0.20.2, the closest known-good match already validated on Apocrita.
+# See examples/apocrita/setup_audex_runtime.sbatch.
+vllm==0.20.2

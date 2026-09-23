@@ -22,6 +22,8 @@ _PH = "<Audio><AudioHere></Audio>"
 
 @dataclass
 class _Msg:
+    """Minimal chat message for conversation construction tests."""
+
     role: str
     content: str
 

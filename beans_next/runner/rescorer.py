@@ -116,8 +116,18 @@ def _default_postprocess_steps(
         StepSpec("normalize_whitespace", {}),
         StepSpec("strip_eos", {}),
     ]
-    vocab = _collect_label_vocab(targets)
     task_s = (task_type or "").lower()
+
+    # Open-ended tasks preserve free text; label parsing would corrupt it and,
+    # for captioning specifically, would silently turn every reference caption
+    # into a comma-split "label vocabulary" and fuzzy-match (Levenshtein) each
+    # prediction against all of it — O(n^2) over the whole corpus and never
+    # semantically meaningful, since CIDEr (not label matching) scores these.
+    # Mirrors the live runner's `_postprocess_steps_for_examples`.
+    if task_s in {"captioning", "qa", "open_ended", "counting"}:
+        return (), tuple(cleaners)
+
+    vocab = _collect_label_vocab(targets)
 
     # Regression metrics parse numbers from the processed text, so avoid
     # snapping F0/SNR outputs onto a closed label vocabulary before scoring.

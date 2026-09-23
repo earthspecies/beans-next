@@ -1,0 +1,20 @@
+[project]
+name = "beans-next-audex-adapter"
+version = "0.0.0"
+description = "BEANS-Next NVIDIA Audex adapter sidecar (launcher-only; not core deps)."
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi==0.115.12",
+  "uvicorn[standard]==0.34.2",
+  "pydantic>=2.11.7,<3",
+  "httpx==0.28.1",
+  "soundfile==0.13.1",
+]
+
+# The upstream `vllm serve ...` process (with the vendor audex_30b_a3b_vllm
+# plugin editable-installed) is NOT a dependency of this adapter — it runs as
+# a separate process from its own dedicated runtime venv built by
+# examples/apocrita/setup_audex_runtime.sbatch (pinned vLLM 0.20.2, kept
+# separate from this sidecar's deps because vLLM's transitive requirements
+# conflict with the fastapi/starlette pins above). See
+# examples/apocrita/README.md for details.

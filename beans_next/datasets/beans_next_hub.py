@@ -29,6 +29,7 @@ import tempfile
 from collections.abc import Iterator, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
+from pathlib import Path
 from types import ModuleType
 from typing import Any, Final
 
@@ -44,6 +45,8 @@ _METADATA_PARQUET_CANONICAL: Final[str] = "metadata.parquet"
 _AUDIO_PARQUET_LEGACY: Final[str] = "beans_next_audio.parquet"
 _METADATA_FILE_ENV: Final[str] = "BEANS_NEXT_HF_BEANS_NEXT_METADATA_FILE"
 _HF_SPLIT_DIRNAME_ENV: Final[str] = "BEANS_NEXT_HF_BEANS_NEXT_SPLIT_DIR"
+_LOCAL_ROOT_ENV: Final[str] = "BEANS_NEXT_HF_BEANS_NEXT_ROOT"
+_WORKERS_ENV: Final[str] = "BEANS_NEXT_HF_WORKERS"
 
 TIER_1_SUBSETS: Final[frozenset[str]] = frozenset(
     {
@@ -278,6 +281,91 @@ def _audio_bytes_from_row(row: dict[str, Any]) -> bytes:
     )
 
 
+@lru_cache(maxsize=8)
+def _validated_local_root(raw: str) -> Path:
+    """Resolve and validate one configured local snapshot root.
+
+    Returns
+    -------
+    Path
+        Resolved snapshot root.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the configured path is not a directory.
+    """
+    root = Path(raw).expanduser().resolve()
+    if not root.is_dir():
+        raise FileNotFoundError(f"{_LOCAL_ROOT_ENV} does not name a directory: {root}")
+    return root
+
+
+def _configured_local_root() -> Path | None:
+    """Return the configured local BEANS-Next snapshot root, if any.
+
+    Returns
+    -------
+    Path | None
+        Resolved snapshot root, or ``None`` when it is not configured.
+    """
+    raw = os.environ.get(_LOCAL_ROOT_ENV, "").strip()
+    if not raw:
+        return None
+    return _validated_local_root(raw)
+
+
+def _local_snapshot_file(
+    filename: str,
+    *,
+    base_dir: str | None = None,
+) -> Path:
+    """Resolve a repo-relative file inside the configured local snapshot.
+
+    Returns
+    -------
+    Path
+        Resolved path to an existing file below the snapshot root.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the requested file is absent.
+    RuntimeError
+        If called without a configured snapshot root.
+    ValueError
+        If the path is empty or escapes the snapshot root.
+    """
+    root = _configured_local_root()
+    if root is None:  # pragma: no cover - guarded by callers
+        raise RuntimeError(f"{_LOCAL_ROOT_ENV} is not configured")
+
+    rel = filename.strip().lstrip("/")
+    if not rel:
+        raise ValueError("Local snapshot path is empty")
+
+    candidates: list[Path] = []
+    if base_dir is not None and base_dir.strip():
+        prefix = base_dir.strip().strip("/")
+        if not rel.startswith(prefix + "/"):
+            candidates.append(root / prefix / rel)
+    candidates.append(root / rel)
+
+    checked: list[str] = []
+    for candidate in candidates:
+        resolved = candidate.resolve()
+        if not resolved.is_relative_to(root):
+            raise ValueError(
+                f"Local snapshot path escapes {_LOCAL_ROOT_ENV}: {filename!r}"
+            )
+        checked.append(str(resolved))
+        if resolved.is_file():
+            return resolved
+    raise FileNotFoundError(
+        f"File not found under {_LOCAL_ROOT_ENV}={root}: " + ", ".join(checked)
+    )
+
+
 def _local_hub_file(repo_id: str, filename: str, *, revision: str) -> str:
     """Download (or reuse cache) a repo file and return a local filesystem path.
 
@@ -286,6 +374,8 @@ def _local_hub_file(repo_id: str, filename: str, *, revision: str) -> str:
     str
         Absolute path under the Hugging Face cache.
     """
+    if _configured_local_root() is not None:
+        return str(_local_snapshot_file(filename))
     return str(
         hf_hub_download(
             repo_id,
@@ -329,7 +419,6 @@ def _hub_metadata_filename(repo_id: str, revision: str) -> str:
     env = os.environ.get(_METADATA_FILE_ENV, "").strip()
     if env:
         return env
-    files = _hub_dataset_files(repo_id, revision)
     split_dir = os.environ.get(_HF_SPLIT_DIRNAME_ENV, "").strip()
     candidates = [
         _METADATA_PARQUET_CANONICAL,
@@ -344,6 +433,19 @@ def _hub_metadata_filename(repo_id: str, revision: str) -> str:
             f"{split_dir.strip().rstrip('/')}/{_METADATA_PARQUET_CANONICAL}",
             f"{split_dir.strip().rstrip('/')}/{_METADATA_PARQUET_LEGACY}",
         ] + candidates
+    if _configured_local_root() is not None:
+        for name in candidates:
+            try:
+                _local_snapshot_file(name)
+            except FileNotFoundError:
+                continue
+            return name
+        raise RuntimeError(
+            f"No metadata parquet found under {_LOCAL_ROOT_ENV}; expected one of "
+            + ", ".join(repr(name) for name in candidates)
+        )
+
+    files = _hub_dataset_files(repo_id, revision)
     for name in candidates:
         if name in files:
             return name
@@ -355,6 +457,12 @@ def _hub_metadata_filename(repo_id: str, revision: str) -> str:
 
 
 def _hub_has_legacy_audio_parquet(repo_id: str, revision: str) -> bool:
+    if _configured_local_root() is not None:
+        try:
+            _local_snapshot_file(_AUDIO_PARQUET_LEGACY)
+        except FileNotFoundError:
+            return False
+        return True
     return _AUDIO_PARQUET_LEGACY in _hub_dataset_files(repo_id, revision)
 
 
@@ -381,6 +489,8 @@ def _hf_download_audio_path(
     if not rel:
         msg = "Hub audio path is empty"
         raise ValueError(msg)
+    if _configured_local_root() is not None:
+        return str(_local_snapshot_file(rel, base_dir=base_dir))
     # Some BEANS-Next Hub revisions store data under split directories, e.g.:
     #   test/metadata.parquet
     #   test/audio/<id>.wav
@@ -580,6 +690,7 @@ def _iter_single_examples(
     task_id: str | None,
     limit: int | None,
     workers: int,
+    load_audio: bool,
 ) -> Iterator[DatasetExample]:
     from beans_next.datasets.esp_data import (
         _build_dataset_example,
@@ -597,6 +708,25 @@ def _iter_single_examples(
         meta_rows.append(dict(row))
         if limit is not None and len(meta_rows) >= limit:
             break
+
+    if not load_audio:
+        for ordinal, row in enumerate(meta_rows):
+            stable = _resolve_row_id(row)
+            sample_id = (
+                stable
+                if stable is not None
+                else synthesize_esp_data_sample_id(
+                    dataset="beans_next", subset=subset, split=split, ordinal=ordinal
+                )
+            )
+            yield _build_dataset_example(
+                row,
+                sample_id=sample_id,
+                audio_path=None,
+                split=split,
+                task_id=task_id,
+            )
+        return
 
     legacy_audio = _hub_has_legacy_audio_parquet(repo_id, revision)
     rels: list[str | None] = [_single_audio_rel_path(r) for r in meta_rows]
@@ -690,6 +820,7 @@ def _iter_multiaudio_examples(
     task_id: str | None,
     limit: int | None,
     workers: int,
+    load_audio: bool,
 ) -> Iterator[DatasetExample]:
     from beans_next.datasets.esp_data import (
         _build_multiaudio_dataset_example,
@@ -707,8 +838,6 @@ def _iter_multiaudio_examples(
         meta_rows.append(dict(row))
         if limit is not None and len(meta_rows) >= limit:
             break
-
-    legacy_audio = _hub_has_legacy_audio_parquet(repo_id, revision)
 
     raw_plan: list[
         tuple[str, dict[str, Any], list[str] | None, list[str] | None]
@@ -728,6 +857,20 @@ def _iter_multiaudio_examples(
         rels = _multiaudio_repo_rel_paths(row)
         ids = _coerce_str_sequence(row.get("audio_ids"))
         raw_plan.append((sample_id, row, rels, ids))
+
+    if not load_audio:
+        for sample_id, row, _rels, _ids in raw_plan:
+            yield _build_multiaudio_dataset_example(
+                row,
+                sample_id=sample_id,
+                audio_paths=[],
+                query_audio_path=None,
+                split=split,
+                task_id=task_id,
+            )
+        return
+
+    legacy_audio = _hub_has_legacy_audio_parquet(repo_id, revision)
 
     needed_legacy: set[str] = set()
     for _sid, row, rels, ids in raw_plan:
@@ -832,6 +975,7 @@ def iter_hf_beans_next_examples(
     task_id: str | None = None,
     limit: int | None = None,
     workers: int = 1,
+    load_audio: bool = True,
 ) -> Iterator[DatasetExample]:
     """Yield ``DatasetExample`` rows for a BEANS-Next subset from HuggingFace Hub.
 
@@ -857,6 +1001,9 @@ def iter_hf_beans_next_examples(
         Optional maximum number of examples to yield.
     workers
         Parallel download / WAV materialization threads when ``>1``.
+    load_audio
+        Resolve audio files and materialize legacy audio bytes. When ``False``,
+        yield metadata-only rows without accessing audio files.
 
     Yields
     ------
@@ -868,6 +1015,12 @@ def iter_hf_beans_next_examples(
     KeyError
         If ``subset`` is not in the known BEANS-Next catalog.
     """
+    if workers == 1:
+        try:
+            workers = max(1, int(os.environ.get(_WORKERS_ENV) or "1"))
+        except ValueError:
+            workers = 1
+
     s = subset.strip()
     if s not in ALL_SUBSETS:
         raise KeyError(
@@ -883,4 +1036,5 @@ def iter_hf_beans_next_examples(
         task_id=task_id,
         limit=limit,
         workers=workers,
+        load_audio=load_audio,
     )

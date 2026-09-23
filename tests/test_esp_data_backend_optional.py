@@ -14,7 +14,9 @@ from typing import Any
 
 import pytest
 
-_ESP_DATA_INSTALLED = importlib.util.find_spec("esp_data") is not None
+_ESP_DATA_INSTALLED = any(
+    importlib.util.find_spec(name) is not None for name in ("esp_data", "alp_data")
+)
 
 
 @pytest.mark.skipif(
@@ -24,7 +26,7 @@ _ESP_DATA_INSTALLED = importlib.util.find_spec("esp_data") is not None
 def test_iter_esp_data_beans_zero_examples_missing_dep_is_clear() -> None:
     from beans_next.datasets.esp_data import iter_esp_data_beans_zero_examples
 
-    with pytest.raises(ImportError, match=r"`esp_data` is not installed"):
+    with pytest.raises(ImportError, match=r"neither `esp_data` nor public `alp_data`"):
         next(
             iter_esp_data_beans_zero_examples(
                 subset="esc50",

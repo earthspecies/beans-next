@@ -1,0 +1,29 @@
+name: gemma4_12b_local_8000
+description: >
+  Google Gemma 4 12B (google/gemma-4-12B-it) via the Gemma 4 adapter sidecar
+  (port 8000), upstream vllm serve at port 8001 (GEMMA4_BACKEND=vllm), or the
+  in-process transformers backend (GEMMA4_BACKEND=transformers).
+
+adapter: http
+
+predict_url: http://127.0.0.1:8000/predict
+info_url: http://127.0.0.1:8000/info
+health_url: http://127.0.0.1:8000/health
+
+response_schema: predictions_v1
+audio_payload: file_path
+
+auth: {}
+
+# Launch with (two terminals):
+#   vllm serve google/gemma-4-12B-it \
+#     --served-model-name gemma4_12b --max-model-len 16384 \
+#     --gpu-memory-utilization 0.90 --trust-remote-code \
+#     --limit-mm-per-prompt '{"image": 4, "audio": 1}' \
+#     --reasoning-parser gemma4 --allowed-local-media-path <root> \
+#     --host 127.0.0.1 --port 8001
+#
+#   GEMMA4_ADAPTER_STUB=0 GEMMA4_BACKEND=vllm \
+#   GEMMA4_UPSTREAM_BASE_URL=http://127.0.0.1:8001 \
+#   GEMMA4_MODEL_ID=gemma4_12b \
+#   PORT=8000 examples/servers/gemma4/serve.sh

@@ -11,7 +11,6 @@ import pytest
 
 from beans_next.api.types import DatasetExample
 
-
 # ---------------------------------------------------------------------------
 # CLI options (used by tests/consistency/)
 # ---------------------------------------------------------------------------

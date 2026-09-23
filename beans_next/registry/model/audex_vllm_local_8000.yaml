@@ -1,0 +1,28 @@
+name: audex_vllm_local_8000
+description: >
+  NVIDIA Audex (nvidia/Nemotron-Labs-Audex-30B-A3B) via the Audex adapter
+  sidecar (port 8000), upstream vllm serve (with the vendor audex_30b_a3b_vllm
+  plugin editable-installed) at port 8001.
+
+adapter: http
+
+predict_url: http://127.0.0.1:8000/predict
+info_url: http://127.0.0.1:8000/info
+health_url: http://127.0.0.1:8000/health
+
+response_schema: predictions_v1
+audio_payload: file_path
+
+auth: {}
+
+# Launch with (two terminals):
+#   vllm serve nvidia/Nemotron-Labs-Audex-30B-A3B \
+#     --served-model-name audex_audio --tensor-parallel-size 8 \
+#     --gpu-memory-utilization 0.85 --max-model-len 32768 --trust-remote-code \
+#     --limit-mm-per-prompt '{"audio": 1}' --allowed-local-media-path <root> \
+#     --host 127.0.0.1 --port 8001
+#
+#   AUDEX_ADAPTER_STUB=0 \
+#   AUDEX_UPSTREAM_BASE_URL=http://127.0.0.1:8001 \
+#   AUDEX_MODEL_ID=audex_audio \
+#   PORT=8000 examples/servers/audex/serve.sh

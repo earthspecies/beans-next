@@ -230,7 +230,7 @@ def _build_postprocess_tuples(
     *,
     task_type: str | None = None,
 ) -> tuple[tuple[StepSpec, ...], tuple[StepSpec, ...]]:
-    """Build parser and cleaner :class:`~beans_next.post_process.pipeline.StepSpec` rows.
+    """Build parser and cleaner pipeline ``StepSpec`` rows.
 
     Delegates to :func:`~beans_next.runner.runner._postprocess_steps_for_examples`
     so behavior matches suite/config runs (captioning and other free-text tasks
@@ -272,12 +272,14 @@ def _load_examples_for_run(args: argparse.Namespace) -> list[DatasetExample]:
     )
 
     limit = _effective_run_limit(args)
-    row_filter = (
-        dataset_name_equals(args.dataset_name) if args.dataset_name else None
-    )
+    row_filter = dataset_name_equals(args.dataset_name) if args.dataset_name else None
     hf_config = args.hf_config if args.hf_config else None
     rows: list[DatasetExample] = []
     data_source = getattr(args, "data_source", None)
+    load_audio = getattr(args, "modality_mode", "audio") in {
+        "audio",
+        "gaussian-noise",
+    }
     if data_source == "hf":
         data_source = "huggingface"
     if data_source == "esp_data":
@@ -304,6 +306,7 @@ def _load_examples_for_run(args: argparse.Namespace) -> list[DatasetExample]:
             split=str(args.split),
             task_id=args.task_id,
             limit=limit,
+            load_audio=load_audio,
         ):
             rows.append(ex)
             if len(rows) >= limit:
@@ -315,6 +318,7 @@ def _load_examples_for_run(args: argparse.Namespace) -> list[DatasetExample]:
             config_name=hf_config,
             task_id=args.task_id,
             row_filter=row_filter,
+            load_audio=load_audio,
         ):
             rows.append(ex)
             if len(rows) >= limit:
@@ -402,7 +406,24 @@ def _run_benchmark_cli_builtin(args: argparse.Namespace) -> None:
     )
     out_dir = _default_output_dir(args, run_id)
     spec = load_prompt_spec_from_path(_prompt_path_from_args(args))
-    renderer = PromptRenderer(spec)
+    gaussian_noise_config = None
+    if args.modality_mode == "gaussian-noise":
+        from beans_next.audio.gaussian_noise import GaussianNoiseConfig
+
+        noise_kwargs = {
+            "dataset_revision": str(args.hf_revision or "main"),
+            "global_seed": args.gaussian_noise_seed,
+            "protocol_version": args.gaussian_noise_protocol_version,
+            "rms_dbfs": args.gaussian_noise_rms_dbfs,
+        }
+        if args.gaussian_noise_cache_dir is not None:
+            noise_kwargs["cache_dir"] = args.gaussian_noise_cache_dir
+        gaussian_noise_config = GaussianNoiseConfig(**noise_kwargs)
+    renderer = PromptRenderer(
+        spec,
+        modality_mode=args.modality_mode,
+        gaussian_noise_config=gaussian_noise_config,
+    )
     cfg = RunnerConfig(
         output_dir=out_dir,
         run_id=run_id,
@@ -488,7 +509,14 @@ def _cmd_run(args: argparse.Namespace) -> int:
     -------
     int
         ``0`` when the runner completes without raising ``SystemExit``.
+
+    Raises
+    ------
+    SystemExit
+        If ``--limit`` and ``--sample-fraction`` are both set.
     """
+    if args.limit is not None and args.sample_fraction is not None:
+        raise SystemExit("--limit and --sample-fraction cannot be used together.")
     _resolve_predict_url(args)
     _dispatch_run(args)
     return 0
@@ -650,6 +678,50 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Optional cap on the number of dataset examples to score.",
     )
     p_run.add_argument(
+        "--sample-fraction",
+        type=float,
+        default=None,
+        metavar="FRACTION",
+        help=(
+            "Deterministically select this fraction of each task after loading. "
+            "Cannot be combined with --limit."
+        ),
+    )
+    p_run.add_argument(
+        "--exclude-sample-id",
+        action="append",
+        default=[],
+        metavar="ID",
+        help=(
+            "Exclude an exact dataset sample id before inference. Repeat the option "
+            "to exclude multiple documented model-incompatible samples."
+        ),
+    )
+    p_run.add_argument(
+        "--seed",
+        type=int,
+        default=0,
+        help="Seed for deterministic per-task sampling (default 0).",
+    )
+    p_run.add_argument(
+        "--permute-answer-order",
+        action="store_true",
+        default=False,
+        help=(
+            "Deterministically permute explicit textual multiple-choice options "
+            "and remap their reference labels (diagnostic use only)."
+        ),
+    )
+    p_run.add_argument(
+        "--stratify-by-label",
+        action="store_true",
+        default=False,
+        help=(
+            "Stratify --sample-fraction by the original reference label "
+            "(diagnostic use only)."
+        ),
+    )
+    p_run.add_argument(
         "--suite",
         default=None,
         help="Optional suite id from the eval registry (when registry content exists).",
@@ -676,8 +748,7 @@ def _build_parser() -> argparse.ArgumentParser:
         "--hf-path",
         default="EarthSpeciesProject/BEANS-Zero",
         help=(
-            "HuggingFace dataset id for the built-in runner "
-            "(ignored by custom hooks)."
+            "HuggingFace dataset id for the built-in runner (ignored by custom hooks)."
         ),
     )
     p_run.add_argument(
@@ -688,6 +759,11 @@ def _build_parser() -> argparse.ArgumentParser:
             "EarthSpeciesProject/BEANS-Zero dataset). Pass an empty string for "
             "single-config datasets."
         ),
+    )
+    p_run.add_argument(
+        "--hf-revision",
+        default=None,
+        help="Optional exact Hugging Face dataset revision.",
     )
     p_run.add_argument(
         "--split",
@@ -720,12 +796,58 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Prompt spec YAML (default bundled classification_bioacoustic_v1).",
     )
     p_run.add_argument(
+        "--modality-mode",
+        choices=("audio", "gaussian-noise", "text-only", "text-only-informed"),
+        default="audio",
+        help=(
+            "Input modality mode. Gaussian-noise preserves the audio pathway but "
+            "replaces every slot with deterministic noise. Text-only modes remove "
+            "audio placeholders and send no audio."
+        ),
+    )
+    p_run.add_argument(
+        "--gaussian-noise-cache-dir",
+        type=Path,
+        default=None,
+        metavar="DIR",
+        help=(
+            "Shared deterministic noise cache. On Apocrita the default is under "
+            "/gpfs/scratch/acw777/."
+        ),
+    )
+    p_run.add_argument(
+        "--gaussian-noise-seed",
+        type=int,
+        default=0,
+        help="Recorded global Gaussian-noise seed (default 0).",
+    )
+    p_run.add_argument(
+        "--gaussian-noise-rms-dbfs",
+        type=float,
+        default=-20.0,
+        help="Gaussian-noise RMS in dBFS (full protocol default -20).",
+    )
+    p_run.add_argument(
+        "--gaussian-noise-protocol-version",
+        default="beans-next.gaussian-noise.v1",
+        help="Version string included in deterministic noise seeds and manifests.",
+    )
+    p_run.add_argument(
         "--judge-url",
         default=None,
         metavar="URL",
         help=(
             "URL for the judge POST endpoint (enables LLM-as-judge scoring). "
             "When set, judge_outputs.jsonl is written after the run."
+        ),
+    )
+    p_run.add_argument(
+        "--preserve-file-paths",
+        action="store_true",
+        default=False,
+        help=(
+            "Send file_path audio payloads without base64 conversion. Use only "
+            "when the runner and model server can read the same filesystem paths."
         ),
     )
     p_run.add_argument(

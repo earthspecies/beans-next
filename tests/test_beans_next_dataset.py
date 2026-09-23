@@ -220,7 +220,8 @@ def test_abs_path_gcs_split_dict_covers_all_tier1_2_3_hub_subsets() -> None:
             "t2-captioning",
         }
     )
-    assert frozenset(_BEANS_NEXT_ABS_PATH_SPLIT_JSONL) == TIER_3_SUBSETS | new_t1_t2
+    # Versioned refreshes may add entries without replacing the legacy splits.
+    assert TIER_3_SUBSETS | new_t1_t2 <= frozenset(_BEANS_NEXT_ABS_PATH_SPLIT_JSONL)
     assert new_t1_t2 <= (TIER_1_SUBSETS | TIER_2_SUBSETS)
 
 

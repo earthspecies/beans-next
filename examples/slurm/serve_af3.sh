@@ -79,7 +79,7 @@ fi
 # ---------------------------------------------------------------------------
 if [[ "${AF3_STUB:-0}" != "1" ]]; then
   echo "AF3 GPU sanity check (torch/CUDA):"
-  uv run python - <<'PY'
+  "$UV_PROJECT_ENVIRONMENT/bin/python" - <<'PY'
 import sys
 
 try:
@@ -102,7 +102,7 @@ else:
 PY
   echo "AF3 GPU sanity check complete."
 fi
-PORT="$PORT" URL_FILE="$URL_FILE" uv run python - <<'PY'
+PORT="$PORT" URL_FILE="$URL_FILE" "$UV_PROJECT_ENVIRONMENT/bin/python" - <<'PY'
 import os
 import signal
 import socket
