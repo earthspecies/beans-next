@@ -1,16 +1,22 @@
 """Load BEANS-Next examples from the Hugging Face Hub dataset bundle.
 
-Current layout (``EarthSpeciesProject/BEANS-Next``) uses:
+The compact Hub layout uses:
 
-- ``metadata.parquet``: one row per evaluation sample. Filter rows with the
+- ``test/metadata.parquet``: one row per evaluation sample. Filter rows with the
   string ``task`` column (legacy tables may still expose ``subset``). ``tier``
-  is an integer (1–4). Single-audio rows set ``file_name`` to a repo-relative
-  path such as ``audio/<id>.wav``.
-  Multi-audio rows use ``query_source_path`` + ``context_source_paths`` and/or
-  ``source_audio_paths`` (legacy columns may still use ``query_audio_path`` +
-  ``context_audio_paths`` + ``audio_paths``; see :func:`_multiaudio_repo_rel_paths`).
-- ``audio/``: WAV (or other) files referenced by those paths (not embedded in
+  is an integer (1–4). All tiers store prompts and targets in ``messages``.
+  ``id`` and ``sample_id`` are retained. Single-audio rows set ``file_name`` to a
+  path relative to the metadata directory, such as ``audio/<id>.wav``.
+  Multi-audio rows use reference-only ``context_audio_paths`` followed by
+  ``query_audio_path``. Alternate and legacy column names remain supported;
+  see :func:`_multiaudio_repo_rel_paths`.
+- ``test/audio/``: WAV (or other) files referenced by those paths (not embedded in
   Parquet).
+- ``provenance/metadata.parquet``: optional source and construction details,
+  joined by ``id``. Evaluation does not load this file.
+
+Older tables with dedicated ``instruction`` and ``output`` columns remain
+supported, as do metadata files at the repository root.
 
 Older revisions used ``beans_next_metadata.parquet`` + ``beans_next_audio.parquet``
 (with ``audio_bytes``). That path remains supported when those files are present.

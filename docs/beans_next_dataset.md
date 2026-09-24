@@ -1,5 +1,8 @@
 # BEANSNext (single-audio) dataset — splits, schema, and prompt notes
 
+For the current compact Hugging Face format, see [Hub metadata schema](hub_schema.md).
+The source-package schema below describes an older export format.
+
 This document summarizes **BEANSNext v0.1.0** as registered in `esp_data.datasets.beans_next.BEANSNext` (esp-data `origin/beans-next` branch), and verifies split-level statistics and example rows by streaming the public **GCS JSONL** files (metadata only; no audio downloads).
 
 ## How to access (esp-data)
@@ -187,4 +190,3 @@ The field `audio_path_original_sample_rate` is present in all splits and looks l
 ## Commands used to verify split stats (metadata-only)
 
 Counts and samples were computed by streaming each JSONL file from GCS and parsing the first record + line count, without reading any audio objects.
-

@@ -1093,8 +1093,8 @@ def _build_dataset_example(
 ) -> DatasetExample:
     """Assemble a `DatasetExample` from a metadata row and a resolved audio path.
 
-    Falls back to extracting ``instruction`` and ``labels`` from a ``messages``
-    column (T3 HF Hub rows use this format instead of dedicated columns).
+    Accepts dedicated legacy ``instruction`` and ``output`` columns, or the
+    ``messages`` column used by every tier in the compact Hub schema.
 
     Parameters
     ----------
@@ -1137,7 +1137,7 @@ def _build_dataset_example(
     )
     labels = _labels_from_row(row)
 
-    # T3 HF Hub rows store prompts and answers in a ``messages`` column.
+    # Compact Hub rows store prompts and answers in ``messages`` for all tiers.
     if instruction is None or labels is None:
         messages_raw = row.get("messages")
         if isinstance(messages_raw, list):

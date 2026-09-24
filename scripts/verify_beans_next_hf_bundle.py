@@ -3,9 +3,8 @@
 Checks that the bundle is internally consistent and matches the loader contract
 in `beans_next.datasets.beans_next_hub`:
 
-- every metadata row's `file_name` resolves to a file that exists;
-- `audio_id` equals the SHA-256 of that file's bytes, and the file is named
-  after it (this is the property the whole content-addressed layout rests on);
+- every sampled row's ordered audio paths resolve to files that exist;
+- each file is named after the SHA-256 of its bytes;
 - audio decodes and is mono PCM WAV;
 - per-task row counts match what was expected.
 
@@ -28,6 +27,11 @@ import hashlib
 import random
 import sys
 from pathlib import Path
+
+from beans_next.datasets.beans_next_hub import (
+    _multiaudio_repo_rel_paths,
+    _single_audio_rel_path,
+)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -100,21 +104,32 @@ def main(argv: list[str] | None = None) -> int:
     bad_audio = 0
     checked = 0
     audio_root = args.bundle / "test"
+    paths_to_check: set[Path] = set()
     for i in rows:
-        fn = cols["file_name"][i]
-        aid = cols["audio_id"][i]
-        if not fn or not aid:
-            continue  # multi-audio rows carry their paths in other columns
-        path = audio_root / fn
+        row = {key: values[i] for key, values in cols.items()}
+        try:
+            if row["tier"] == 4:
+                paths = _multiaudio_repo_rel_paths(row)
+            else:
+                single = _single_audio_rel_path(row)
+                paths = [single] if single else None
+        except ValueError:
+            mismatched += 1
+            continue
+        if not paths:
+            missing += 1
+            continue
+        paths_to_check.update(audio_root / fn for fn in paths)
+    for path in sorted(paths_to_check):
         if not path.exists():
             missing += 1
             continue
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
-        if digest != aid or not fn.endswith(f"{aid}.wav"):
+        if path.name != f"{digest}.wav":
             mismatched += 1
         checked += 1
 
-    print(f"hash-verified rows: {checked}")
+    print(f"hash-verified audio files: {checked}")
     print(f"  missing files      : {missing}")
     print(f"  sha/name mismatches: {mismatched}")
 
@@ -122,14 +137,14 @@ def main(argv: list[str] | None = None) -> int:
     try:
         import soundfile as sf
 
-        for i in rows[: min(60, len(rows))]:
-            fn = cols["file_name"][i]
-            if not fn:
-                continue
-            path = audio_root / fn
+        for path in sorted(paths_to_check)[:60]:
             if not path.exists():
                 continue
-            info = sf.info(str(path))
+            try:
+                info = sf.info(str(path))
+            except (RuntimeError, OSError):
+                bad_audio += 1
+                continue
             if info.frames <= 0 or info.channels != 1:
                 bad_audio += 1
         print(f"  undecodable/non-mono: {bad_audio}")
