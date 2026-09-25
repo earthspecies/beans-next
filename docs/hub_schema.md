@@ -16,7 +16,7 @@ retain their previous values.
 | `source_datasets`, `source_audio_ids`, `source_file_paths` | Ordered source names, recording IDs or filenames, and source paths for each clip. |
 | `source_urls` | Recording-specific URLs where established, otherwise null. |
 | `audio_start_seconds`, `audio_end_seconds` | Source crop boundaries in seconds, where established. |
-| `source_id_types`, `provenance_status` | Identifier meanings and evidence supporting each source mapping. |
+| `source_id_types` | Meaning of each source identifier. |
 
 For tier 4, load `context_audio_paths + [query_audio_path]`. Keep every clip in
 order, including repeated paths. Supply the user prompt and audio to the model.
@@ -34,8 +34,7 @@ final tier 4 query. `source_file_paths` describes origins and is never used as a
 evaluation download path. Unknown values remain null.
 
 `source_audio_ids` distinguishes recording IDs from source or derived filenames
-through `source_id_types`. Ambiguous iNaturalist sound IDs remain null. DCASE and
-gibbon clips retain their exact filenames without invented raw crop timestamps.
+through `source_id_types`. Null means that no value is provided.
 
 `provenance/metadata.parquet` contains `id`, `sample_id`, `source_id`,
 `original_fields`, and `added_columns`. `source_id` is construction bookkeeping,
@@ -82,8 +81,8 @@ Keep the source metadata until the release passes evaluation parity checks.
 This base conversion produces the earlier 12-column compact schema. Source
 enrichment uses `ordered_source_provenance` in
 `beans_next.datasets.hub_provenance` with the original rows and source manifests.
-It adds the eight ordered source fields and moves `source_id` into provenance,
-giving the enriched table 19 columns. Rebuild `original_fields` against the
+It adds the seven ordered source fields and moves `source_id` into provenance,
+giving the enriched table 18 columns. Rebuild `original_fields` against the
 enriched row and list added fields in `added_columns` to retain exact reversal.
 `restore_provenance_row` handles both enriched and earlier compact tables.
 

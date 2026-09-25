@@ -16,7 +16,6 @@ PROVENANCE_COLUMNS = (
     "audio_start_seconds",
     "audio_end_seconds",
     "source_id_types",
-    "provenance_status",
 )
 _SOURCES = {
     "xeno-canto": "xeno-canto",
@@ -88,7 +87,6 @@ def ordered_source_provenance(
         url = None
         start = end = None
         kind = "source_filename"
-        status = "filename_only"
         if source == "xeno-canto":
             match = re.match(r"XC(\d+)", filename)
             number = (
@@ -105,10 +103,10 @@ def ordered_source_provenance(
                     ):
                         raise ValueError("Conflicting Xeno-canto recording IDs")
             aid, url = "XC" + number, "https://xeno-canto.org/" + number
-            kind, status = "recording_id", "metadata_id"
+            kind = "recording_id"
         elif source == "inaturalist":
             aid = None
-            kind, status = "unresolved", "unresolved_recording_id"
+            kind = None
         elif source in ("birdeep", "powdermill", "birdvox-full-night"):
             match = re.fullmatch(r"(.+)__crop_(\d+)_(\d+)\.wav", filename)
             if not match:
@@ -126,12 +124,10 @@ def ordered_source_provenance(
                     raise ValueError("Unknown BirdVox unit")
                 source_path = f"BirdVox-full-night_flac-audio_unit{unit[1]}.flac"
                 aid = source_path
-                status = "crop_filename"
             else:
                 source_path = manifest_paths.get((source, aid))
                 if not source_path:
                     raise ValueError(f"Missing manifest match: {source}/{aid}")
-                status = "manifest_filename"
         elif source == "nocturnal-bird-migration":
             match = re.fullmatch(r"[^/]+#(\d+)\.wav", filename)
             if not match:
@@ -139,17 +135,17 @@ def ordered_source_provenance(
             aid = "XC" + match[1]
             source_path = "train_nbm_xc/" + filename
             url = "https://xeno-canto.org/" + match[1]
-            kind, status = "upstream_recording_id", "upstream_id_from_filename"
+            kind = "upstream_recording_id"
         elif source == "giant-otters":
             aid = otter_ids.get(filename)
             if not aid:
                 raise ValueError(f"Unknown original otter clip: {filename}")
-            kind, status = "call_id", "manifest_id"
+            kind = "call_id"
         elif source == "f0-bioacoustic":
             source_path = aid = path
         elif source in ("dcase-2021-task-5", "hainan-gibbons", "carrion-crow"):
-            kind, status = "derived_clip_filename", "derived_clip_only"
-        values = (source, aid, source_path, url, start, end, kind, status)
+            kind = "derived_clip_filename"
+        values = (source, aid, source_path, url, start, end, kind)
         for key, value in zip(PROVENANCE_COLUMNS, values, strict=True):
             out[key].append(value)
     return out

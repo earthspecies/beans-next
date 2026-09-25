@@ -25,7 +25,7 @@ def test_mixed_source_slots_keep_repeats_and_unknown_sound_ids() -> None:
     assert result["source_audio_ids"] == ["XC123", None, "XC123"]
     assert result["source_datasets"] == ["xeno-canto", "inaturalist", "xeno-canto"]
     assert result["source_urls"][1] is None
-    assert result["provenance_status"][1] == "unresolved_recording_id"
+    assert result["source_id_types"][1] is None
     assert all(len(values) == 3 for values in result.values())
 
 
