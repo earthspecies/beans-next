@@ -16,7 +16,7 @@ The core package (`beans_next`) is **dependency-light**: no torch, transformers,
 
 | Document | What it covers |
 |---|---|
-| **[Hub metadata schema](docs/hub_schema.md)** | Compact evaluation columns, provenance, migration, and ordered tier 4 audio |
+| **[Hub metadata schema](docs/hub_schema.md)** | Evaluation columns, source fields, and audio order |
 | **[Full evaluation pipeline](docs/full_evaluation_pipeline.md)** | Complete end-to-end pipeline: rsync, key setup, weight download, serving, SLURM submit scripts, results retrieval, rescoring |
 | **[Evaluation guide](docs/evaluation_guide.md)** | Per-model serving reference — hardware, local and SLURM instructions, metrics |
 | **[LLM-as-judge guide](docs/llm_judge.md)** | All three judge modes (rubric, YES/NO, extractor); built-in templates; retroactive vs inline judging |
