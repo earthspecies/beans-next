@@ -34,6 +34,7 @@ from beans_next.metrics.regression import (
     mean_squared_error,
     root_mean_squared_error,
 )
+from beans_next.metrics.species_counts import parse_species_counts
 from beans_next.post_process.answers import (
     FREE_TEXT_TASKS,
     INVALID_ANSWER,
@@ -129,7 +130,6 @@ def _parse_label_list(text: str) -> list[str]:
     return [p for p in parts if p]
 
 
-_SPECIES_COUNT_RE = re.compile(r"([^,:]+?)\s*:\s*(\d+(?:\.\d+)?)")
 # Matches leading MCQ letter prefix: "(A) ", "A. ", "A: ", "a) ", etc.
 _MCQ_PREFIX_RE = re.compile(r"^\s*\(?[A-Za-z]\)?[).\]:\s]+")
 # Per-species frequency range: "Chloris chloris: 2440-5130 Hz"
@@ -300,22 +300,6 @@ def _species_name_match(pred: str, true: str) -> bool:
             if pred == sci or pred in commons:
                 return True
     return False
-
-
-def _parse_species_count_dict(text: str) -> dict[str, float]:
-    """Parse ``'Species A: 3, Species B: 2'`` into a normalised ``{name: count}`` dict.
-
-    Returns
-    -------
-    dict[str, float]
-        Lowercase-normalised species names mapped to their counts.
-    """
-    result: dict[str, float] = {}
-    for match in _SPECIES_COUNT_RE.finditer(text):
-        name = _normalize_label_token(match.group(1)).lower()
-        if name:
-            result[name] = float(match.group(2))
-    return result
 
 
 def _parse_species_freq_range_dict(text: str) -> dict[str, tuple[float, float]]:
@@ -570,10 +554,18 @@ def score_sample(
                 "iou": float(iou),
             }
         if "species_count_dict" in task_s:
-            true_dict = _parse_species_count_dict(labels)
-            pred_dict = _parse_species_count_dict(processed)
-            if not true_dict:
-                return {"parse_success": 0.0}
+            true_dict = parse_species_counts(labels)
+            pred_dict = parse_species_counts(processed)
+            if true_dict is None:
+                return {"target_parse_success": 0.0}
+            if pred_dict is None:
+                return {
+                    "target_parse_success": 1.0,
+                    "parse_success": 0.0,
+                    "species_precision": 0.0,
+                    "species_recall": 0.0,
+                    "species_f1": 0.0,
+                }
             true_set = set(true_dict)
             pred_set = set(pred_dict)
             tp = len(true_set & pred_set)
@@ -586,9 +578,10 @@ def score_sample(
             count_errors = [
                 abs(pred_dict.get(s, 0.0) - true_dict.get(s, 0.0)) for s in all_species
             ]
-            count_mae = sum(count_errors) / len(count_errors)
+            count_mae = sum(count_errors) / len(count_errors) if count_errors else 0.0
             return {
                 "parse_success": 1.0,
+                "target_parse_success": 1.0,
                 "species_precision": float(prec),
                 "species_recall": float(rec),
                 "species_f1": float(f1v),

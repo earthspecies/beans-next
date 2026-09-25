@@ -171,7 +171,8 @@ class TestSpeciesCountDictScoring:
             raw_predictions=[""],
         )
         assert r["species_f1"] == pytest.approx(0.0)
-        assert r["count_mae"] == pytest.approx(2.5)
+        assert r["parse_success"] == 0.0
+        assert "count_mae" not in r
 
 
 # ---------------------------------------------------------------------------
