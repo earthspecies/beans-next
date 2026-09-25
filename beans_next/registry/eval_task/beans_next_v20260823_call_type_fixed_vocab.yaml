@@ -1,5 +1,5 @@
 beans_next_v20260823_call_type_fixed_vocab:
-  task_type: classification
+  task_type: multilabel_classification
   dataset: beans_next
   subset: call-type-fixed-vocab
   split: test
@@ -7,6 +7,4 @@ beans_next_v20260823_call_type_fixed_vocab:
   generation_config:
     max_length_seconds: 10
   metrics:
-  - name: top1_accuracy
-    scorer_kwargs:
-      label_separator: ','
+  - name: macro_f1

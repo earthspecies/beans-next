@@ -265,7 +265,7 @@ TABLE_SPECS: dict[str, tuple[ColumnSpec, ...]] = {
         _c(
             "summary",
             "beans_next_t3_ordered_species_summary",
-            "species_f1",
+            "cider",
             scale=100.0,
         ),
         _c(
@@ -279,7 +279,7 @@ TABLE_SPECS: dict[str, tuple[ColumnSpec, ...]] = {
         _c(
             "gibbons",
             "beans_next_gibbon_fewshot_detection_balanced",
-            "accuracy",
+            "macro_f1",
             number_format=".3f",
             aliases=("beans_next_multiaudio_gibbon_fewshot_detection_balanced",),
         ),
@@ -294,7 +294,7 @@ TABLE_SPECS: dict[str, tuple[ColumnSpec, ...]] = {
         _c(
             "dcase",
             "beans_next_dcase_fewshot_detection_balanced",
-            "accuracy",
+            "macro_f1",
             number_format=".3f",
             aliases=("beans_next_multiaudio_dcase_fewshot_detection_balanced",),
         ),

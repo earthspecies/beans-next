@@ -1,5 +1,5 @@
 beans_next_multiaudio_gibbon_fewshot_detection_balanced:
-  task_type: classification
+  task_type: multilabel_detection
   dataset: beans_next_multiaudio
   subset: gibbon-fewshot-detection-balanced
   split: test
@@ -7,4 +7,4 @@ beans_next_multiaudio_gibbon_fewshot_detection_balanced:
   generation_config:
     max_length_seconds: 10
   metrics:
-  - name: accuracy
+  - name: macro_f1

@@ -92,7 +92,9 @@ def _write_fixture(tmp_path: Path) -> Path:
             {"freq_mean_iou": 0.99},
             output_dir=freq_dir,
         ),
-        _task("beans_next_t3_ordered_species_summary", {"species_f1": 0.5}),
+        _task(
+            "beans_next_t3_ordered_species_summary", {"species_f1": 0.5, "cider": 0.08}
+        ),
         _task("beans_next_t3_structural_captioning", {"cider": 0.03}),
         _task(
             "beans_next_gibbon_fewshot_detection_balanced",
@@ -141,7 +143,7 @@ def test_build_rows_scales_units_and_preserves_missing_tasks(
     structural = result["tables"]["structural_v3"]
     assert structural["values"]["species_count"] == pytest.approx(1.25)
     assert structural["values"]["frequency"] == pytest.approx(40.0)
-    assert structural["values"]["summary"] == pytest.approx(50.0)
+    assert structural["values"]["summary"] == pytest.approx(8.0)
     assert structural["values"]["caption"] == pytest.approx(3.0)
     assert structural["subtables"]["species_id"]["values"]["order_oe"] == pytest.approx(
         33.0
@@ -150,7 +152,7 @@ def test_build_rows_scales_units_and_preserves_missing_tasks(
         "order_mcq"
     ] == pytest.approx(22.0)
 
-    assert result["tables"]["tier4"]["values"]["gibbons"] == pytest.approx(0.456)
+    assert result["tables"]["tier4"]["values"]["gibbons"] == pytest.approx(0.123)
     # The result must be directly machine-readable JSON.
     json.dumps(result)
 
@@ -233,7 +235,7 @@ def test_latex_cli_emits_six_concise_fragments(
     assert "Test model & 1.2 & 34.5" in output
     assert "Test model & 50.0" in output
     assert "& 0.7 \\\\" in output
-    assert "Test model & 0.456 & -- & -- & -- & --" in output
+    assert "Test model & 0.123 & -- & -- & -- & --" in output
 
 
 def test_undefined_numeric_metric_remains_unreported(

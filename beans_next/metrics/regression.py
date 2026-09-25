@@ -81,93 +81,250 @@ def _convert_to_target_unit(
     return value
 
 
-def _maybe_deci_hz(
-    value: float,
-    *,
-    target_value: float | None,
-    unit: str | None,
-) -> float:
-    if unit != "hz" or target_value is None:
-        return value
-    scaled = value * 0.1
-    if target_value < 1000.0 and value >= 1000.0:
-        if abs(scaled - target_value) < abs(value - target_value):
-            return scaled
-    return value
-
-
 def extract_numeric_value(
     value: object,
     *,
     target_value: float | None = None,
     unit: str | None = None,
 ) -> float:
-    """Extract one numeric value from model text or a target label.
+    """Extract an unambiguous scalar or range midpoint, independently of targets.
 
-    Parameters
-    ----------
-    value
-        Numeric scalar, string, or single-item sequence containing text such as
-        ``"12.5 dB"`` or ``"3140 Hz"``.
-    target_value
-        Optional target value used only for an F0-specific deci-Hz correction on
-        range outputs like ``"2131-4440 Hz"`` when the target is hundreds of Hz.
-    unit
-        Optional target-unit hint (currently ``"hz"`` or ``"db"``). Predictions
-        in ``kHz`` are converted to Hz when the target unit is ``"hz"``.
+    ``target_value`` is retained for API compatibility and intentionally ignored.
+    Explicit kHz values are converted to Hz. Multiple distinct measurements,
+    incompatible units, and unrelated numbers are rejected rather than guessed.
 
     Returns
     -------
     float
-        Extracted numeric value.
+        Numeric answer in the requested units.
 
     Raises
     ------
     MetricsError
-        If no finite numeric value can be extracted.
+        If no unambiguous finite measurement can be extracted.
     """
     if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
-        if not value:
-            raise MetricsError("Cannot extract a numeric value from an empty sequence.")
+        if len(value) != 1:
+            raise MetricsError("Expected exactly one numeric answer.")
         value = value[0]
-    if isinstance(value, (int, float)) and not isinstance(value, bool):
-        return _coerce_float(value)
     if not isinstance(value, str):
         return _coerce_float(value)
-
-    text = value.strip()
-    if not text:
-        raise MetricsError("Cannot extract a numeric value from empty text.")
+    text = re.sub(r"\bf_?0\b", "fundamental frequency", value.strip(), flags=re.I)
+    # NatureLM timestamps describe the clip, not the requested measurement.
+    text = re.sub(r"\#[^#]*\#\s*:\s*", "", text)
+    text = re.sub(r"\[\d+(?:\.\d+)?\s*(?:-|–)\s*\d+(?:\.\d+)?\]", "", text)
     target_unit = (unit or "").lower() or None
-    inferred_unit = (_unit_hint(text) or target_unit or "").lower() or None
 
-    range_match = _RANGE_RE.search(text)
-    if range_match is not None:
-        a = _coerce_float(range_match.group("a"))
-        b = _coerce_float(range_match.group("b"))
-        range_unit = (range_match.group("unit") or inferred_unit or "").lower() or None
-        midpoint = (a + b) / 2.0
-        midpoint = _convert_to_target_unit(
-            midpoint,
-            source_unit=range_unit,
-            target_unit=target_unit,
-        )
-        return _maybe_deci_hz(midpoint, target_value=target_value, unit=range_unit)
-
-    matches = list(_NUMBER_RE.finditer(text))
-    nums = [m.group("num") for m in matches]
-    if not nums:
-        raise MetricsError(f"No numeric value found in {value!r}.")
-    last_match = matches[-1]
-    parsed = _coerce_float(nums[-1])
-    suffix = text[last_match.end() : last_match.end() + 12].lower().lstrip()
-    source_unit = "khz" if suffix.startswith("khz") else inferred_unit
-    parsed = _convert_to_target_unit(
-        parsed,
-        source_unit=source_unit,
-        target_unit=target_unit,
+    # Decimal commas with one/two fractional digits and an explicit unit are
+    # unambiguous here; preserve thousands separators such as 1,200 Hz.
+    text = re.sub(
+        r"(?<![\d,])([+-]?\d+),(\d{1,2})(?=\s*(?:dB|kHz|Hz)\b)",
+        r"\1.\2",
+        text,
+        flags=re.I,
     )
-    return parsed
+    text = text.replace("**", "").replace("`", "")
+    for spelling, abbreviation in [
+        ("kilohertz", "kHz"),
+        ("hertz", "Hz"),
+        ("decibels?", "dB"),
+    ]:
+        text = re.sub(r"\b" + spelling + r"\b", abbreviation, text, flags=re.I)
+    if target_unit:
+        labeled_scalar = re.fullmatch(
+            r"\s*(?:SNR|fundamental frequency)\s*(?:is|:|=)?\s*"
+            r"([+-]?\d+(?:\.\d+)?)(?:\s*\([^\d]*\))?\s*",
+            text,
+            re.I,
+        )
+        if labeled_scalar:
+            return _coerce_float(labeled_scalar.group(1))
+    # A stated answer precedes supporting discussion/list numbering. Extract
+    # only an explicit answer clause, never whichever number fits the target.
+    if target_unit in {"hz", "khz", "db"}:
+        quantity = (
+            r"(?:mean\s+)?fundamental frequency"
+            if target_unit != "db"
+            else r"(?:signal[- ]to[- ]noise ratio(?:\s*\(SNR\))?|SNR)"
+        )
+        primary = re.match(
+            r"^\s*(?:The\s+)?(?:estimated\s+)?"
+            + quantity
+            + r"(?:\s+(?:of|for)\s+[^\n:.!?]{0,100}?)?\s*(?:is|:|=)\s*"
+            + r"(?:approximately\s*|about\s*|around\s*|~\s*)?"
+            + r"([+-]?[\d,]+(?:\.\d+)?\s*(?:kHz|Hz|dB))(?=[.,;\s]|$)",
+            text,
+            re.I,
+        )
+        if primary:
+            # Do not turn the first endpoint of a range into a point estimate.
+            tail = text[primary.end() :]
+            if not re.match(r"\s*(?:-|–|—|to\b|or\b|and\b)", tail):
+                return extract_numeric_value(primary.group(1), unit=target_unit)
+    else:
+        words = {
+            "zero": 0,
+            "one": 1,
+            "two": 2,
+            "three": 3,
+            "four": 4,
+            "five": 5,
+            "six": 6,
+            "seven": 7,
+            "eight": 8,
+            "nine": 9,
+            "ten": 10,
+            "eleven": 11,
+            "twelve": 12,
+            "thirteen": 13,
+            "fourteen": 14,
+            "fifteen": 15,
+            "sixteen": 16,
+            "seventeen": 17,
+            "eighteen": 18,
+            "nineteen": 19,
+        }
+        for ten, value10 in {
+            "twenty": 20,
+            "thirty": 30,
+            "forty": 40,
+            "fifty": 50,
+            "sixty": 60,
+            "seventy": 70,
+            "eighty": 80,
+            "ninety": 90,
+        }.items():
+            words[ten] = value10
+            for digit in [
+                "one",
+                "two",
+                "three",
+                "four",
+                "five",
+                "six",
+                "seven",
+                "eight",
+                "nine",
+            ]:
+                for sep in ["", " ", "-"]:
+                    words[ten + sep + digit] = value10 + words[digit]
+        number_words = "|".join(
+            re.escape(w) for w in sorted(words, key=len, reverse=True)
+        )
+        count_pattern = r"(?:\d+(?:\.\d+)?|" + number_words + r"|no)"
+        primary = re.match(
+            r"^\s*(?:(?:Based on|In) [^,\n]+,\s*)?"
+            r"(?:There (?:are|is|appear to be|appears to be)|"
+            r"I (?:can )?(?:hear|detect|count|identify))\s+"
+            r"(?:(?:only|approximately|about|at least|a total of)\s+)?"
+            r"(?P<count>" + count_pattern + r")\s+(?:(?:instance|type) of\s+)?"
+            r"(?:(?:different|distinct|individual|separate|bird|animal|flight|audible|crowing)\s+)*"
+            r"(?:species|birds?|calls?|vocalizations?|events?)\b",
+            text,
+            re.I,
+        )
+        # 'at least' is a lower bound, not an exact count.
+        if primary and "at least" not in primary.group().lower():
+            token = primary.group("count").lower()
+            first_sentence_tail = re.split(
+                r"[.!?\n]", text[primary.end() :], maxsplit=1
+            )[0]
+            if not re.search(
+                r"\b(?:or|but|and)\b.*(?:\d|" + number_words + r")",
+                first_sentence_tail,
+                re.I,
+            ):
+                return float(
+                    0 if token == "no" else words[token] if token in words else token
+                )
+        bare_word = re.fullmatch(r"\s*(" + number_words + r")[.!]?\s*", text, re.I)
+        if bare_word:
+            return float(words[bare_word.group(1).lower()])
+    if re.search(
+        r"\b(?:at least|at most|above|below|more than|less than)\s+[+-]?\d", text, re.I
+    ):
+        raise MetricsError("A one-sided bound is not a numerical estimate.")
+    if re.search(r"\b(?:to|or|and)\s*$", text, re.I):
+        raise MetricsError("Truncated numerical answer.")
+    number = r"[+-]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?"
+    ranges = list(
+        re.finditer(
+            rf"(?P<a>{number})\s*(?P<ua>khz|hz|db)?\s*(?:-|to|–|—)\s*"
+            rf"(?P<b>{number})\s*(?P<ub>khz|hz|db)?\b",
+            text,
+            re.IGNORECASE,
+        )
+    )
+
+    def convert(raw: str, source: str | None) -> float:
+        source = source.lower() if source else None
+        if target_unit and source and ((target_unit == "db") != (source == "db")):
+            raise MetricsError("Answer has incompatible units.")
+        result = _coerce_float(raw)
+        if source == "khz" and target_unit != "khz":
+            result *= 1000
+        elif source == "hz" and target_unit == "khz":
+            result /= 1000
+        return result
+
+    if ranges:
+        if len(ranges) != 1:
+            raise MetricsError("Multiple numeric ranges are ambiguous.")
+        m = ranges[0]
+        if _NUMBER_RE.search(text[: m.start()] + text[m.end() :]):
+            raise MetricsError("Range plus additional numbers is ambiguous.")
+        ua = m.group("ua") or m.group("ub") or target_unit
+        ub = m.group("ub") or m.group("ua") or target_unit
+        return (convert(m.group("a"), ua) + convert(m.group("b"), ub)) / 2
+    if re.search(r"\brange(?:s)? (?:anywhere )?(?:from|between)\b", text, re.I):
+        raise MetricsError("Incomplete numerical range.")
+    matches = list(_NUMBER_RE.finditer(text))
+    if not matches:
+        words = {
+            "zero": 0,
+            "one": 1,
+            "two": 2,
+            "three": 3,
+            "four": 4,
+            "five": 5,
+            "six": 6,
+            "seven": 7,
+            "eight": 8,
+            "nine": 9,
+            "ten": 10,
+        }
+        word_match = re.fullmatch(
+            r"\s*(?:there (?:are|is)\s+)?("
+            + "|".join(words)
+            + r")(?:\s+(?:species|calls?|vocalizations?))?[.!]?\s*",
+            text,
+            re.IGNORECASE,
+        )
+        if word_match and target_unit is None:
+            return float(words[word_match.group(1).lower()])
+        raise MetricsError(f"No numeric answer found in {value!r}.")
+    values = []
+    for match in matches:
+        suffix = text[match.end() :]
+        unit_match = re.match(r"\s*(khz|hz|db)\b", suffix, re.IGNORECASE)
+        # Numbers in numbered instructions or formulas (e.g. 10 * log10)
+        # are not physical measurements. Unitless answers must be bare scalars.
+        if (
+            target_unit
+            and not unit_match
+            and not re.fullmatch(number + r"[.!]?", text.strip())
+        ):
+            continue
+        # A time value is never a count/F0/SNR answer.
+        if not unit_match and re.match(
+            r"\s*(?:s|sec|seconds?)\b", suffix, re.IGNORECASE
+        ):
+            continue
+        source = unit_match.group(1) if unit_match else target_unit
+        values.append(convert(match.group("num"), source))
+    if not values or len(set(values)) != 1:
+        raise MetricsError("Expected one unambiguous numeric answer.")
+    return values[0]
 
 
 def extract_frequency_range(text: str) -> tuple[float, float]:

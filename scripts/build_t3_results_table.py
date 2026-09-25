@@ -19,7 +19,7 @@ the reported metrics differ from the original caption:
   model cannot look good by identifying only a couple of easy species). This
   replaces the export's ``freq_mae_low``, which averages error only over matched
   species and therefore rewards abstaining.
-- Ordered species summary -> ``species_f1`` (%).
+- Ordered species summary -> corpus ``cider`` (×100).
 - Structural captioning -> corpus CIDEr, computed on the fly from
   ``processed_prediction`` / ``target`` (there is no precomputed score column).
 
@@ -153,7 +153,7 @@ PANEL1: list[Group] = [
                 "Freq.",
                 "freq_gt_iou",
             ),
-            Column("ordered_species_summary", "Sum.", "species_f1"),
+            Column("ordered_species_summary", "Sum.", "cider"),
             Column("structural_captioning", "Caption", "cider"),
         ],
     ),
@@ -252,16 +252,24 @@ def _compute_cell(export_dir: Path, model: str, col: Column) -> float | None:
     path = export_dir / f"{model}__{col.task}.csv"
     if not path.is_file():
         return None
-    df = pd.read_csv(path)
+    df = pd.read_csv(path, keep_default_na=False)
     if df.empty:
         return None
 
     if col.metric == "cider":
-        pairs = df[["processed_prediction", "target"]].dropna()
+        from beans_next.post_process.answers import clean_answer
+
+        # "None" is a literal reference, not missing data. Summary must use the
+        # full response, not an old species-only normalized artifact.
+        prediction_column = (
+            "raw_prediction" if "raw_prediction" in df else "processed_prediction"
+        )
+        pairs = df.loc[df["target"] != "", [prediction_column, "target"]]
+
         if len(pairs) < 2:
             return None
         value = cider_corpus_mean_normalized(
-            [str(x) for x in pairs["processed_prediction"]],
+            [clean_answer(str(x)) for x in pairs[prediction_column]],
             [str(x) for x in pairs["target"]],
         )
         return value * col.scale
@@ -269,7 +277,11 @@ def _compute_cell(export_dir: Path, model: str, col: Column) -> float | None:
     if col.metric == "freq_gt_iou":
         # Prefer the post-processed answer, but fall back to the raw output when
         # the export stored an empty processed column (e.g. the T3 freq run).
-        pred = df["processed_prediction"].fillna(df.get("raw_prediction"))
+        pred = (
+            df["processed_prediction"]
+            .replace("", pd.NA)
+            .fillna(df.get("raw_prediction"))
+        )
         pairs = pd.DataFrame({"pred": pred, "target": df["target"]}).dropna()
         scores = [
             s
@@ -408,7 +420,7 @@ def build_table(export_dir: Path) -> str:
         r"tasks use mean absolute error ($\downarrow$, lower is better); the "
         r"frequency-range task uses coverage-aware species-band IoU (\%, mean "
         "over ground-truth species, missed species scored 0); summary uses "
-        "species F1; captioning uses corpus CIDEr. "
+        "corpus CIDEr, as does captioning. "
         r"\texttt{S}: species, \texttt{V}: vocalization, \texttt{\#}: number of."
     )
 

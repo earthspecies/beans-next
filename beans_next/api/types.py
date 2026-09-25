@@ -288,6 +288,7 @@ class ScoredPrediction(BaseModel):
     predictions: list[str] = Field(default_factory=list)
     processed_prediction: str | list[str] | None = None
     targets: str | list[str] | dict[str, Any] | None = None
+    question: str | None = None
     scores: dict[str, float] | None = None
     postprocess_version: str | None = None
     error: str | None = None

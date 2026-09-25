@@ -6,6 +6,7 @@ import importlib.resources
 import json
 import re
 from collections.abc import Mapping
+from functools import lru_cache
 
 from beans_next.api.types import DatasetExample
 from beans_next.metrics.base import (
@@ -32,6 +33,15 @@ from beans_next.metrics.regression import (
     mean_absolute_percentage_error,
     mean_squared_error,
     root_mean_squared_error,
+)
+from beans_next.post_process.answers import (
+    FREE_TEXT_TASKS,
+    INVALID_ANSWER,
+    clean_answer,
+    explicit_empty,
+    parse_call_types,
+    parse_choice_set,
+    question_options,
 )
 from beans_next.post_process.pipeline import PostProcessResult
 
@@ -86,47 +96,29 @@ def _normalize_mcq_choice_token(s: str) -> str | None:
 
 
 def _mcq_content_match(y_pred: str, y_true: str, pred_mcq: str | None) -> bool:
-    """Return True when ``y_pred`` matches the content of a full-label MCQ ground truth.
-
-    Handles models that output the option letter, the option text, or the option
-    text embedded in a sentence, without penalising case or trailing punctuation.
-    Only activates when ``y_true`` contains a recognisable ``(A) …`` prefix so
-    bare-letter and plain-text ground-truth tasks are unaffected.
-
-    Parameters
-    ----------
-    y_pred
-        Normalised prediction string (lowercased, whitespace-collapsed).
-    y_true
-        Normalised ground-truth string (lowercased, whitespace-collapsed).
-    pred_mcq
-        Lowercase single letter when ``y_pred`` is a bare MCQ token, else ``None``.
+    """Compare literal full-label answers without target-substring searching.
 
     Returns
     -------
     bool
-        ``True`` if the prediction matches the MCQ option content.
+        Whether the full label matches exactly.
     """
-    true_content = _MCQ_PREFIX_RE.sub("", y_true, count=1)
-    if not true_content or true_content == y_true:
-        # Ground truth has no MCQ prefix — nothing to do here.
+    # Legacy full-label artifacts without the original question support only
+    # literal letter/content equivalence. Never search the answer for GT text.
+    match = re.match(r"^\s*\(?([a-h])\)?[).:\s]+(.+)$", y_true, re.I)
+    if not match:
         return False
-    # Fallback 1: pred is a bare letter matching the GT prefix letter.
+    from beans_next.post_process.answers import _plain, _unwrap
+
+    candidate = _unwrap(y_pred)
+    prefix = re.match(r"^\s*\(?([a-h])\)?[).:\s]+(.+)$", candidate, re.I)
+    if prefix:
+        return prefix.group(1).lower() == match.group(1).lower() and _plain(
+            prefix.group(2)
+        ) == _plain(match.group(2))
     if pred_mcq is not None:
-        letter_pat = re.compile(
-            r"^\s*\(?" + re.escape(pred_mcq) + r"\)?[).\]:\s]", re.IGNORECASE
-        )
-        if letter_pat.match(y_true):
-            return True
-    # Fallback 2: strip any MCQ prefix from the prediction then check whether
-    # the true content appears as a substring.  Single-token content (e.g. a
-    # bare count like "3") uses word-boundary matching to avoid "3" matching
-    # inside "32".
-    pred_content = _MCQ_PREFIX_RE.sub("", y_pred.lower(), count=1)
-    true_content_lc = true_content.lower()
-    if len(true_content_lc.split()) == 1:
-        return bool(re.search(r"\b" + re.escape(true_content_lc) + r"\b", pred_content))
-    return true_content_lc in pred_content
+        return pred_mcq == match.group(1).lower()
+    return _plain(candidate) == _plain(match.group(2))
 
 
 def _parse_label_list(text: str) -> list[str]:
@@ -185,6 +177,96 @@ def _t3_species_names() -> dict[str, list[str]]:
     if _T3_SPECIES_NAMES is None:
         _T3_SPECIES_NAMES = _load_t3_species_names()
     return _T3_SPECIES_NAMES
+
+
+@lru_cache(maxsize=1)
+def _species_alias_pattern() -> tuple[re.Pattern[str], dict[str, str]]:
+    aliases: dict[str, set[str]] = {}
+    for scientific, commons in _t3_species_names().items():
+        for alias in [scientific, *commons]:
+            aliases.setdefault(alias, set()).add(scientific)
+    unique = {a: next(iter(names)) for a, names in aliases.items() if len(names) == 1}
+    pattern = (
+        r"(?<!\w)(?:"
+        + "|".join(re.escape(a) for a in sorted(unique, key=len, reverse=True))
+        + r")(?!\w)"
+    )
+    return re.compile(pattern, re.I), unique
+
+
+def parse_summary_species(text: str) -> set[str] | None:
+    """Extract named species independently of count/band format and target.
+
+    None means unparseable/unknown-only. An empty set requires explicit absence.
+    Unknown annotations are excluded from named-species evaluation, not credited
+    as an empty correct answer. Unrecognized scientific binomials remain false
+    positives rather than disappearing from the prediction.
+
+    Returns
+    -------
+    set[str] | None
+        Named species, an explicit empty set, or None for an invalid answer.
+    """
+    text = clean_answer(text)
+    if explicit_empty(text):
+        return set()
+    if re.search(r"\b(?:not|no|neither)\b", text, re.I):
+        return None
+    pattern, aliases = _species_alias_pattern()
+    found = {aliases[m.group().lower()] for m in pattern.finditer(text)}
+    # Scientific binomials not in the benchmark lexicon still count as claims.
+    excluded = {
+        "The",
+        "This",
+        "There",
+        "Based",
+        "Here",
+        "Unknown",
+        "Frequency",
+        "Call",
+        "Species",
+        "No",
+        "It",
+        "In",
+        "Each",
+        "One",
+        "Two",
+        "Three",
+        "Four",
+        "Five",
+        "Bird",
+        "Birds",
+        "Audio",
+        "From",
+        "We",
+        "I",
+        "Number",
+        "First",
+        "Second",
+        "Third",
+        "A",
+        "An",
+        "For",
+        "As",
+        "At",
+        "These",
+        "They",
+        "You",
+        "Only",
+        "Overall",
+        "Several",
+        "Multiple",
+        "Some",
+        "All",
+    }
+    for m in re.finditer(r"\b([A-Z][a-z]+) ([a-z][a-z-]+)\b", text):
+        if m.group(1) not in excluded:
+            name = m.group().lower()
+            # A common-name alias already recognized in this span is not a
+            # second invented scientific species.
+            if name not in aliases:
+                found.add(name)
+    return found or None
 
 
 def _species_name_match(pred: str, true: str) -> bool:
@@ -388,6 +470,43 @@ def score_sample(
         task = meta.get("task") if isinstance(meta, dict) else None
         task_s = task.lower() if isinstance(task, str) else ""
 
+    # Scoring must never inherit target-vocabulary snapping from old artifacts.
+    if task_s in FREE_TEXT_TASKS and raw_predictions:
+        processed = clean_answer(pred_text)
+
+    if task_s in {
+        "multilabel_accuracy",
+        "multilabel_classification",
+        "multilabel_detection",
+    } and isinstance(labels, str):
+        options = question_options(meta)
+        if task_s in {"multilabel_accuracy", "multilabel_detection"}:
+            true_set = parse_choice_set(labels, options, multiple=True)
+            pred_set = parse_choice_set(pred_text, options, multiple=True)
+        else:
+            true_set = parse_call_types(labels)
+            pred_set = parse_call_types(pred_text)
+        if true_set is None:
+            return {"target_parse_success": 0.0}
+        valid = pred_set is not None and INVALID_ANSWER not in pred_set
+        tp = len(true_set & (pred_set or set()))
+        precision = tp / len(pred_set) if pred_set else 0.0
+        recall = tp / len(true_set) if true_set else 0.0
+        f1v = (
+            2 * tp / (len(true_set) + len(pred_set or set()))
+            if true_set or pred_set
+            else float(valid)
+        )
+        return {
+            "target_parse_success": 1.0,
+            "parse_success": float(valid),
+            "accuracy": float(valid and pred_set == true_set),
+            "top1_accuracy": float(valid and pred_set == true_set),
+            "precision": precision,
+            "recall": recall,
+            "f1": f1v,
+        }
+
     if isinstance(labels, str):
         if "caption" in task_s:
             return {}
@@ -400,12 +519,24 @@ def score_sample(
                 return {"parse_success": 0.0}
             return {"parse_success": 1.0, **_freq_range_metrics(true_fr, pred_fr)}
         if "species_summary" in task_s:
+            true_species = parse_summary_species(labels)
+            pred_species = parse_summary_species(processed)
+            if true_species is None:
+                return {"target_parse_success": 0.0}
+            valid = pred_species is not None
+            tp = len(true_species & (pred_species or set()))
+            denominator = len(true_species) + len(pred_species or set())
+            species_scores = {
+                "target_parse_success": 1.0,
+                "parse_success": float(valid),
+                "species_precision": tp / len(pred_species) if pred_species else 0.0,
+                "species_recall": tp / len(true_species) if true_species else 0.0,
+                "species_f1": 2 * tp / denominator if denominator else float(valid),
+            }
             true_sm = _parse_species_summary_dict(labels)
             pred_sm = _parse_species_summary_dict(processed)
-            if not true_sm and not pred_sm:
-                return {"parse_success": 1.0, "species_f1": 1.0}
             if not true_sm:
-                return {"parse_success": 0.0}
+                return species_scores
             # Freq-range sub-dicts for shared helper
             true_fr = {sp: (v[1], v[2]) for sp, v in true_sm.items()}
             pred_fr = {sp: (v[1], v[2]) for sp, v in pred_sm.items()}
@@ -415,7 +546,7 @@ def score_sample(
             if matched:
                 count_errors = [abs(pred_sm[sp][0] - true_sm[sp][0]) for sp in matched]
                 base["count_mae"] = sum(count_errors) / float(len(matched))
-            return {"parse_success": 1.0, **base}
+            return {**base, **species_scores}
         if "frequency_range" in task_s:
             try:
                 true_low, true_high = extract_frequency_range(labels)
@@ -498,7 +629,6 @@ def score_sample(
                 )
                 y_pred_num = extract_numeric_value(
                     processed,
-                    target_value=y_true_num,
                     unit=target_unit,
                 )
             except MetricsError:
@@ -510,7 +640,26 @@ def score_sample(
                 "absolute_error": float(abs(err)),
                 "squared_error": float(err * err),
             }
+        options = question_options(meta)
+        # Letter answers are interpreted from raw text with this row's options.
+        # A target letter selects comparison semantics, never the interpretation.
+        if options or _normalize_mcq_choice_token(labels) is not None:
+            chosen = parse_choice_set(pred_text, options)
+            true_choice = parse_choice_set(labels, options)
+            acc = float(
+                chosen is not None and true_choice is not None and chosen == true_choice
+            )
+            return {
+                "accuracy": acc,
+                "top1_accuracy": acc,
+                "precision": acc,
+                "recall": acc,
+                "f1": acc,
+                "parse_success": float(chosen is not None),
+            }
         y_pred = _normalize_label_token(processed)
+        if _MCQ_PREFIX_RE.match(labels):
+            y_pred = _normalize_label_token(clean_answer(pred_text))
         y_true = _normalize_label_token(labels)
         pred_mcq = _normalize_mcq_choice_token(y_pred)
         true_mcq = _normalize_mcq_choice_token(y_true)

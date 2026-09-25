@@ -1,5 +1,5 @@
 beans_next_t3_ordered_species_summary:
-  task_type: species_summary
+  task_type: captioning
   dataset: beans_next
   subset: t3-ordered-species-summary
   split: test
@@ -7,4 +7,4 @@ beans_next_t3_ordered_species_summary:
   generation_config:
     max_length_seconds: 30
   metrics:
-  - name: species_f1
+  - name: cider

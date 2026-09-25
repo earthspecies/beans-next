@@ -14,7 +14,7 @@ import time
 from argparse import Namespace
 from collections.abc import Callable, Iterable, Mapping
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Protocol, TypeAlias, cast
@@ -40,6 +40,13 @@ from beans_next.api.types import (
 from beans_next.audio.gaussian_noise import GaussianNoiseConfig
 from beans_next.cache.two_layer import TwoLayerRunCache, scoring_cache_key
 from beans_next.models.http import HttpClient
+from beans_next.post_process.answers import (
+    FREE_TEXT_TASKS,
+    SCORING_VERSION,
+    normalize_task_answer,
+    question_options,
+    question_text,
+)
 from beans_next.post_process.pipeline import (
     PostProcessPipelineError,
     PostProcessResult,
@@ -140,7 +147,9 @@ class RunnerConfig:
     postprocess_version: str | None = None
     prompt_version: str | None = None
     seed: int | None = None
-    scorer_versions: dict[str, str] | None = None
+    scorer_versions: dict[str, str] | None = field(
+        default_factory=lambda: {"deterministic": SCORING_VERSION}
+    )
     run_config_hash: str | None = None
     code_git_sha: str | None = None
     resume: bool = False
@@ -888,6 +897,14 @@ class BenchmarkRunner:
                 post = PostProcessResult(segments=[], text="", warnings=(str(exc),))
                 post_err = str(exc)
 
+            if self._config.task_type in FREE_TEXT_TASKS or question_options(
+                ex.metadata
+            ):
+                text = normalize_task_answer(
+                    raw_text, self._config.task_type, ex.metadata
+                )
+                post = PostProcessResult(segments=[text] if text else [], text=text)
+
             row_err = _merge_row_error(pred, post_err)
             targets = _targets_from_example(ex)
             if targets is None and row_err is None:
@@ -902,6 +919,7 @@ class BenchmarkRunner:
                 predictions=list(pred.predictions),
                 processed_prediction=post.text,
                 targets=targets,
+                question=question_text(ex.metadata) or None,
                 scores=None,
                 postprocess_version=self._config.postprocess_version,
                 error=row_err,
@@ -1725,6 +1743,14 @@ def _postprocess_steps_for_examples(
     ]
 
     # Open-ended tasks preserve free text; label parsing would corrupt them.
+    from beans_next.post_process.answers import FREE_TEXT_TASKS, question_options
+
+    if task_type in FREE_TEXT_TASKS - {"captioning", "qa", "open_ended", "counting"}:
+        return (), tuple(cleaners)
+    if task_type == "classification" and any(
+        question_options(ex.metadata) for ex in examples
+    ):
+        return (), tuple(cleaners)
     if task_type in {"captioning", "qa", "open_ended", "counting"}:
         # BirdSet open-set scientific naming: we still want a light-touch,
         # BirdSet-specific canonicalization step when a scientific vocab is

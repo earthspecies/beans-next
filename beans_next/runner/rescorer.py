@@ -23,6 +23,7 @@ from beans_next.api.types import (
     RunSummary,
     ScoredPrediction,
 )
+from beans_next.post_process.answers import SCORING_VERSION
 from beans_next.post_process.pipeline import (
     PostProcessPipelineError,
     PostProcessResult,
@@ -121,7 +122,9 @@ def _default_postprocess_steps(
     # prediction against all of it — O(n^2) over the whole corpus and never
     # semantically meaningful, since CIDEr (not label matching) scores these.
     # Mirrors the live runner's `_postprocess_steps_for_examples`.
-    if task_s in {"captioning", "qa", "open_ended", "counting"}:
+    from beans_next.post_process.answers import FREE_TEXT_TASKS
+
+    if task_s in FREE_TEXT_TASKS:
         return (), tuple(cleaners)
 
     vocab = _collect_label_vocab(targets)
@@ -255,6 +258,7 @@ def rescore_predictions_file(
     processed_path = predictions_jsonl.parent / "processed_predictions.jsonl"
     targets_by_id: dict[str, object] = {}
     task_id_by_id: dict[str, str | None] = {}
+    question_by_id: dict[str, str] = {}
     if processed_path.is_file():
         for obj in _read_jsonl(processed_path):
             try:
@@ -263,6 +267,8 @@ def rescore_predictions_file(
                 continue
             targets_by_id[row.sample_id] = row.targets
             task_id_by_id[row.sample_id] = row.task_id
+            if row.question:
+                question_by_id[row.sample_id] = row.question
 
     if not targets_by_id:
         raise ValueError(
@@ -302,6 +308,18 @@ def rescore_predictions_file(
             sid = pred.sample_id
             targets = targets_by_id.get(sid)
             task_id = task_id_by_id.get(sid)
+            metadata = (
+                {"instruction": question_by_id[sid]} if sid in question_by_id else {}
+            )
+            from beans_next.post_process.answers import (
+                FREE_TEXT_TASKS,
+                normalize_task_answer,
+                question_options,
+            )
+
+            if task_type in FREE_TEXT_TASKS or question_options(metadata):
+                text = normalize_task_answer(raw_text, task_type, metadata)
+                post = PostProcessResult(segments=[text] if text else [], text=text)
 
             processed_row = ScoredPrediction(
                 sample_id=sid,
@@ -309,6 +327,7 @@ def rescore_predictions_file(
                 predictions=list(pred.predictions),
                 processed_prediction=post.text,
                 targets=targets,
+                question=question_by_id.get(sid),
                 scores=None,
                 postprocess_version=None,
                 error=row_err,
@@ -330,7 +349,7 @@ def rescore_predictions_file(
                     sample_id=sid,
                     task_id=task_id,
                     labels=targets,
-                    metadata={},
+                    metadata=metadata,
                 )
                 scores = _score_sample_if_available(
                     example,
@@ -361,7 +380,7 @@ def rescore_predictions_file(
         run_config_hash=None,
         prompt_version=None,
         postprocess_version=None,
-        scorer_versions=None,
+        scorer_versions={"deterministic": SCORING_VERSION},
         model_identity=model_identity,
         seed=None,
         n_samples=len(preds),

@@ -70,6 +70,53 @@ def compute_dataset_level_metrics(
                 return {}
             return {"cider": cider_corpus_mean_normalized(hyps, refs)}
 
+        if task_s == "multilabel_detection":
+            from beans_next.post_process.answers import parse_choice_set
+
+            pairs = [
+                (
+                    parse_choice_set(pred, multiple=True),
+                    parse_choice_set(target, multiple=True),
+                )
+                for pred, target in processed_pairs
+                if isinstance(target, str)
+            ]
+            # Match BEANS-Zero's detection convention: one binary column per
+            # target label, with None represented by an all-zero row.
+            labels = set().union(*(true for _, true in pairs if true is not None))
+            scores = []
+            for label in sorted(labels):
+                tp = fp = fn = 0
+                for pred, true in pairs:
+                    if true is None:
+                        continue
+                    predicted = pred or set()
+                    tp += int(label in predicted and label in true)
+                    fp += int(label in predicted and label not in true)
+                    fn += int(label not in predicted and label in true)
+                scores.append(2 * tp / (2 * tp + fp + fn) if 2 * tp + fp + fn else 0.0)
+            return {"macro_f1": sum(scores) / len(scores) if scores else 0.0}
+
+        if task_s == "multilabel_classification":
+            from beans_next.post_process.answers import CALL_TYPES, parse_call_types
+
+            counts = {label: [0, 0, 0] for label in CALL_TYPES}
+            for pred, target in processed_pairs:
+                true = parse_call_types(target) if isinstance(target, str) else None
+                if true is None:
+                    continue
+                parsed = parse_call_types(pred)
+                predicted = parsed or set()
+                for label, values in counts.items():
+                    values[0] += int(label in predicted and label in true)
+                    values[1] += int(label in predicted and label not in true)
+                    values[2] += int(label not in predicted and label in true)
+            f1s = [
+                2 * tp / (2 * tp + fp + fn) if 2 * tp + fp + fn else 0.0
+                for tp, fp, fn in counts.values()
+            ]
+            return {"macro_f1": sum(f1s) / len(f1s)}
+
         if "classification" in task_s and "detection" not in task_s:
             from beans_next.metrics.dataset import compute_macro_f1
 
