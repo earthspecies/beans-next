@@ -1,6 +1,6 @@
 """CIDEr scorer internals.
 
-Adapted from https://github.com/salaniz/pycocoevalcap (MIT licence).
+Adapted from https://github.com/salaniz/pycocoevalcap (see the bundled LICENSE).
 """
 
 from __future__ import annotations

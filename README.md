@@ -43,7 +43,7 @@ Set `--modality-mode` to `text-only`, `text-only-informed`, or `gaussian-noise` 
 The default is `audio`.
 
 See the [evaluation guide](docs/evaluation.md) for metrics, ablations, local snapshots, and result files.
-The [reproduction guide](docs/reproduction.md) records dataset requirements and table-generation commands.
+The [reproduction guide](docs/reproduction.md) describes evaluation runs and result tables.
 
 ## Tests
 
@@ -62,4 +62,7 @@ Server contract tests use local HTTP ports. They do not require GPUs or model we
 - `scripts/`: server checks, result tables, and Gaussian-noise analysis.
 - `tests/`: local fixtures and regression tests.
 
-HF repository identifiers remain unchanged pending the dataset release update.
+## License
+
+The evaluator uses the [Apache-2.0 license](LICENSE).
+The adapted CIDEr implementation retains its [upstream license](beans_next/metrics/_cider/LICENSE).

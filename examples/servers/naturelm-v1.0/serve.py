@@ -352,9 +352,6 @@ def _load_real_pipeline(model_name: str, device: str) -> object:  # noqa: ANN401
 
     Notes
     -----
-    The NatureLM-audio package is installed from::
-
-
     The launcher prefers the in-repo `NatureLM` Python package API first
     (``NatureLM.infer.Pipeline``). If that import fails, it falls back to a
     best-effort Transformers load using ``trust_remote_code=True``.
@@ -785,10 +782,7 @@ def _init_state() -> _ModelState:
         If real mode is requested (``NATURELM_V1_0_STUB=0``) but required
         dependencies are missing or model initialization fails.
     """
-    # IMPORTANT: For Increment 7 (I7-A) "real-mode feasibility" work, the launcher
-    # treats `NATURELM_V1_0_STUB` as an *opt-in* flag:
-    # - unset / falsy => real mode
-    # - truthy => stub mode
+    # Stub mode must be explicitly enabled.
     stub = _get_bool_env("NATURELM_V1_0_STUB", False)
 
     if stub:

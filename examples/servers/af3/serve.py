@@ -622,9 +622,7 @@ def _build_conversation(
                 conv.append({"role": msg.role, "content": turn})
         tail = parts[-1]
         if tail.strip():
-            conv.append(
-                {"role": msg.role, "content": [{"type": "text", "text": tail}]}
-            )
+            conv.append({"role": msg.role, "content": [{"type": "text", "text": tail}]})
 
     # Audio inputs beyond the placeholder count get their own trailing turns,
     # rather than being crowded into an existing one.
@@ -658,9 +656,7 @@ def _run_inference(item: PredictionsV1RequestItem) -> PredictionsV1ResponseItem:
         max_audio_sec = (
             float(req_max) if req_max is not None else _DEFAULT_MAX_AUDIO_SECONDS
         )
-        audio_paths = [
-            _truncate_audio(p, max_audio_sec, tmp_dir) for p in audio_paths
-        ]
+        audio_paths = [_truncate_audio(p, max_audio_sec, tmp_dir) for p in audio_paths]
         conversation = [_build_conversation(item.messages, audio_paths)]
 
         gen_cfg = item.generation_config

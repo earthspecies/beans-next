@@ -2,7 +2,7 @@
 
 ## Data
 
-The evaluator uses Hugging Face datasets only. BEANS-Next uses metadata rows with ordered audio paths.
+The evaluator uses Hugging Face datasets only. BEANS-Next loads [the dataset release](https://huggingface.co/datasets/iclr2027anon/BEANS-Next), with metadata rows and ordered audio paths.
 BEANS-Zero and BirdSet have separate HF loaders because their schemas differ.
 
 For BEANS-Next, set `BEANS_NEXT_HF_BEANS_NEXT_ROOT` to a local HF snapshot directory.
@@ -26,13 +26,17 @@ Tier 4 uses a 10-second cap for each clip, with references before the query.
 | Classification and multiple choice | Accuracy, with macro-F1 where specified |
 | Numeric prediction | Mean absolute error in the target units |
 | Captioning | Corpus CIDEr |
-| Species listing or summary | Species F1 |
+| Structured summary | Corpus CIDEr |
+| Fixed-vocabulary call type | Macro-F1 over five labels |
+| Tier 4 Gibbon and DCASE detection | Label-wise macro-F1 |
 | Species frequency ranges | Species-band IoU, including missed reference species |
+
+Report numerical-answer coverage beside MAE. MAE excludes responses without an interpretable numerical estimate.
+See the [scoring policy](scoring_policy.md) for parsing rules and metric definitions.
 
 Captioning needs the full reference corpus for its IDF calculation.
 A one-example smoke run does not produce a meaningful CIDEr score.
 The paper displays CIDEr multiplied by 100. Evaluation stores its normalized value.
-There is no LLM judge or judge-assisted extraction step.
 
 ## Input modes
 
@@ -52,10 +56,9 @@ Each run writes a noise manifest for protocol checks and matched comparisons.
 Each task writes predictions, processed predictions, scored predictions, a summary, and model identity.
 Use `--resume` with the same output directory to continue a run.
 Use `--cache-dir` for persistent inference and scoring caches.
+Use a separate cache directory for each model checkpoint, and keep cached audio files unchanged.
 
-Stored dataset IDs remain unchanged. Rows without an ID use a deterministic `beans_next:hf:` fallback ID.
-Caches and exclusions that used the old backend's fallback IDs need regeneration.
-Published rows with explicit IDs are unaffected.
+Rows use their dataset IDs. Rows without an ID receive a deterministic `beans_next:hf:` ID.
 
 Rescore an existing prediction file on CPU:
 

@@ -1,29 +1,12 @@
 #!/usr/bin/env python3
-"""Rebuild the BEANS-Next Tier 3 (scene understanding) LaTeX results table.
+"""Build a Tier 3 LaTeX table from per-sample prediction CSVs.
 
-The table layout mirrors the hand-written ``tab:beansnext-t3-results`` (a
-9-column "Counting / Temporal / Scene-open" panel plus a 10-column "Species ID
-by characteristic" panel split into open-ended and MCQ halves). Unlike the
-original, every cell here is recomputed from the per-sample prediction CSVs in
-``beans-next-predictions-export/`` using each task's *authoritative* primary
-metric taken from the ``beans_next`` eval-task registry.
+Classification and temporal columns use accuracy. Count columns use MAE.
+Frequency ranges use mean band IoU over reference species, with zero for
+omitted species. Summary and captioning use corpus CIDEr from complete
+responses and references. Accuracy, IoU, and CIDEr are scaled by 100.
 
-Because the export ships different score columns than the original table assumed,
-the reported metrics differ from the original caption:
-
-- MCQ / open-ended classification and temporal tasks -> ``top1_accuracy`` (%).
-- Counting tasks -> ``mean_absolute_error`` (lower is better, marked ``down``).
-- Frequency-range description -> coverage-aware species-band IoU (%), computed on
-  the fly from ``processed_prediction`` / ``target``. For each sample the IoU is
-  averaged over the *ground-truth* species, with missed species scoring 0 (so a
-  model cannot look good by identifying only a couple of easy species). This
-  replaces the export's ``freq_mae_low``, which averages error only over matched
-  species and therefore rewards abstaining.
-- Ordered species summary -> corpus ``cider`` (×100).
-- Structural captioning -> corpus CIDEr, computed on the fly from
-  ``processed_prediction`` / ``target`` (there is no precomputed score column).
-
-Run with ``uv run python scripts/build_t3_results_table.py``.
+Run ``uv run python scripts/build_t3_results_table.py --help`` for inputs.
 """
 
 from __future__ import annotations
@@ -40,11 +23,9 @@ from beans_next.metrics.captioning import cider_corpus_mean_normalized
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 _DEFAULT_EXPORT = _REPO_ROOT / "beans-next-predictions-export"
 
-# Export label -> display name, in table row order. ``nlm_v1_1_t3cap`` is also
-# available in the export (MCQ/binary/captioning only) but is omitted here to
-# match the original five-row table; add it to include it.
+# Export label and display name, in table order.
 MODELS: list[tuple[str, str]] = [
-    ("af3", "Audio Flamingo 3"),
+    ("af3", "Audio Flamingo Next"),
     ("qwen3_omni", "Qwen3-Omni"),
     ("nlm_v1_0", "NatureLM-audio v1"),
     ("nlm_v1_1", "NatureLM-audio v1.1 base"),

@@ -184,7 +184,7 @@ def iter_hf_streaming_multiaudio_examples(
         Hub split name (typically ``"test"``).
     config_name
         Optional Hub builder config. Use ``None`` for a **single-config** dataset
-        (e.g. ``EarthSpeciesProject/BEANS-Next``) where ``tier`` and ``task`` are
+        (e.g. ``iclr2027anon/BEANS-Next``) where ``tier`` and ``task`` are
         columns on each row. Pass a string only for legacy multi-config repos.
     revision
         Optional Hub revision.

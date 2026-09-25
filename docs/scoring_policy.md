@@ -1,21 +1,49 @@
-# Deterministic scoring policy (2026-09-25-v4)
+# Scoring policy
 
-Predictions must be interpreted without using the correct answer to choose a meaning. Preserve raw predictions and rescore into a new directory. Never score historical letter answers against a newer dataset's shuffled options.
+The evaluator preserves raw predictions. Answer parsing does not use the reference value to select an interpretation.
 
-- Numeric tasks: preserve the raw value. Convert explicit Hz/kHz units, use a range's midpoint, and reject multiple distinct measurements. Do not snap to target values or infer a scale from the reference value. Report numeric parse coverage beside conditional MAE.
-- Summary (supplementary species diagnostic): score the set of named species independently of counts and frequency formatting. Use the bundled common/scientific-name aliases. Invalid output receives zero F1 on valid targets. An empty set requires explicit absence. Unknown-only targets are excluded from named-species F1 and reported through target coverage. This metric does not assess counts, frequencies, or order.
-- MCQs: use each question's own options. Accept letters, exact option text, unambiguous species aliases, and explicit answer statements. Reject conflicting selections and letter/name contradictions. If original options are unavailable, only explicit letters can be recovered; a missing mapping is an evidence gap, not proof that a name answer is wrong.
-- Multi-audio detection: use `multilabel_detection`. Compute F1 separately for each reference label, then average. Infer the label vocabulary from targets, as in BEANS-Zero; `None` is an all-zero row, not a separate positive class. Complete-set accuracy remains a diagnostic. `A, C` equals `C, A`, but does not equal `A`.
-- Main Summary metric: use the captioning task type and corpus CIDEr over the complete raw/cleaned response and reference. Include all 1,000 saved targets, preserving literal None and unknown annotations. This measures text agreement, not numerical correctness. Keep species F1 and structured-field metrics as separate diagnostics.
-- Fixed-vocabulary call type: use `multilabel_classification` and macro-F1 across the five advertised labels. Match each label separately, so `alarm call` does not imply `call`. Unknown list items mark imperfect parsing without erasing the recognized items. Unknown items receive no credit; exact-set accuracy fails. The main macro-F1 concerns the five advertised labels only.
+## Numerical answers
 
-`processed_predictions.jsonl` now retains `question` for future offline MCQ rescoring. Old artifacts may not contain it. Supplement them only with the exact original questions, never a different release with matching sample IDs. The scorer version separates corrected scored-cache entries from old scores; it does not retroactively update completed run files.
+Report MAE in the target units, together with the accepted-response count and total example count.
+MAE includes only responses with an interpretable numerical estimate. Accepted answers are not necessarily correct answers.
 
-The focused tests include hand-calculated expectations, target independence, option permutation, scientific/common aliases, contradictory answers, complete multi-label sets, and online/offline answer preservation. Deterministic parsing remains conservative on unrestricted prose; inspect raw-to-parsed examples and coverage before publishing a replacement table.
+The parser accepts explicit numbers, spelled-out counts, labelled measurements, and complete ranges.
+It converts explicit Hz/kHz units and uses the midpoint of a range.
+It accepts decimal commas with one or two fractional digits before a physical unit and preserves thousands separators.
+An explicit answer can precede an explanation or numbered list.
+Formula constants, list numbers, label digits, incomplete ranges, and one-sided bounds do not count as measurements.
 
+## Multiple choice
 
-## Numerical answer review (2026-09-25, scoring v4)
+Use the options from each example. The parser accepts letters, exact option text, unambiguous species aliases, and explicit answer statements.
+It rejects conflicting selections and letter/name contradictions.
+For rescoring, retain the exact questions and option order used during inference.
+Sample IDs alone do not establish that two dataset revisions have the same options.
 
-Numerical MAE is conditional on an accepted numerical response; always report the accepted count and full evaluated denominator. Parse success is not answer correctness. Accept explicit count clauses (including spelled-out counts and zero), labelled measurements, spelled-out physical units, and decimal commas with one or two fractional digits before a physical unit. Preserve thousands separators. Extract an explicit answer independently of targets, including when followed by list numbering or separately labelled formants. Reject formula constants, list numbers, label digits such as F1, incomplete ranges, and one-sided numerical bounds. Complete ranges retain the documented midpoint convention.
+## Multi-label tasks
 
-Remaining rejected responses include both model non-answers and unresolved/ambiguous formats; coverage must not be described as a perfect assessment of all human-readable answers. The older text-only SNR runs have 2,011 examples, whereas the supplied new audio predictions have 397, with no shared sample IDs. Rescoring does not resolve that dataset mismatch.
+Fixed-vocabulary call type uses macro-F1 across its five labels.
+Each label is matched separately: `alarm call` does not imply `call`.
+Unrecognized list items receive no credit and make exact-set accuracy fail.
+
+Tier 4 detection computes F1 for each reference label, then averages across labels.
+`None` denotes an empty set. It is not a positive class.
+Complete-set accuracy is a separate diagnostic: `A, C` equals `C, A`, but differs from `A`.
+
+## Summaries and captions
+
+Summary and captioning use corpus CIDEr over the complete cleaned response and reference.
+Score the full task together so that IDF uses the full reference corpus.
+Preserve literal `None` references. Result tables display CIDEr multiplied by 100.
+CIDEr measures textual agreement; it does not independently verify counts, frequency ranges, or temporal order.
+
+Species F1 and structured-field scores are supplementary diagnostics.
+Species frequency-range evaluation averages band IoU over reference species, with zero for omitted species.
+
+## Saved results
+
+`processed_predictions.jsonl` stores the question and target alongside each response.
+Keep this file with `predictions.jsonl` for offline rescoring.
+Use a separate output directory for rescored results.
+The scorer version identifies the scoring policy in cache entries and summaries.
+Inspect raw and parsed answers alongside coverage before comparing scores.

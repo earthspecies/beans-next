@@ -1,4 +1,4 @@
-"""Tests for Increment 6 resume + workers behavior.
+"""Tests for resume and worker behavior.
 
 These tests are CPU-only and use local stubs for HTTP inference (no external
 FastAPI servers).
@@ -10,7 +10,6 @@ import inspect
 import json
 from argparse import Namespace
 from collections.abc import Mapping
-from dataclasses import fields as dataclass_fields
 from pathlib import Path
 from typing import Any
 
@@ -77,45 +76,13 @@ def _runner_config(
     resume: bool,
     workers: int | None,
 ) -> RunnerConfig:
-    cfg_fields = {f.name for f in dataclass_fields(RunnerConfig)}
-    kwargs: dict[str, Any] = {
-        "output_dir": output_dir,
-        "run_id": "test-run",
-        # Avoid touching renderer internals; summary should use this.
-        "prompt_version": "test-prompt-v1",
-    }
-
-    # Resume naming is still in-flight across I6-B1/I6-B2; set whichever exists.
-    for key in (
-        "resume",
-        "resume_from_checkpoint",
-        "resume_from_output_dir",
-        "resume_from_existing",
-    ):
-        if key in cfg_fields:
-            kwargs[key] = bool(resume)
-            break
-
-    if workers is not None:
-        for key in ("workers", "n_workers", "max_workers"):
-            if key in cfg_fields:
-                kwargs[key] = int(workers)
-                break
-
-    return RunnerConfig(**kwargs)
-
-
-def _resume_skip_supported() -> bool:
-    # `BenchmarkArtifactWriter` can append without duplication, but true resume
-    # requires skipping completed ids before HTTP calls. Feature-detect by
-    # checking whether the runner references the checkpoint helper.
-    import beans_next.runner.runner as runner_mod
-
-    try:
-        src = inspect.getsource(runner_mod)
-    except OSError:  # pragma: no cover
-        return False
-    return "completed_sample_ids_from_checkpoint_json" in src
+    return RunnerConfig(
+        output_dir=output_dir,
+        run_id="test-run",
+        prompt_version="test-prompt-v1",
+        resume=resume,
+        workers=workers or 1,
+    )
 
 
 def _run_with_optional_kwargs(
@@ -223,9 +190,6 @@ def _write_minimal_existing_artifacts(
 
 
 def test_resume_skips_completed_and_no_duplicate_artifact_lines(tmp_path: Path) -> None:
-    if not _resume_skip_supported():
-        pytest.xfail("Runner resume-skip behavior not implemented yet (I6-B1/I6-B2).")
-
     output_dir = tmp_path / "out"
     completed = ["id-000", "id-001"]
     remaining = ["id-002", "id-003"]
@@ -275,7 +239,7 @@ def test_workers_preserve_deterministic_artifact_order(tmp_path: Path) -> None:
 def test_run_from_cli_namespace_suite_with_resume_from_completes(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Suite runs may resume from a prior base output dir (I6-B5)."""
+    """Suite runs may resume from a prior base output dir."""
     import beans_next.runner.runner as runner_mod
 
     base_prior = tmp_path / "prior_suite_run"

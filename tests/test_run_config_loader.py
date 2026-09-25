@@ -1,4 +1,4 @@
-"""Tests for Increment 10 (I10-A): run-config YAML schema + loader."""
+"""Tests for run-config YAML schema + loader."""
 
 from __future__ import annotations
 

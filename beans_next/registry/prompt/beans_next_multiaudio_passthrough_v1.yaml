@@ -1,13 +1,4 @@
-# Multi-audio passthrough prompt for BEANSNextMultiAudio.
-#
-# The user message is read verbatim from metadata["conversation"], which
-# already contains the full prompt text with N <Audio><AudioHere></Audio>
-# placeholders.  The single list-type audio slot expands to N AudioInput
-# objects at render time, one per entry in metadata["audio_paths"].
-#
-# Compatible launchers: openai_compatible_proxy, af3, vllm (multi-audio).
-# Not compatible with single-audio launchers (e.g. NatureLM v1.1).
-# For NatureLM v1.1, use beans_next_multiaudio_query_only_v1.yaml instead.
+# Preserve the prompt and reference/query audio order supplied by the dataset.
 prompt_id: beans_next.prompt.multiaudio_passthrough.v1
 messages:
   - role: user
@@ -17,15 +8,5 @@ audio_slots:
     payload_type: file_path
     sample_rate: 16000
 generation_config:
-  # Tier 4 rows ask the model to compare several clips, and chat-tuned models
-  # (Qwen3-Omni especially) restate the options before committing to an answer.
-  # At 32 tokens the reply was cut off mid-preamble, so the classification
-  # fuzzy-matcher latched onto whichever option letter the enumeration
-  # mentioned first - 23 of 33 smoke predictions came back "A". Give the model
-  # room to actually reach its answer.
-  #
-  # 256 was still not enough: 17% of crow/unseen-species replies hit the ceiling,
-  # and those rows scored far worse than complete ones (giant-otter 0.167 capped
-  # vs 0.548 complete), so the cap was suppressing real accuracy.
   max_tokens: 512
   temperature: 0.0

@@ -1,4 +1,4 @@
-"""Tests for Increment I6-A optional two-layer SQLite cache."""
+"""Tests for optional two-layer SQLite cache."""
 
 from __future__ import annotations
 
@@ -192,3 +192,19 @@ def test_run_records_round_trip_latency(tmp_path: Path) -> None:
     assert latency is not None
     assert latency["mean_roundtrip_sec"] >= 0.0
     assert latency["n_batches"] >= 1
+
+
+def test_checkpoint_revision_invalidates_inference_cache(tmp_path: Path) -> None:
+    examples = [DatasetExample(sample_id="same-example", labels="bird")]
+    for i, revision in enumerate(("checkpoint-a", "checkpoint-b", "checkpoint-b")):
+        client = _StubHttpClient()
+        client._server_info["model_revision"] = revision
+        config = RunnerConfig(
+            output_dir=tmp_path / f"run-{i}",
+            run_id=f"run-{i}",
+            cache_dir=tmp_path / "cache",
+        )
+        BenchmarkRunner(client, _StubRenderer(), config, scorer=lambda *_: {}).run(
+            examples
+        )
+        assert client.generate_calls == (0 if i == 2 else 1)

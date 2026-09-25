@@ -21,14 +21,11 @@ classifiers = [
 dependencies = [
   "filelock>=3.13",
   "fsspec>=2024.9.0",
-  # Keep the validated audio and Parquet dependency versions.
   "datasets==3.1.0",
-  # Pin native deps to stable wheels. Unpinned latests caused interpreter-finalization crashes
-  # (PyGILState_Release) when iterating HuggingFace datasets on this environment.
+  # Compatible versions for audio and Parquet loading.
   "numpy>=1.24,<2.0",
   "pandas==2.2.3",
   "pyarrow==16.1.0",
-  # Pin hub client to a widely used stable series (avoid surprising prerelease-like behavior).
   "huggingface-hub==0.25.2",
   "pydantic>=2.7",
   "jinja2>=3.1",
@@ -60,7 +57,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.sdist]
-include = ["beans_next", "tests", "scripts", "docs", "configs", "examples/servers", "README.md", "pyproject.toml", "uv.lock", "conftest.py"]
+include = ["beans_next", "tests", "scripts", "docs", "configs", "examples/servers", "README.md", "LICENSE", "pyproject.toml", "uv.lock"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["beans_next"]
@@ -110,7 +107,7 @@ max-complexity = 10
 skip = "*.csv"
 
 [tool.deptry]
-exclude = ["conftest.py", ".venv", "tests"]
+exclude = [".venv", "tests"]
 extend_exclude = [
   "examples/servers/*",
   "scripts",

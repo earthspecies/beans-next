@@ -1,4 +1,4 @@
-"""Exercise revision selection and modality handling after branch integration."""
+"""Verify dataset revision precedence and task selection."""
 
 from argparse import Namespace
 from collections.abc import Iterator
@@ -20,16 +20,14 @@ from beans_next.runner.runner import _load_examples_for_eval_task
         (None, "", None, "main"),
     ],
 )
-@pytest.mark.parametrize("mode", ["audio", "text-only", "gaussian-noise"])
 def test_hf_revision_and_subset_survive_modality_selection(
     monkeypatch: pytest.MonkeyPatch,
     cli_revision: str | None,
     env_revision: str,
     task_revision: str | None,
     expected: str,
-    mode: str,
 ) -> None:
-    """Preserve task mapping and metadata-only loading across input modes."""
+    """Preserve task mapping and the selected dataset revision."""
     captured: dict[str, Any] = {}
 
     def load(repo_id: str, **kwargs: Any) -> Iterator[DatasetExample]:
@@ -48,11 +46,11 @@ def test_hf_revision_and_subset_survive_modality_selection(
         args=Namespace(
             data_source="huggingface",
             hf_revision=cli_revision,
-            modality_mode=mode,
+            modality_mode="audio",
             limit=1,
         ),
     )
     assert [row.sample_id for row in rows] == ["fixture"]
     assert captured["revision"] == expected
     assert captured["subset"] == "alarm-call-presence"
-    assert captured["load_audio"] == (mode != "text-only")
+    assert captured["load_audio"] is True

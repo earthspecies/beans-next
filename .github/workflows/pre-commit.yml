@@ -2,7 +2,7 @@ name: Pre-commit
 
 on: # yamllint disable-line rule:truthy
   push:
-    branches: [main]
+    branches: [main, submission]
   pull_request:
 
 jobs:
@@ -17,4 +17,4 @@ jobs:
           python-version-file: ".python-version"
       - uses: pre-commit/action@v3.0.1
         with:
-          extra_args: --from-ref origin/main --to-ref HEAD
+          extra_args: --all-files

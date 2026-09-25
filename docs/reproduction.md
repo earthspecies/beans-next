@@ -1,33 +1,36 @@
 # Reproduction
 
-Use the canonical suites in the README.
-Some task IDs retain date prefixes so existing results and Gaussian-noise comparisons remain compatible.
-Their `subset` fields contain HF task names. No dated backend configuration is required.
+Install the evaluator and start a [model server](model_servers.md).
+Select a dataset commit with `--hf-revision` and pin the model checkpoint in the server configuration.
+Keep the code revision, runtime version, input mode, and seed with each run.
 
-Record the checkpoint, model runtime revision, dataset commit, input mode, seed, and code revision for each run.
-Keep errors in the result artifacts. A short run cannot substitute for a complete paper result.
+## Run a benchmark suite
 
-## Dataset release requirements
+```bash
+uv run beans-next run \
+  --suite beans_next_tier1 \
+  --hf-revision <dataset-commit> \
+  --predict-url http://localhost:8000/predict \
+  --output-dir results/model/audio/tier1
+```
 
-The HF metadata at commit `2fc58150c9541698ffc82aaf1f5d5a44993c54bf` was inspected during cleanup.
+Repeat with `beans_next_tier2`, `beans_next_tier3`, and `beans_next_tier4`.
+Tier 4 requires a server that accepts multiple audio clips per example.
+Use `beans_zero_core` and `birdset_core` for the comparison datasets.
+Each HF repository has its own revision.
 
-| Tier-4 task | Examples |
-|---|---:|
-| `gibbon-fewshot-detection-balanced` | 868 |
-| `giant-otter-4way` | 500 |
-| `dcase-fewshot-detection-balanced` | 3158 |
-| `crow-4way` | 200 |
-| `unseen-species-4way` | 218 |
+Task definitions select prompts, audio duration limits, and scoring metrics.
+Run full splits for result tables. Use `--limit` for a short installation check.
 
-The paper suite uses these five tasks. It excludes zebra and the unpublished hard unseen variant.
-The HF inventory supports this selection. It does not establish which exact data revision produced every paper result.
+## Input ablations
 
-That HF commit lacks `insect-presence` and `begging-call-presence`, which the paper requires.
-Both tasks remain in tier 2. Use a completed HF release before a full reproduction run.
-Do not silently drop missing tasks or substitute an older task version.
+Repeat a suite with `--modality-mode text-only`, `text-only-informed`, or `gaussian-noise`.
+Use a separate output directory for each model, suite, and input mode.
+Keep dataset revisions and sample IDs consistent across compared runs.
 
-HF repository identifiers and the final dataset structure await a separate update.
-NatureLM v1.1 also needs a compatible model runtime and the corresponding checkpoints for real inference.
+For Gaussian noise, `--gaussian-noise-cache-dir` lets runs share generated waveforms.
+Each run records noise parameters and audio identities in its manifest.
+See the [evaluation guide](evaluation.md) for defaults, caching, and resume options.
 
 ## Result tables
 
@@ -42,12 +45,5 @@ uv run python scripts/analyze_gaussian_matched.py --help
 uv run python scripts/validate_gaussian_noise_manifest.py --help
 ```
 
-Keep task IDs and sample IDs aligned across audio, text-only, and Gaussian-noise runs.
-The Gaussian-noise scripts remain available for ongoing experiments.
-
-## Anonymous distribution
-
-Distribute a clean archive or fresh repository without the original Git history.
-Exclude caches, model weights, generated results, local environments, and local configuration.
-Keep required third-party license notices.
-After the HF update, review repository IDs, model-runtime sources, and result metadata before distribution.
+Check sample counts and errors in each task's `summary.json` before comparing results.
+Captioning uses corpus CIDEr; score the full task together.

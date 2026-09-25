@@ -1,0 +1,4 @@
+CLAUDE.md export-ignore
+.github export-ignore
+.pre-commit-config.yaml export-ignore
+.dict-allowed.txt export-ignore

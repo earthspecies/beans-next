@@ -83,7 +83,7 @@ ScorerFn: TypeAlias = Callable[
 
 
 class _MetricsScoreSampleFn(Protocol):
-    """Optional ``beans_next.metrics.score_sample`` hook (implemented in I3-A)."""
+    """Optional ``beans_next.metrics.score_sample`` hook."""
 
     def __call__(
         self,
@@ -510,7 +510,7 @@ class BenchmarkRunner:
         May raise :exc:`ValueError` from rendering, wire conversion, or post-process
         steps. Propagates :exc:`~beans_next.models.http.HttpClientFatalError` from
         :meth:`~beans_next.models.http.HttpClient.generate`. When ``cache_dir`` is
-        unset, behavior matches pre-I6-A runners (no SQLite).
+        unset, SQLite caching is disabled.
         """
         all_rows = sorted(list(examples), key=lambda e: e.sample_id)
         out = self._config.output_dir
@@ -2134,7 +2134,7 @@ def run_from_cli_namespace(args: Namespace) -> None:
         if not suite_path.is_file():
             msg = (
                 f"Suite {suite_id!r} not found at {suite_path}. "
-                "Ensure registry content (I4-A) is present."
+                "Ensure registry content is present."
             )
             raise SystemExit(msg)
         suite_doc = _load_yaml_mapping(suite_path)

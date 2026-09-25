@@ -12,7 +12,8 @@ Install model dependencies in each adapter's own environment.
 | `examples/servers/vllm` | Qwen3-Omni and supported text-only models |
 | `examples/servers/dummy` | Contract checks without weights |
 
-Tier 4 requires a multi-audio server. NatureLM v1 rejects multiple clips instead of silently dropping them.
+Tier 4 requires a multi-audio server. NatureLM v1 accepts exactly one audio clip per request.
+For text-only ablations, use an adapter and model runtime that accept zero audio clips.
 
 Check a running server:
 
@@ -26,11 +27,9 @@ Stub modes validate HTTP behavior only. They do not produce benchmark model resu
 
 Install the compatible `naturelm` runtime, or set `NATURELM_RUNTIME_PATH` to its directory.
 It must provide `NatureLM.from_pretrained` and `GenerationConfig` for the checkpoint's architecture.
-The model runtime source is not bundled in this evaluation repository.
 
 Set `NATURELM_HF_REPO_ID` and `NATURELM_HF_REVISION` for an HF checkpoint.
 Alternatively, set `NATURELM_LOCAL_CHECKPOINT_DIR` to a local checkpoint copy.
 Set `NATURELM_ENABLE_INFERENCE=1` for real inference, then start `serve.sh` from the adapter directory.
 
 `NATURELM_STUB_MODE=1` provides a contract-only server without a runtime or weights.
-Real inference requires a compatible runtime and checkpoints.

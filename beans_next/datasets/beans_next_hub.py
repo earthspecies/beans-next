@@ -47,7 +47,7 @@ from huggingface_hub.errors import EntryNotFoundError
 from beans_next.api.types import DatasetExample
 from beans_next.prompts.audio_tags import AUDIO_PLACEHOLDER
 
-BEANS_NEXT_HUB_REPO_ID: Final[str] = "EarthSpeciesProject/BEANS-Next"
+BEANS_NEXT_HUB_REPO_ID: Final[str] = "iclr2027anon/BEANS-Next"
 _METADATA_PARQUET_LEGACY: Final[str] = "beans_next_metadata.parquet"
 _METADATA_PARQUET_CANONICAL: Final[str] = "metadata.parquet"
 _AUDIO_PARQUET_LEGACY: Final[str] = "beans_next_audio.parquet"
@@ -1009,7 +1009,7 @@ def iter_hf_beans_next_examples(
     Parameters
     ----------
     repo_id
-        HuggingFace dataset id. Defaults to ``EarthSpeciesProject/BEANS-Next``.
+        HuggingFace dataset id. Defaults to ``iclr2027anon/BEANS-Next``.
     subset
         Hub ``task`` string, e.g. ``"crow-description"`` (tier 1) or
         ``"crow-4way"`` (tier 4).
