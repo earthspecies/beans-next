@@ -354,7 +354,6 @@ def _load_real_pipeline(model_name: str, device: str) -> object:  # noqa: ANN401
     -----
     The NatureLM-audio package is installed from::
 
-        pip install git+https://github.com/earthspeciesproject/NatureLM-audio.git
 
     The launcher prefers the in-repo `NatureLM` Python package API first
     (``NatureLM.infer.Pipeline``). If that import fails, it falls back to a

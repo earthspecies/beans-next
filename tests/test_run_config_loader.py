@@ -54,14 +54,12 @@ models:
   - dummy_local_8000
   - naturelm_v1_0_local_8000
 suite: beans_zero_smoke
-data_source: esp_data
 limit: 7
 output_dir: results/custom
 run_id: test-run
 """,
     )
     loaded = load_run_config(path)
-    assert loaded.config.data_source == "esp_data"
 
     assert [m.name for m in loaded.models] == [
         "dummy_local_8000",

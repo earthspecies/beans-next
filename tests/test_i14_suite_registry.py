@@ -7,7 +7,12 @@ from beans_next.prompts import load_builtin_prompt_yaml
 
 
 def test_i14_suite_registry_expands_to_expected_eval_tasks() -> None:
-    assert _load_suite_eval_tasks("beans_zero_watkins_lifestage_calltype") == [
+    assert [
+        task
+        for task in _load_suite_eval_tasks("beans_zero_core")
+        if task
+        in {"beans_zero_watkins", "beans_zero_lifestage", "beans_zero_call_type"}
+    ] == [
         "beans_zero_watkins",
         "beans_zero_lifestage",
         "beans_zero_call_type",

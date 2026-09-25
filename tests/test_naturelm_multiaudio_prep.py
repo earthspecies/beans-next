@@ -30,25 +30,30 @@ def _prepare() -> Callable[..., Any]:
     end = src.index("\ndef ", start)
     ns: dict[str, Any] = {"np": np, "Any": Any}
     exec(  # noqa: S102
-        compile("from __future__ import annotations\n" + src[start:end],
-                "serve_extract", "exec"), ns)
+        compile(
+            "from __future__ import annotations\n" + src[start:end],
+            "serve_extract",
+            "exec",
+        ),
+        ns,
+    )
     return ns["_prepare_waveform"]
 
 
 def test_crops_and_pads_to_target_length() -> None:
     prep = _prepare()
     sr = 16000
-    short = np.zeros(sr, dtype=np.float32)          # 1 s
+    short = np.zeros(sr, dtype=np.float32)  # 1 s
     wav, mask, err = prep(short, sr, sample_rate=sr, max_length_seconds=10)
     assert err is None
     assert wav.shape[0] == sr * 10
-    assert mask[:sr].sum() == 0          # real signal not masked
-    assert bool(mask[sr:].all())         # padding masked
+    assert mask[:sr].sum() == 0  # real signal not masked
+    assert bool(mask[sr:].all())  # padding masked
 
-    long = np.zeros(sr * 30, dtype=np.float32)      # 30 s
+    long = np.zeros(sr * 30, dtype=np.float32)  # 30 s
     wav, mask, err = prep(long, sr, sample_rate=sr, max_length_seconds=10)
     assert err is None and wav.shape[0] == sr * 10
-    assert mask.sum() == 0               # nothing padded when cropping
+    assert mask.sum() == 0  # nothing padded when cropping
 
 
 def test_stereo_is_downmixed() -> None:
@@ -57,7 +62,7 @@ def test_stereo_is_downmixed() -> None:
     stereo = np.stack([np.ones(sr), -np.ones(sr)], axis=1).astype(np.float32)
     wav, _, err = prep(stereo, sr, sample_rate=sr, max_length_seconds=1)
     assert err is None and wav.ndim == 1
-    assert np.allclose(wav[:sr], 0.0)    # +1 and -1 average to 0
+    assert np.allclose(wav[:sr], 0.0)  # +1 and -1 average to 0
 
 
 def test_values_are_clamped() -> None:
@@ -86,5 +91,7 @@ def test_launcher_counts_placeholders_against_clip_count() -> None:
     """The launcher must reject a placeholder/clip mismatch, not guess."""
     src = _SERVE.read_text()
     assert "_NATURELM_AUDIO_PLACEHOLDER" in src
-    assert re.search(r"placeholder\(s\) but\s*\"?\s*\n?\s*f?\"?\{n_audio\}", src) or \
-        "they must match" in src
+    assert (
+        re.search(r"placeholder\(s\) but\s*\"?\s*\n?\s*f?\"?\{n_audio\}", src)
+        or "they must match" in src
+    )

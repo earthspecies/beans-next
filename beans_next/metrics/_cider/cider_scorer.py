@@ -141,8 +141,9 @@ class CiderScorer:
         int
             Number of (hypothesis, references) pairs added so far.
         """
-        assert len(self.crefs) == len(self.ctest), (
-            "refs/test mismatch! %d<>%d" % (len(self.crefs), len(self.ctest))
+        assert len(self.crefs) == len(self.ctest), "refs/test mismatch! %d<>%d" % (
+            len(self.crefs),
+            len(self.ctest),
         )
         return len(self.crefs)
 
@@ -177,9 +178,7 @@ class CiderScorer:
         :meth:`compute_cider`.
         """
         for refs in self.crefs:
-            for ngram in {
-                ngram for ref in refs for ngram in ref
-            }:
+            for ngram in {ngram for ref in refs for ngram in ref}:
                 self.document_frequency[ngram] += 1
 
     def compute_cider(self) -> list[float]:

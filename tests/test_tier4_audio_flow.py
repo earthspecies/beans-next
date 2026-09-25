@@ -12,9 +12,8 @@ import pytest
 import soundfile as sf
 
 from beans_next.datasets.beans_next_hub import _iter_multiaudio_examples
-from beans_next.datasets.esp_data import (
+from beans_next.datasets.rows import (
     _build_multiaudio_dataset_example,
-    _resolve_audio_paths_for_row,
 )
 from beans_next.prompts.audio_tags import AUDIO_PLACEHOLDER
 from beans_next.prompts.renderer import PromptRenderer, load_builtin_prompt_yaml
@@ -85,14 +84,33 @@ def test_query_alias_cannot_override_ordered_query() -> None:
     assert ex.metadata["audio_path"] == "q"
 
 
-def test_missing_clip_is_not_silently_skipped(tmp_path: Path) -> None:
-    present = tmp_path / "a.wav"
-    present.touch()
-    with pytest.raises(ValueError, match="Missing audio slot 1"):
-        _resolve_audio_paths_for_row(
-            {"audio_paths": [str(present), str(tmp_path / "missing.wav")]},
-            sample_id="x",
-            diagnostics=False,
+def test_missing_snapshot_clip_fails_without_dropping_slot(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = tmp_path / "test"
+    (root / "audio").mkdir(parents=True)
+    sf.write(root / "audio/a.wav", np.zeros(160), 16000)
+    row = {
+        "id": "missing-reference",
+        "task": "crow-4way",
+        "tier": 4,
+        "audio_paths": ["audio/a.wav", "audio/missing.wav"],
+        "messages": [{"role": "user", "content": AUDIO_PLACEHOLDER * 2}],
+    }
+    pq.write_table(pa.Table.from_pylist([row]), root / "metadata.parquet")
+    monkeypatch.setenv("BEANS_NEXT_HF_BEANS_NEXT_ROOT", str(tmp_path))
+    with pytest.raises(FileNotFoundError):
+        list(
+            _iter_multiaudio_examples(
+                "unused",
+                subset="crow-4way",
+                split="test",
+                revision="unused",
+                task_id=None,
+                limit=None,
+                workers=1,
+                load_audio=True,
+            )
         )
 
 

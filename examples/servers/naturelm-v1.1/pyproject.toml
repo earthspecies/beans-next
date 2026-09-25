@@ -6,7 +6,6 @@ requires-python = ">=3.12"
 dependencies = [
   "fastapi==0.115.12",
   "uvicorn[standard]==0.34.2",
-  # Keep schemas aligned with the esp-research NatureLM-audio-v1.5 stack.
   "pydantic>=2.12.4",
   "pydantic-settings>=2.12.0",
   "typing-extensions>=4.15.0",
@@ -17,9 +16,6 @@ dependencies = [
   # Used for explicit resampling when input sr != 16kHz.
   "resampy>=0.4.0",
   "pyyaml>=6.0.0",
-  # Used by esp-research + esp-data I/O utilities.
-  "cloudpathlib[gs]>=0.20.0",
-  # NatureLM/esp tooling still imports `pkg_resources` in some places.
   "setuptools<81",
 ]
 

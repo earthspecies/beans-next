@@ -53,7 +53,8 @@ class TestExtractLabelExactMatch:
         model output uses different casing."""
         ctx = self._ctx("AMERICAN CROW")
         out = apply_extract_label_from_text(ctx, labels=["American Crow", "Raven"])
-        # Exact match: "american crow" == "american crow" → returns original "American Crow"
+        # Exact match: "american crow" == "american crow" → returns original
+        # "American Crow"
         assert out.segments == ["American Crow"]
 
     def test_exact_with_leading_trailing_whitespace(self) -> None:
@@ -208,7 +209,9 @@ class TestBinaryYesNoDoesNotCommaSplit:
             targets=["Yes", "No"],
             task_type=None,  # critical: the buggy case was task_type omitted
         )
-        result = run_post_process_pipeline(raw, parser_steps=parsers, cleaner_steps=cleaners)
+        result = run_post_process_pipeline(
+            raw, parser_steps=parsers, cleaner_steps=cleaners
+        )
         assert result.text == expected
 
 
@@ -241,7 +244,9 @@ class TestMcqDoesNotCommaSplitAndChoosesFinalLetter:
             targets=["A", "B", "C", "D"],
             task_type=None,  # critical: without task_type this used to comma-split
         )
-        result = run_post_process_pipeline(raw, parser_steps=parsers, cleaner_steps=cleaners)
+        result = run_post_process_pipeline(
+            raw, parser_steps=parsers, cleaner_steps=cleaners
+        )
         assert result.text == expected
 
     def test_markdown_bold_letter_extracts(self) -> None:
@@ -249,8 +254,13 @@ class TestMcqDoesNotCommaSplitAndChoosesFinalLetter:
             targets=["A", "B", "C", "D"],
             task_type=None,
         )
-        raw = "Based on the acoustic characteristics of the audio, the correct description is:\n\n**B**"
-        result = run_post_process_pipeline(raw, parser_steps=parsers, cleaner_steps=cleaners)
+        raw = (
+            "Based on the acoustic characteristics of "
+            "the audio, the correct description is:\n\n**B**"
+        )
+        result = run_post_process_pipeline(
+            raw, parser_steps=parsers, cleaner_steps=cleaners
+        )
         assert result.text == "B"
 
     def test_option_reference_does_not_match_article_a(self) -> None:
@@ -259,10 +269,13 @@ class TestMcqDoesNotCommaSplitAndChoosesFinalLetter:
             task_type=None,
         )
         raw = (
-            "The sound consists of a short, high-pitched note followed by a longer tone. "
+            "The sound consists of a short, "
+            "high-pitched note followed by a longer tone. "
             "This matches the description in option C."
         )
-        result = run_post_process_pipeline(raw, parser_steps=parsers, cleaner_steps=cleaners)
+        result = run_post_process_pipeline(
+            raw, parser_steps=parsers, cleaner_steps=cleaners
+        )
         assert result.text == "C"
 
     @pytest.mark.parametrize(
@@ -282,7 +295,9 @@ class TestMcqDoesNotCommaSplitAndChoosesFinalLetter:
             targets=["A", "B", "C", "D"],
             task_type=None,
         )
-        result = run_post_process_pipeline(raw, parser_steps=parsers, cleaner_steps=cleaners)
+        result = run_post_process_pipeline(
+            raw, parser_steps=parsers, cleaner_steps=cleaners
+        )
         assert result.text == expected
 
 
@@ -302,7 +317,9 @@ class TestCaptioningPreservesFreeTextAndSkipsFuzzyMatch:
         )
         assert parsers == ()
         raw = "A rooster crows, followed by distant thunder, at dawn."
-        result = run_post_process_pipeline(raw, parser_steps=parsers, cleaner_steps=cleaners)
+        result = run_post_process_pipeline(
+            raw, parser_steps=parsers, cleaner_steps=cleaners
+        )
         assert result.text == raw
 
     def test_task_type_none_with_free_text_targets_falls_back_to_fuzzy_match(
@@ -326,7 +343,9 @@ class TestHzBucketDoesNotCommaSplitAndParsesThousandsSeparator:
             task_type=None,
         )
         raw = "#0.00s - 10.00s#: 1,654.75\n"
-        result = run_post_process_pipeline(raw, parser_steps=parsers, cleaner_steps=cleaners)
+        result = run_post_process_pipeline(
+            raw, parser_steps=parsers, cleaner_steps=cleaners
+        )
         # Parse the full numeric value (1654.75) instead of splitting on the comma.
         # Then map to a single closest bucket label.
         assert result.text == "3650 Hz"
@@ -337,11 +356,15 @@ class TestHzBucketDoesNotCommaSplitAndParsesThousandsSeparator:
             task_type=None,
         )
         raw = (
-            "To determine the mean fundamental frequency of a vocalization, we would typically "
-            "analyze the audio signal using specialized software or tools that can perform a "
+            "To determine the mean fundamental "
+            "frequency of a vocalization, we would typically "
+            "analyze the audio signal using "
+            "specialized software or tools that can perform a "
             "frequency analysis, such as a spectrogram or pitch-tracking software."
         )
-        result = run_post_process_pipeline(raw, parser_steps=parsers, cleaner_steps=cleaners)
+        result = run_post_process_pipeline(
+            raw, parser_steps=parsers, cleaner_steps=cleaners
+        )
         assert result.text in {"2780 Hz", "3100 Hz", "3650 Hz"}
         assert "," not in result.text
 
@@ -353,7 +376,9 @@ class TestHzBucketDoesNotCommaSplitAndParsesThousandsSeparator:
             task_type=None,
         )
         raw = "2131-4440 Hz"
-        result = run_post_process_pipeline(raw, parser_steps=parsers, cleaner_steps=cleaners)
+        result = run_post_process_pipeline(
+            raw, parser_steps=parsers, cleaner_steps=cleaners
+        )
         assert result.text == "340 Hz"
 
 
@@ -532,9 +557,7 @@ class TestRescoreNullTargetsWarning:
     """Null targets produce a warning and empty scores in the rescorer."""
 
     def _write_jsonl(self, path: Path, rows: list[object]) -> None:
-        path.write_text(
-            "\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8"
-        )
+        path.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
 
     def test_null_targets_logs_warning(
         self, tmp_path: Path, caplog: pytest.LogCaptureFixture
@@ -621,12 +644,11 @@ class TestRescoreNullTargetsWarning:
 
 
 class TestRescoreTaskType:
-    """Rescorer task_type parameter selects correct postprocess steps and scorer routing."""
+    """Rescorer task_type parameter selects correct postprocess steps and scorer
+    routing."""
 
     def _write_jsonl(self, path: Path, rows: list[object]) -> None:
-        path.write_text(
-            "\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8"
-        )
+        path.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
 
     def _run_rescore(
         self, tmp_path: Path, raw_pred: str, target: str, task_type: str | None

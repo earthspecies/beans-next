@@ -1,11 +1,10 @@
 beans_next_multiaudio_giant_otter_4way:
   task_type: classification
-  data_source: esp_data
   dataset: beans_next_multiaudio
   subset: giant-otter-4way
-  split: giant-otter-4way
+  split: test
   prompt: beans_next_multiaudio_passthrough_v1
   generation_config:
     max_length_seconds: 10
   metrics:
-    - name: accuracy
+  - name: accuracy

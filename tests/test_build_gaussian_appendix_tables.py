@@ -41,9 +41,7 @@ def _row(metric: str = "accuracy") -> dict[str, object]:
     }
     return {
         "n_samples": 10,
-        "metrics": {
-            metric: {"real": 0.75, "noise": 0.25, "audio_minus_noise": 0.5}
-        },
+        "metrics": {metric: {"real": 0.75, "noise": 0.25, "audio_minus_noise": 0.5}},
         "real_diagnostics": diagnostic,
         "noise_diagnostics": diagnostic,
     }

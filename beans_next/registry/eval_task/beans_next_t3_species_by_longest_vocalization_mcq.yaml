@@ -1,14 +1,12 @@
 beans_next_t3_species_by_longest_vocalization_mcq:
   task_type: classification
-  data_source: esp_data
   dataset: beans_next
   subset: t3-species-by-longest-vocalization-mcq
-  split: t3-species-by-longest-vocalization-mcq
+  split: test
   prompt: classification_beans_zero_official_v1
   generation_config:
     max_length_seconds: 30
   metrics:
-    - name: top1_accuracy
-      scorer_kwargs:
-        label_separator: ","
-
+  - name: top1_accuracy
+    scorer_kwargs:
+      label_separator: ','

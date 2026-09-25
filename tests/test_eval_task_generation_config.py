@@ -14,7 +14,6 @@ from beans_next.runner.runner import _prompt_spec_from_eval_task
 
 _BASE = {
     "task_type": "captioning",
-    "data_source": "esp_data",
     "dataset": "beans_next",
     "prompt": "classification_beans_zero_official_v1",
 }

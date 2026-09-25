@@ -15,7 +15,7 @@ from beans_next.metrics.base import (
     register_scorer,
     validate_equal_length,
 )
-from beans_next.metrics.captioning import cider, cider_corpus_mean_normalized, spider
+from beans_next.metrics.captioning import cider, cider_corpus_mean_normalized
 from beans_next.metrics.classification import (
     accuracy,
     f1,
@@ -56,7 +56,6 @@ __all__ = [
     "register_scorer",
     "root_mean_squared_error",
     "score_sample",
-    "spider",
     "top1_accuracy",
     "validate_equal_length",
 ]
@@ -126,9 +125,7 @@ def _mcq_content_match(y_pred: str, y_true: str, pred_mcq: str | None) -> bool:
     pred_content = _MCQ_PREFIX_RE.sub("", y_pred.lower(), count=1)
     true_content_lc = true_content.lower()
     if len(true_content_lc.split()) == 1:
-        return bool(
-            re.search(r"\b" + re.escape(true_content_lc) + r"\b", pred_content)
-        )
+        return bool(re.search(r"\b" + re.escape(true_content_lc) + r"\b", pred_content))
     return true_content_lc in pred_content
 
 
@@ -416,9 +413,7 @@ def score_sample(
             # Count MAE over matched species only
             matched = set(true_sm) & set(pred_sm)
             if matched:
-                count_errors = [
-                    abs(pred_sm[sp][0] - true_sm[sp][0]) for sp in matched
-                ]
+                count_errors = [abs(pred_sm[sp][0] - true_sm[sp][0]) for sp in matched]
                 base["count_mae"] = sum(count_errors) / float(len(matched))
             return {"parse_success": 1.0, **base}
         if "frequency_range" in task_s:
@@ -458,8 +453,7 @@ def score_sample(
             f1v = 2.0 * prec * rec / (prec + rec) if (prec + rec) else 0.0
             all_species = true_set | pred_set
             count_errors = [
-                abs(pred_dict.get(s, 0.0) - true_dict.get(s, 0.0))
-                for s in all_species
+                abs(pred_dict.get(s, 0.0) - true_dict.get(s, 0.0)) for s in all_species
             ]
             count_mae = sum(count_errors) / len(count_errors)
             return {

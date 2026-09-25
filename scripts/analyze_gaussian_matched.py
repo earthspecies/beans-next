@@ -33,9 +33,7 @@ __all__ = [
     "find_task_summaries",
 ]
 
-DEFAULT_FREQUENCY_TASK_IDS = frozenset(
-    {"beans_next_t3_frequency_range_description"}
-)
+DEFAULT_FREQUENCY_TASK_IDS = frozenset({"beans_next_t3_frequency_range_description"})
 
 # Keep this deliberately narrow.  Phrases such as "not mentioned" are often
 # valid answers to the task and must not be labelled as refusals automatically.
@@ -78,9 +76,7 @@ def _load_jsonl(path: Path) -> list[dict[str, Any]]:
         try:
             value = json.loads(line)
         except json.JSONDecodeError as exc:
-            raise MatchedAnalysisError(
-                f"invalid JSON at {path}:{line_number}"
-            ) from exc
+            raise MatchedAnalysisError(f"invalid JSON at {path}:{line_number}") from exc
         if not isinstance(value, dict):
             raise MatchedAnalysisError(
                 f"JSONL row is not an object at {path}:{line_number}"
@@ -244,8 +240,7 @@ def _diagnostics(
     return {
         "non_error_denominator": len(usable),
         "empty_processed_prediction_count": sum(
-            not str(row.get("processed_prediction", "") or "").strip()
-            for row in usable
+            not str(row.get("processed_prediction", "") or "").strip() for row in usable
         ),
         "metric_denominators": dict(sorted(metric_denominators.items())),
         "numeric_parse_denominator": len(parse_values),
@@ -273,8 +268,7 @@ def _diagnostics(
 def _coverage_iou(rows: Iterable[Mapping[str, Any]]) -> tuple[float, int]:
     rows_list = list(rows)
     values = [
-        _finite_number(_scores(row).get("freq_mean_iou")) or 0.0
-        for row in rows_list
+        _finite_number(_scores(row).get("freq_mean_iou")) or 0.0 for row in rows_list
     ]
     return (sum(values) / len(values) if values else 0.0, len(values))
 

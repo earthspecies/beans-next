@@ -244,7 +244,8 @@ def test_beans_zero_slice_v1_golden_regression(tmp_path: Path) -> None:
 
     if os.environ.get("BEANS_NEXT_RUN_GOLDEN_TESTS") != "1":
         pytest.skip(
-            "Golden regression test is opt-in. Set BEANS_NEXT_RUN_GOLDEN_TESTS=1 to run."
+            "Golden regression test is opt-in. "
+            "Set BEANS_NEXT_RUN_GOLDEN_TESTS=1 to run."
         )
 
     predict_url = os.environ.get("BEANS_NEXT_GOLDEN_PREDICT_URL")

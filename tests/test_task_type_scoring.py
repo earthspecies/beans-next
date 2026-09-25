@@ -32,6 +32,7 @@ def _ex(labels: object, task: str) -> DatasetExample:
 
 class TestExtractFrequencyRange:
     """Unit tests for extract_frequency_range helper."""
+
     def test_hz_range(self) -> None:
         assert extract_frequency_range("200-8000 Hz") == (200.0, 8000.0)
 
@@ -70,6 +71,7 @@ class TestExtractFrequencyRange:
 
 class TestFrequencyRangeScoring:
     """Per-sample scoring for frequency_range task type."""
+
     def test_exact_range_match(self) -> None:
         r = score_sample(
             _ex("200-8000 Hz", "frequency_range"),
@@ -133,6 +135,7 @@ class TestFrequencyRangeScoring:
 
 class TestSpeciesSetScoring:
     """Per-sample scoring for species_set task type."""
+
     def test_perfect_match(self) -> None:
         r = score_sample(
             _ex("Thrush nightingale, Common chaffinch", "species_set"),
@@ -203,6 +206,7 @@ class TestSpeciesSetScoring:
 
 class TestSpeciesCountDictScoring:
     """Per-sample scoring for species_count_dict task type."""
+
     def test_perfect(self) -> None:
         r = score_sample(
             _ex("Thrush nightingale: 3, Common chaffinch: 2", "species_count_dict"),
@@ -244,7 +248,9 @@ class TestSpeciesCountDictScoring:
         r = score_sample(
             _ex("Thrush nightingale: 3, Common chaffinch: 2", "species_count_dict"),
             post=_post("Thrush nightingale: 3, Common chaffinch: 2, European robin: 1"),
-            raw_predictions=["Thrush nightingale: 3, Common chaffinch: 2, European robin: 1"],
+            raw_predictions=[
+                "Thrush nightingale: 3, Common chaffinch: 2, European robin: 1"
+            ],
         )
         assert r["species_f1"] == pytest.approx(0.8)
         # union has 3; errors = [0, 0, 1]
@@ -285,6 +291,7 @@ class TestSpeciesCountDictScoring:
 
 class TestSpeciesOrderScoring:
     """Per-sample scoring for species_order task type."""
+
     def test_correct_order(self) -> None:
         r = score_sample(
             _ex("Thrush nightingale, Common chaffinch", "species_order"),
@@ -325,6 +332,7 @@ class TestSpeciesOrderScoring:
 
 class TestSpeciesNameScoring:
     """Per-sample scoring for species_name task type."""
+
     def test_exact(self) -> None:
         r = score_sample(
             _ex("Thrush nightingale", "species_name"),
@@ -358,6 +366,7 @@ class TestSpeciesNameScoring:
 
 class TestPresenceBinaryScoring:
     """Per-sample scoring for presence_binary task type."""
+
     def test_yes_match(self) -> None:
         for pred in ("Yes", "yes", "YES"):
             r = score_sample(
@@ -392,6 +401,7 @@ class TestPresenceBinaryScoring:
 
 class TestRegressionScoring:
     """Per-sample scoring for regression task type."""
+
     def test_exact_integer(self) -> None:
         r = score_sample(
             _ex("2", "regression"),
@@ -459,6 +469,7 @@ class TestRegressionScoring:
 
 class TestCaptiongTaskType:
     """Captioning task type: empty per-sample scores, corpus CIDEr at dataset level."""
+
     def test_per_sample_returns_empty(self) -> None:
         r = score_sample(
             _ex("A bird sings a clear melodic phrase.", "captioning"),
@@ -480,7 +491,9 @@ class TestCaptiongTaskType:
             "A chaffinch calls repeatedly from a perch.",
             "Rhythmic drumming from a woodpecker is audible.",
         ]
-        result = compute_dataset_level_metrics(list(zip(hyps, refs, strict=False)), "captioning")
+        result = compute_dataset_level_metrics(
+            list(zip(hyps, refs, strict=False)), "captioning"
+        )
         assert "cider" in result
         assert isinstance(result["cider"], float)
 
@@ -504,11 +517,11 @@ class TestCaptiongTaskType:
 
 
 class TestDatasetLevelRegressionAndFrequencyRange:
-    """Dataset-level compute returns empty for regression and frequency_range; aggregation is done by aggregate_score_means."""
+    """Dataset-level compute returns empty for regression and frequency_range;
+    aggregation is done by aggregate_score_means."""
+
     def test_regression_dataset_level_empty(self) -> None:
-        result = compute_dataset_level_metrics(
-            [("2", "3"), ("5", "5")], "regression"
-        )
+        result = compute_dataset_level_metrics([("2", "3"), ("5", "5")], "regression")
         # regression per-sample aggregation done by aggregate_score_means, not here
         assert result == {}
 
@@ -553,22 +566,34 @@ class TestMcqContentMatch:
         assert self._score("(A) Galerida theklae", "A.") == pytest.approx(1.0)
 
     def test_full_label(self) -> None:
-        assert self._score("(A) Galerida theklae", "(A) Galerida theklae") == pytest.approx(1.0)
+        assert self._score(
+            "(A) Galerida theklae", "(A) Galerida theklae"
+        ) == pytest.approx(1.0)
 
     def test_name_only(self) -> None:
-        assert self._score("(A) Galerida theklae", "Galerida theklae") == pytest.approx(1.0)
+        assert self._score("(A) Galerida theklae", "Galerida theklae") == pytest.approx(
+            1.0
+        )
 
     def test_letter_space_name(self) -> None:
-        assert self._score("(A) Galerida theklae", "A Galerida theklae") == pytest.approx(1.0)
+        assert self._score(
+            "(A) Galerida theklae", "A Galerida theklae"
+        ) == pytest.approx(1.0)
 
     def test_letter_dot_name(self) -> None:
-        assert self._score("(A) Galerida theklae", "A. Galerida theklae") == pytest.approx(1.0)
+        assert self._score(
+            "(A) Galerida theklae", "A. Galerida theklae"
+        ) == pytest.approx(1.0)
 
     def test_letter_colon_name(self) -> None:
-        assert self._score("(A) Galerida theklae", "A: Galerida theklae") == pytest.approx(1.0)
+        assert self._score(
+            "(A) Galerida theklae", "A: Galerida theklae"
+        ) == pytest.approx(1.0)
 
     def test_trailing_period(self) -> None:
-        assert self._score("(A) Galerida theklae", "Galerida theklae.") == pytest.approx(1.0)
+        assert self._score(
+            "(A) Galerida theklae", "Galerida theklae."
+        ) == pytest.approx(1.0)
 
     def test_sentence_wrapping(self) -> None:
         assert self._score(
@@ -576,17 +601,25 @@ class TestMcqContentMatch:
         ) == pytest.approx(1.0)
 
     def test_case_insensitive_lowercase(self) -> None:
-        assert self._score("(A) Galerida theklae", "galerida theklae") == pytest.approx(1.0)
+        assert self._score("(A) Galerida theklae", "galerida theklae") == pytest.approx(
+            1.0
+        )
 
     def test_case_insensitive_uppercase(self) -> None:
-        assert self._score("(A) Galerida theklae", "GALERIDA THEKLAE") == pytest.approx(1.0)
+        assert self._score("(A) Galerida theklae", "GALERIDA THEKLAE") == pytest.approx(
+            1.0
+        )
 
     # wrong predictions — must be 0.0
     def test_wrong_species_name(self) -> None:
-        assert self._score("(A) Galerida theklae", "Sylvia communis") == pytest.approx(0.0)
+        assert self._score("(A) Galerida theklae", "Sylvia communis") == pytest.approx(
+            0.0
+        )
 
     def test_wrong_letter_wrong_name(self) -> None:
-        assert self._score("(A) Galerida theklae", "B Sylvia communis") == pytest.approx(0.0)
+        assert self._score(
+            "(A) Galerida theklae", "B Sylvia communis"
+        ) == pytest.approx(0.0)
 
     def test_wrong_letter(self) -> None:
         assert self._score("(A) Galerida theklae", "B") == pytest.approx(0.0)
@@ -628,7 +661,8 @@ class TestMcqContentMatch:
 
 
 class TestSpeciesFreqRangeScoring:
-    """Per-sample scoring for species_freq_range task type (frequency_range_description)."""
+    """Per-sample scoring for species_freq_range task type
+    (frequency_range_description)."""
 
     def _score(self, gt: str, pred: str) -> dict:
         ex = DatasetExample(
@@ -702,7 +736,10 @@ class TestSpeciesSummaryScoring:
         return score_sample(ex, post=_post(pred), raw_predictions=[pred])
 
     def test_perfect(self) -> None:
-        gt = "Pipilo erythrophthalmus: 2 calls, 2330-5150 Hz; Setophaga virens: 2 calls, 4650-7320 Hz"
+        gt = (
+            "Pipilo erythrophthalmus: 2 calls, "
+            "2330-5150 Hz; Setophaga virens: 2 calls, 4650-7320 Hz"
+        )
         r = self._score(gt, gt)
         assert r["species_f1"] == pytest.approx(1.0)
         assert r["count_mae"] == pytest.approx(0.0)
@@ -724,7 +761,10 @@ class TestSpeciesSummaryScoring:
         assert r["species_f1"] == pytest.approx(1.0)
 
     def test_missing_species_no_count_metric(self) -> None:
-        gt = "Pipilo erythrophthalmus: 2 calls, 2330-5150 Hz; Setophaga virens: 2 calls, 4650-7320 Hz"
+        gt = (
+            "Pipilo erythrophthalmus: 2 calls, "
+            "2330-5150 Hz; Setophaga virens: 2 calls, 4650-7320 Hz"
+        )
         pred = "Pipilo erythrophthalmus: 2 calls, 2330-5150 Hz"
         r = self._score(gt, pred)
         assert r["species_recall"] == pytest.approx(0.5)
@@ -765,20 +805,28 @@ class TestSpeciesNameLookup:
         ex = DatasetExample(
             sample_id="s0", labels=gt, metadata={"task": "species_name"}
         )
-        return score_sample(ex, post=_post(pred), raw_predictions=[pred])["top1_accuracy"]
+        return score_sample(ex, post=_post(pred), raw_predictions=[pred])[
+            "top1_accuracy"
+        ]
 
     # sci GT → common name prediction
     def test_sci_gt_exact_sci_pred(self) -> None:
         assert self._score("Sturnus unicolor", "Sturnus unicolor") == pytest.approx(1.0)
 
     def test_sci_gt_common_name_pred(self) -> None:
-        assert self._score("Sturnus unicolor", "Spotless Starling") == pytest.approx(1.0)
+        assert self._score("Sturnus unicolor", "Spotless Starling") == pytest.approx(
+            1.0
+        )
 
     def test_sci_gt_common_name_lowercase(self) -> None:
-        assert self._score("Sturnus unicolor", "spotless starling") == pytest.approx(1.0)
+        assert self._score("Sturnus unicolor", "spotless starling") == pytest.approx(
+            1.0
+        )
 
     def test_sci_gt_common_name_uppercase(self) -> None:
-        assert self._score("Sturnus unicolor", "SPOTLESS STARLING") == pytest.approx(1.0)
+        assert self._score("Sturnus unicolor", "SPOTLESS STARLING") == pytest.approx(
+            1.0
+        )
 
     def test_sci_gt_wrong_common_name(self) -> None:
         # Common Starling is Sturnus vulgaris, not unicolor

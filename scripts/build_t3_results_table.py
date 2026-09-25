@@ -343,9 +343,7 @@ def _render_panel1(rows: dict[str, dict[str, float | None]], tabcolsep: int) -> 
     lines.append("Model\n& " + "\n& ".join(heads) + r" \\")
     lines.append(r"\midrule")
     for label, display in MODELS:
-        cells = [
-            _cell_latex(rows[label][c.task], best[c.task], c) for c in columns
-        ]
+        cells = [_cell_latex(rows[label][c.task], best[c.task], c) for c in columns]
         lines.append(f"{display}\n& " + " & ".join(cells) + r" \\")
     lines += [r"\bottomrule", r"\end{tabular}"]
     return "\n".join(lines)
@@ -379,9 +377,7 @@ def _render_panel2(rows: dict[str, dict[str, float | None]], tabcolsep: int) -> 
     lines.append("Model\n& " + "\n& ".join(heads) + r" \\")
     lines.append(r"\midrule")
     for label, display in MODELS:
-        cells = [
-            _cell_latex(rows[label][c.task], best[c.task], c) for c in columns
-        ]
+        cells = [_cell_latex(rows[label][c.task], best[c.task], c) for c in columns]
         lines.append(f"{display}\n& " + " & ".join(cells) + r" \\")
     lines += [r"\bottomrule", r"\end{tabular}"]
     return "\n".join(lines)
@@ -403,9 +399,7 @@ def build_table(export_dir: Path) -> str:
     all_columns = [c for g in (*PANEL1, *PANEL2) for c in g.columns]
     rows: dict[str, dict[str, float | None]] = {}
     for label, _ in MODELS:
-        rows[label] = {
-            c.task: _compute_cell(export_dir, label, c) for c in all_columns
-        }
+        rows[label] = {c.task: _compute_cell(export_dir, label, c) for c in all_columns}
 
     caption = (
         "Beans-Next Tier 3 (Scene understanding) results, recomputed from the "

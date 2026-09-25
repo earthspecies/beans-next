@@ -1,11 +1,10 @@
 beans_next_t3_structural_captioning:
   task_type: captioning
-  data_source: esp_data
   dataset: beans_next
   subset: t3-structural-captioning
-  split: t3-structural-captioning
+  split: test
   prompt: captioning_bioacoustic_v1
   generation_config:
     max_length_seconds: 30
   metrics:
-    - name: cider
+  - name: cider

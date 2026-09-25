@@ -250,7 +250,7 @@ class ScoredPrediction(BaseModel):
     """Post-processed and optionally scored row written to JSONL artifacts.
 
     ``processed_predictions.jsonl`` may omit ``scores``; ``scored_predictions.jsonl``
-    should populate ``scores`` after deterministic metrics (and optional judges).
+    should populate ``scores`` after deterministic metrics.
 
     Attributes
     ----------

@@ -9,7 +9,7 @@ from types import SimpleNamespace
 import pytest
 
 from beans_next.api.types import DatasetExample
-from beans_next.datasets import beans_next_hub, esp_data, hf, hf_streaming
+from beans_next.datasets import beans_next_hub, hf, hf_streaming
 from beans_next.prompts.audio_tags import AUDIO_PLACEHOLDER
 from beans_next.prompts.renderer import (
     TEXT_ONLY_INSTRUCTION,
@@ -266,40 +266,6 @@ def test_streaming_hf_metadata_only_loader_removes_audio_before_iteration(
     assert "audio_path" not in examples[0].metadata
 
 
-def test_esp_data_beans_zero_metadata_only_skips_audio_resolution(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    row = {
-        "id": "row-1",
-        "dataset_name": "esc50",
-        "instruction": "Identify the sound.",
-        "output": "dog",
-    }
-    monkeypatch.setattr(esp_data, "require_esp_data", lambda: object())
-    monkeypatch.setattr(
-        esp_data,
-        "_load_beans_zero_rows_via_reflection",
-        lambda *_args, **_kwargs: iter((row,)),
-    )
-    monkeypatch.setattr(
-        esp_data,
-        "_resolve_audio_for_row",
-        lambda *_args, **_kwargs: pytest.fail("audio must not be resolved"),
-    )
-
-    examples = list(
-        esp_data.iter_esp_data_beans_zero_examples(
-            subset="esc50",
-            split="test",
-            load_audio=False,
-        )
-    )
-
-    assert len(examples) == 1
-    assert examples[0].labels == "dog"
-    assert "audio_path" not in examples[0].metadata
-
-
 def test_deterministic_fraction_samples_each_task_exactly() -> None:
     examples = [DatasetExample(sample_id=f"sample-{index}") for index in range(20)]
 
@@ -309,9 +275,7 @@ def test_deterministic_fraction_samples_each_task_exactly() -> None:
 
     assert len(first) == 2
     assert [row.sample_id for row in first] == [row.sample_id for row in second]
-    assert [row.sample_id for row in first] != [
-        row.sample_id for row in different_seed
-    ]
+    assert [row.sample_id for row in first] != [row.sample_id for row in different_seed]
 
 
 @pytest.mark.parametrize("fraction", [0.0, -0.1, 1.1])

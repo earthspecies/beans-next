@@ -169,7 +169,7 @@ def iter_hf_streaming_multiaudio_examples(
     """Yield ``DatasetExample`` rows from a streaming multi-audio Hub dataset.
 
     The loader emits the same ``metadata`` keys as
-    ``esp_data.iter_esp_data_beans_next_multiaudio_examples``:
+    the shared multi-audio row converter:
 
     - ``metadata["conversation"]``: full multi-audio user prompt
     - ``metadata["conversation_query_only"]``: single-audio reformulation

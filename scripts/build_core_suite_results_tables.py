@@ -3,8 +3,8 @@
 
 Scans ``--results-root`` for ``suite/<suite_id>/<task_id>/predictions.jsonl``,
 selects the best 1:1-aligned predictions/processed pair per (model, task) using
-the same rules as ``consolidate_beans_zero_results.py`` (with partial runs
-allowed), reads ``summary.json`` ``metrics.mean``, and writes a Markdown table.
+deterministic coverage and alignment rules (with partial runs allowed), reads
+``summary.json`` ``metrics.mean``, and writes a Markdown table.
 
 Cells show the primary metric from each task's eval registry (first listed metric,
 with fallbacks). ``(incomplete)`` is appended only when rows are missing or the
@@ -361,7 +361,7 @@ def _build_table_for_suite(
     md_lines = [
         f"# {suite_key} — results (primary metric per task)",
         "",
-        "Canonical row counts come from esp_data metadata registries. "
+        "Canonical row counts come from the bundled benchmark registries. "
         "*(incomplete)* = fewer rows than the full test split or no aligned artifact. "
         "A bare — = full row count but no primary metric in `summary.json`.",
         "",

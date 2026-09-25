@@ -13,8 +13,10 @@ import pytest
 
 @pytest.fixture(scope="module")
 def row_builder() -> ModuleType:
-    path = Path(__file__).resolve().parents[1] / "scripts" / (
-        "build_text_only_paper_rows.py"
+    path = (
+        Path(__file__).resolve().parents[1]
+        / "scripts"
+        / ("build_text_only_paper_rows.py")
     )
     spec = importlib.util.spec_from_file_location("build_text_only_paper_rows", path)
     assert spec is not None and spec.loader is not None
@@ -131,7 +133,7 @@ def test_build_rows_scales_units_and_preserves_missing_tasks(
     assert semantic["values"]["bird"] == pytest.approx(50.0)
     assert semantic["values"]["fixed"] == pytest.approx(25.0)
     assert semantic["values"]["behavior"] == pytest.approx(75.0)
-    assert semantic["values"]["caption"] == pytest.approx(0.007)
+    assert semantic["values"]["caption"] == pytest.approx(0.7)
     assert semantic["values"]["insect"] is None
     assert semantic["values"]["begging"] is None
     assert "--" in semantic["latex_row"]
@@ -141,16 +143,14 @@ def test_build_rows_scales_units_and_preserves_missing_tasks(
     assert structural["values"]["frequency"] == pytest.approx(40.0)
     assert structural["values"]["summary"] == pytest.approx(50.0)
     assert structural["values"]["caption"] == pytest.approx(3.0)
-    assert (
-        structural["subtables"]["species_id"]["values"]["order_oe"]
-        == pytest.approx(33.0)
+    assert structural["subtables"]["species_id"]["values"]["order_oe"] == pytest.approx(
+        33.0
     )
-    assert (
-        structural["subtables"]["species_id"]["values"]["order_mcq"]
-        == pytest.approx(22.0)
-    )
+    assert structural["subtables"]["species_id"]["values"][
+        "order_mcq"
+    ] == pytest.approx(22.0)
 
-    assert result["tables"]["tier4"]["values"]["gibbons"] == pytest.approx(0.123)
+    assert result["tables"]["tier4"]["values"]["gibbons"] == pytest.approx(0.456)
     # The result must be directly machine-readable JSON.
     json.dumps(result)
 
@@ -221,13 +221,64 @@ def test_latex_cli_emits_six_concise_fragments(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    assert row_builder.main(
-        [str(_write_fixture(tmp_path)), "--model-label", "Test model", "--latex"]
-    ) == 0
+    assert (
+        row_builder.main(
+            [str(_write_fixture(tmp_path)), "--model-label", "Test model", "--latex"]
+        )
+        == 0
+    )
     output = capsys.readouterr().out
     assert output.count(r"\\") == 6
     assert "Test model & 0.012 & 0.046 & 0.079 & 0.500 & 0.250 & 0.750" in output
     assert "Test model & 1.2 & 34.5" in output
     assert "Test model & 50.0" in output
-    assert "& 0.007 \\\\" in output
-    assert "Test model & 0.123 & -- & -- & -- & --" in output
+    assert "& 0.7 \\\\" in output
+    assert "Test model & 0.456 & -- & -- & -- & --" in output
+
+
+def test_undefined_numeric_metric_remains_unreported(
+    row_builder: ModuleType,
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "suite_summary.json"
+    path.write_text(
+        json.dumps(
+            {
+                "eval_tasks": [
+                    _task(
+                        "beans_next_t3_species_count_oe", {"numeric_parse_success": 0.0}
+                    ),
+                ]
+            }
+        )
+    )
+    result = row_builder.build_paper_rows(path, "Silent model")
+    assert result["tables"]["structural_v3"]["values"]["species_count"] is None
+
+
+def test_current_versioned_task_ids_are_exported(
+    row_builder: ModuleType,
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "suite_summary.json"
+    path.write_text(
+        json.dumps(
+            {
+                "eval_tasks": [
+                    _task(
+                        "beans_next_v20260707m4afix_insect_presence",
+                        {"top1_accuracy": 0.25},
+                    ),
+                    _task(
+                        "beans_next_v20260823_begging_call_presence",
+                        {"top1_accuracy": 0.75},
+                    ),
+                ]
+            }
+        )
+    )
+    values = row_builder.build_paper_rows(path, "Current model")["tables"][
+        "semantic_v2"
+    ]["values"]
+    assert values["insect"] == 25.0
+    assert values["begging"] == 75.0

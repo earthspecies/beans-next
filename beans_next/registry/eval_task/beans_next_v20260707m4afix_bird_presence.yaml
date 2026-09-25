@@ -1,12 +1,10 @@
 beans_next_v20260707m4afix_bird_presence:
   task_type: presence_binary
-  data_source: esp_data
   dataset: beans_next
-  subset: v20260707m4afix-bird-presence
-  split: v20260707m4afix-bird-presence
-  hf_subset: bird-presence
+  subset: bird-presence
+  split: test
   prompt: classification_beans_zero_official_v1
   generation_config:
     max_length_seconds: 10
   metrics:
-    - name: top1_accuracy
+  - name: top1_accuracy

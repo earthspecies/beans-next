@@ -5,16 +5,16 @@ beans_zero_watkins:
   split: test
   prompt: classification_beans_zero_official_v1
   metrics:
-    - name: accuracy
-    - name: f1
-      scorer_kwargs:
-        average: macro
-        zero_division: 0
-    - name: recall
-      scorer_kwargs:
-        average: macro
-        zero_division: 0
-    - name: precision
-      scorer_kwargs:
-        average: macro
-        zero_division: 0
+  - name: accuracy
+  - name: f1
+    scorer_kwargs:
+      average: macro
+      zero_division: 0
+  - name: recall
+    scorer_kwargs:
+      average: macro
+      zero_division: 0
+  - name: precision
+    scorer_kwargs:
+      average: macro
+      zero_division: 0

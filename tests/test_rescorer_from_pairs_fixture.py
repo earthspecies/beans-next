@@ -16,15 +16,11 @@ Full fixture coverage:
 from __future__ import annotations
 
 import json
-import threading
-from collections.abc import Iterator
-from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from typing import Any
 
 import pytest
 
-from beans_next.api.http_schemas import PredictionsV1Request, PredictionsV1Response
 from beans_next.api.types import ModelPrediction, ScoredPrediction
 from beans_next.results.store import dumps_canonical
 from beans_next.runner.rescorer import rescore_predictions_file
@@ -84,14 +80,20 @@ def _write_predictions_from_pairs(
     fixture uses the same sample UUID for all models that predicted on the same
     audio file. The rescorer is keyed on sample_id, so duplicate ids would cause
     only the last row's output to be retained.
+
+    Returns
+    -------
+    Path
+        The prepared test fixture.
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     predictions_path = out_dir / "predictions.jsonl"
     processed_path = out_dir / "processed_predictions.jsonl"
 
-    with predictions_path.open("w", encoding="utf-8") as pred_f, processed_path.open(
-        "w", encoding="utf-8"
-    ) as proc_f:
+    with (
+        predictions_path.open("w", encoding="utf-8") as pred_f,
+        processed_path.open("w", encoding="utf-8") as proc_f,
+    ):
         for idx, r in enumerate(rows):
             # Append row index to ensure uniqueness across models for the same audio.
             sample_id = f"{r['sample_id']}_{idx:05d}"
@@ -135,101 +137,12 @@ def full_fixture_rows() -> list[dict[str, Any]]:
 
 
 # ---------------------------------------------------------------------------
-# Stub judge server
 # ---------------------------------------------------------------------------
-
-
-def _extract_letter(text: str) -> str:
-    for ch in ("A", "B", "C", "D"):
-        if ch in text.upper():
-            return ch
-    return text.strip()[:1].upper() if text.strip() else ""
-
-
-class _PredictHandler(BaseHTTPRequestHandler):
-    """Minimal predictions_v1 handler used by judge/rescorer tests."""
-
-    def do_POST(self) -> None:  # noqa: N802
-        if self.path != "/predict":
-            self.send_response(404)
-            self.end_headers()
-            return
-        n = int(self.headers.get("Content-Length", "0"))
-        body = self.rfile.read(n).decode("utf-8")
-        req = PredictionsV1Request.model_validate_json(body)
-        responses = []
-        for item in req.requests:
-            sys_text = item.messages[0].content if item.messages else ""
-            if "YES" in sys_text.upper() and "NO" in sys_text.upper():
-                out = "YES"
-            else:
-                user_text = item.messages[-1].content if item.messages else ""
-                out = _extract_letter(user_text)
-            responses.append(
-                {
-                    "sample_id": item.sample_id,
-                    "predictions": [out],
-                    "finish_reason": "stop",
-                    "usage": None,
-                    "latency_sec": 0.0,
-                    "error": None,
-                }
-            )
-        resp = PredictionsV1Response(responses=responses)
-        payload = dumps_canonical(resp.model_dump(mode="json")).encode("utf-8")
-        self.send_response(200)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(payload)))
-        self.end_headers()
-        self.wfile.write(payload)
-
-    def log_message(self, _format: str, *args: Any) -> None:  # noqa: ANN401
-        return
-
-
-@pytest.fixture
-def judge_server() -> Iterator[str]:
-    server = HTTPServer(("127.0.0.1", 0), _PredictHandler)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    try:
-        host, port = server.server_address
-        yield f"http://{host}:{port}/predict"
-    finally:
-        server.shutdown()
-        server.server_close()
-        thread.join(timeout=2)
 
 
 # ===========================================================================
 # Small fixture tests (original, kept for reference)
 # ===========================================================================
-
-
-def test_rescore_from_pairs_fixture_with_judges(
-    tmp_path: Path, judge_server: str
-) -> None:
-    rows = _load_jsonl(_SMALL_FIXTURE)
-    classification_rows = [r for r in rows if r.get("task_type") == "classification"]
-    assert classification_rows
-
-    predictions_path = _write_predictions_from_pairs(
-        classification_rows, tmp_path / "classification"
-    )
-    summary = rescore_predictions_file(
-        predictions_path,
-        task_type="classification",
-        judge_url=judge_server,
-        judge_extract_url=judge_server,
-    )
-    assert summary.n_samples == len(classification_rows)
-    out_dir = predictions_path.parent
-    assert (out_dir / "summary.json").is_file()
-    assert (out_dir / "scored_predictions.jsonl").is_file()
-    assert (out_dir / "judge_summary.json").is_file()
-    assert (out_dir / "judge_scored_predictions.jsonl").is_file()
-    assert (out_dir / "judge_extracted_summary.json").is_file()
-    assert (out_dir / "judge_extracted_scored_predictions.jsonl").is_file()
 
 
 def test_rescore_from_pairs_fixture_detection(tmp_path: Path) -> None:
@@ -387,11 +300,20 @@ def test_parsing_regression_classification(
     extract_label_from_text. That subset is ambiguously typed in the fixture and is
     tested separately via test_parsing_regression_call_type_fixed_vocab.
     """
-    cls_subsets = [s for s in _ALL_SUBSETS if s not in {
-        "alarm-call-presence", "amphibian-presence", "bird-presence",
-        "call-type-fixed-vocab",
-        "flight-call-presence", "insect-presence", "mammal-presence",
-    }]
+    cls_subsets = [
+        s
+        for s in _ALL_SUBSETS
+        if s
+        not in {
+            "alarm-call-presence",
+            "amphibian-presence",
+            "bird-presence",
+            "call-type-fixed-vocab",
+            "flight-call-presence",
+            "insect-presence",
+            "mammal-presence",
+        }
+    ]
     total_matches = total_rows = 0
     for subset in cls_subsets:
         rows = [r for r in full_fixture_rows if r["subset"] == subset]
@@ -421,7 +343,8 @@ def test_parsing_regression_classification(
 def test_parsing_regression_call_type_fixed_vocab(
     tmp_path: Path, full_fixture_rows: list[dict[str, Any]]
 ) -> None:
-    """call-type-fixed-vocab stored processed_predictions use comma-split (detection pipeline).
+    """call-type-fixed-vocab stored processed_predictions use comma-split (detection
+    pipeline).
 
     Even though the fixture marks these rows task_type="classification", the original
     processing used multi-label parsing. Verify the detection pipeline reproduces ≥90%.
@@ -460,8 +383,12 @@ def test_parsing_regression_detection(
     Runs per-subset so that label vocabulary matches production usage.
     """
     det_subsets = [
-        "alarm-call-presence", "amphibian-presence", "bird-presence",
-        "flight-call-presence", "insect-presence", "mammal-presence",
+        "alarm-call-presence",
+        "amphibian-presence",
+        "bird-presence",
+        "flight-call-presence",
+        "insect-presence",
+        "mammal-presence",
     ]
     total_matches = total_rows = 0
     for subset in det_subsets:
@@ -527,64 +454,7 @@ def test_scored_predictions_values_detection(
 
 
 # ---------------------------------------------------------------------------
-# Judge + extractor on a representative sample
 # ---------------------------------------------------------------------------
-
-
-def test_judge_and_extractor_on_classification_sample(
-    tmp_path: Path,
-    full_fixture_rows: list[dict[str, Any]],
-    judge_server: str,
-) -> None:
-    """Both judge modes run without error on a 30-row classification sample."""
-    rows = [r for r in full_fixture_rows if r["task_type"] == "classification"][:30]
-    assert len(rows) == 30
-
-    predictions_path = _write_predictions_from_pairs(rows, tmp_path)
-    summary = rescore_predictions_file(
-        predictions_path,
-        task_type="classification",
-        judge_url=judge_server,
-        judge_extract_url=judge_server,
-    )
-    assert summary.n_samples == 30
-
-    out = predictions_path.parent
-    assert (out / "judge_outputs.jsonl").is_file()
-    assert (out / "judge_scored_predictions.jsonl").is_file()
-    assert (out / "judge_summary.json").is_file()
-    assert (out / "judge_extracted_scored_predictions.jsonl").is_file()
-    assert (out / "judge_extracted_summary.json").is_file()
-
-    judge_scored = _load_jsonl(out / "judge_scored_predictions.jsonl")
-    assert len(judge_scored) == 30
-    for row in judge_scored:
-        scores = row.get("scores") or {}
-        assert "judge_accuracy" in scores
-        assert scores["judge_accuracy"] in (0.0, 1.0)
-
-
-def test_judge_and_extractor_on_detection_sample(
-    tmp_path: Path,
-    full_fixture_rows: list[dict[str, Any]],
-    judge_server: str,
-) -> None:
-    """Both judge modes run without error on a 30-row detection sample."""
-    rows = [r for r in full_fixture_rows if r["task_type"] == "detection"][:30]
-    assert len(rows) == 30
-
-    predictions_path = _write_predictions_from_pairs(rows, tmp_path)
-    summary = rescore_predictions_file(
-        predictions_path,
-        task_type="detection",
-        judge_url=judge_server,
-        judge_extract_url=judge_server,
-    )
-    assert summary.n_samples == 30
-
-    out = predictions_path.parent
-    assert (out / "judge_outputs.jsonl").is_file()
-    assert (out / "judge_extracted_summary.json").is_file()
 
 
 # ---------------------------------------------------------------------------
@@ -626,4 +496,6 @@ def test_same_sample_id_across_models_rescores_consistently(
     for mt, scores_list in model_correct.items():
         assert scores_list, f"No accuracy scores for {mt}"
         mean_acc = sum(scores_list) / len(scores_list)
-        assert 0.0 <= mean_acc <= 1.0, f"Mean accuracy {mean_acc} out of bounds for {mt}"
+        assert 0.0 <= mean_acc <= 1.0, (
+            f"Mean accuracy {mean_acc} out of bounds for {mt}"
+        )

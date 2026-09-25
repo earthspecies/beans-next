@@ -363,9 +363,6 @@ def ensure_audio_paths_from_sequence(
 
     Raises
     ------
-    ImportError
-        If audio materialization is required but the optional ``soundfile``
-        dependency is missing.
     ValueError
         If an element is present but cannot be converted into a local path.
     """
@@ -376,7 +373,9 @@ def ensure_audio_paths_from_sequence(
 
     out: list[str] = []
     for i, element in enumerate(audio_val):
-        path = _ensure_audio_path_from_array(element, sample_id=f"{sample_id}__audio{i}")
+        path = _ensure_audio_path_from_array(
+            element, sample_id=f"{sample_id}__audio{i}"
+        )
         if path is None:
             msg = (
                 "Unable to materialize audio slot from HuggingFace row. "

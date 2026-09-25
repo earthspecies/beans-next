@@ -165,8 +165,10 @@ def iter_hf_dataset_examples(
     # For BEANS-Zero (91965 rows, audio Sequence(float64)), this reduces the
     # filter scan from ~57 min (cold, downloading) or ~10 s (warm, enumerate)
     # to ~1-2 s.
-    if row_filter is not None and hasattr(loaded, "select") and hasattr(
-        loaded, "features"
+    if (
+        row_filter is not None
+        and hasattr(loaded, "select")
+        and hasattr(loaded, "features")
     ):
         try:
             heavy = _heavy_columns(loaded.features)
@@ -174,7 +176,8 @@ def iter_hf_dataset_examples(
                 light = loaded.remove_columns(heavy)
                 # Bulk convert to dict of lists (one Arrow read per column).
                 light_dict: dict[str, list[Any]] = {
-                    col: light[col] for col in light.column_names  # type: ignore[union-attr]
+                    col: light[col]
+                    for col in light.column_names  # type: ignore[union-attr]
                 }
                 n_total = len(light)  # type: ignore[arg-type]
                 matching: list[int] = [

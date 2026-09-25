@@ -1,11 +1,10 @@
 beans_next_multiaudio_dcase_fewshot_detection_balanced:
   task_type: classification
-  data_source: esp_data
   dataset: beans_next_multiaudio
   subset: dcase-fewshot-detection-balanced
-  split: dcase-fewshot-detection-balanced
+  split: test
   prompt: beans_next_multiaudio_passthrough_v1
   generation_config:
     max_length_seconds: 10
   metrics:
-    - name: accuracy
+  - name: accuracy

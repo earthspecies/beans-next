@@ -44,7 +44,13 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
 
 
 def make_wav(path: Path, *, sample_rate: int = 16_000, n_frames: int = 160) -> Path:
-    """Write a minimal silent mono PCM-16 WAV and return its path."""
+    """Write a minimal silent mono PCM-16 WAV and return its path.
+
+    Returns
+    -------
+    Path
+        The prepared test fixture.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
     frames = np.zeros(n_frames, dtype=np.int16).tobytes()
     with wave.open(str(path), "wb") as wf:
@@ -62,13 +68,27 @@ def make_wav(path: Path, *, sample_rate: int = 16_000, n_frames: int = 160) -> P
 
 @pytest.fixture
 def beans_next_wav(tmp_path: Path) -> Path:
-    """Silent 10 ms WAV file at 16 kHz."""
-    return make_wav(tmp_path / "audio" / "example.wav", sample_rate=16_000, n_frames=160)
+    """Silent 10 ms WAV file at 16 kHz.
+
+    Returns
+    -------
+    Path
+        The prepared test fixture.
+    """
+    return make_wav(
+        tmp_path / "audio" / "example.wav", sample_rate=16_000, n_frames=160
+    )
 
 
 @pytest.fixture
 def beans_next_row(beans_next_wav: Path) -> dict[str, object]:
-    """Minimal single-audio BEANS-Next metadata row (crow-description schema)."""
+    """Minimal single-audio BEANS-Next metadata row (crow-description schema).
+
+    Returns
+    -------
+    dict[str, object]
+        The prepared test fixture.
+    """
     return {
         "id": "test_row_0",
         "dataset_name": "crow-description",
@@ -88,9 +108,17 @@ def beans_next_row(beans_next_wav: Path) -> dict[str, object]:
 
 
 @pytest.fixture
-def beans_next_example(beans_next_row: dict[str, object], beans_next_wav: Path) -> DatasetExample:
-    """``DatasetExample`` from a minimal single-audio row (no esp_data needed)."""
-    from beans_next.datasets.esp_data import _build_dataset_example
+def beans_next_example(
+    beans_next_row: dict[str, object], beans_next_wav: Path
+) -> DatasetExample:
+    """``DatasetExample`` from a minimal single-audio row (no downloads needed).
+
+    Returns
+    -------
+    DatasetExample
+        The prepared test fixture.
+    """
+    from beans_next.datasets.rows import _build_dataset_example
 
     return _build_dataset_example(
         beans_next_row,
@@ -108,7 +136,13 @@ def beans_next_example(beans_next_row: dict[str, object], beans_next_wav: Path) 
 
 @pytest.fixture
 def beans_next_multiaudio_wavs(tmp_path: Path) -> list[Path]:
-    """Four silent WAV files at 32 kHz (context clips for a tier-4 row)."""
+    """Four silent WAV files at 32 kHz (context clips for a tier-4 row).
+
+    Returns
+    -------
+    list[Path]
+        The prepared test fixture.
+    """
     return [
         make_wav(tmp_path / "audio" / f"clip_{i}.wav", sample_rate=32_000, n_frames=320)
         for i in range(4)
@@ -116,8 +150,16 @@ def beans_next_multiaudio_wavs(tmp_path: Path) -> list[Path]:
 
 
 @pytest.fixture
-def beans_next_multiaudio_row(beans_next_multiaudio_wavs: list[Path]) -> dict[str, object]:
-    """Minimal multi-audio BEANS-Next metadata row (crow-4way schema)."""
+def beans_next_multiaudio_row(
+    beans_next_multiaudio_wavs: list[Path],
+) -> dict[str, object]:
+    """Minimal multi-audio BEANS-Next metadata row (crow-4way schema).
+
+    Returns
+    -------
+    dict[str, object]
+        The prepared test fixture.
+    """
     return {
         "id": "test_multi_0",
         "task": "unit_task",
@@ -143,8 +185,14 @@ def beans_next_multiaudio_example(
     beans_next_multiaudio_row: dict[str, object],
     beans_next_multiaudio_wavs: list[Path],
 ) -> DatasetExample:
-    """``DatasetExample`` from a minimal multi-audio row (no esp_data needed)."""
-    from beans_next.datasets.esp_data import _build_multiaudio_dataset_example
+    """``DatasetExample`` from a minimal multi-audio row (no downloads needed).
+
+    Returns
+    -------
+    DatasetExample
+        The prepared test fixture.
+    """
+    from beans_next.datasets.rows import _build_multiaudio_dataset_example
 
     paths = [str(p) for p in beans_next_multiaudio_wavs]
     return _build_multiaudio_dataset_example(

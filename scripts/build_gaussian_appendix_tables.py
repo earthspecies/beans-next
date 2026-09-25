@@ -72,8 +72,7 @@ def _primary(task_id: str, row: dict[str, Any]) -> tuple[str, str, float, int]:
         key = next(name for name in PRIMARY_METRICS if name in metrics)
     scale = (
         100
-        if key
-        in {"accuracy", "macro_f1", "species_f1", "coverage_aware_freq_mean_iou"}
+        if key in {"accuracy", "macro_f1", "species_f1", "coverage_aware_freq_mean_iou"}
         else 1
     )
     unit = "Hz" if "f0_mean" in task_id else ("dB" if "snr" in task_id else "count")
@@ -179,8 +178,7 @@ def _tier_tables(data: dict[str, Any]) -> list[str]:
             real_class = 100 * sum(pair["real"] for pair in pairs) / len(pairs)
             noise_class = 100 * sum(pair["noise"] for pair in pairs) / len(pairs)
             real_n = sum(
-                row["real_diagnostics"]["non_error_denominator"]
-                for _, row in tier_rows
+                row["real_diagnostics"]["non_error_denominator"] for _, row in tier_rows
             )
             noise_n = sum(
                 row["noise_diagnostics"]["non_error_denominator"]

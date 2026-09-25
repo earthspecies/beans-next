@@ -60,7 +60,6 @@ class TestRegistry:
             "precision",
             "recall",
             "average_precision",
-            "spider",
         }.issubset(set(names))
 
     def test_duplicate_registration_raises(self) -> None:

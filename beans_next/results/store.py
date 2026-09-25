@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import os
 import tempfile
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from pathlib import Path
 
 from pydantic import BaseModel
@@ -206,20 +206,6 @@ class BenchmarkArtifactWriter:
         """
         path = self._output_dir / "model_identity.json"
         path.write_text(dumps_canonical(dict(identity)) + "\n", encoding="utf-8")
-
-    def write_judge_outputs(self, rows: Sequence[Mapping[str, object]]) -> None:
-        """Write ``judge_outputs.jsonl`` with one judge response row per line.
-
-        Parameters
-        ----------
-        rows
-            Serialized judge response items (each a plain mapping from
-            ``JudgeScoresV1ResponseItem.model_dump(mode="json")``).
-        """
-        path = self._output_dir / "judge_outputs.jsonl"
-        with path.open("w", encoding="utf-8") as f:
-            for row in rows:
-                f.write(dumps_canonical(dict(row)) + "\n")
 
     def close(self) -> None:
         """Flush and close open JSONL handles."""

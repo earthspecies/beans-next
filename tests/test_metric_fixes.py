@@ -244,9 +244,7 @@ class TestScoreSampleRouting:
     def _post(self, text: str = "") -> PostProcessResult:
         return PostProcessResult(segments=[], text=text, warnings=())
 
-    def _example(
-        self, labels: object, *, task: str | None = None
-    ) -> DatasetExample:
+    def _example(self, labels: object, *, task: str | None = None) -> DatasetExample:
         meta: dict[str, object] = {"task": task} if task is not None else {}
         return DatasetExample(sample_id="s0", labels=labels, metadata=meta)
 

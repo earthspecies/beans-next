@@ -61,12 +61,8 @@ _MCQ_ANY_LEADING_LABEL_RE = re.compile(
 )
 
 _HZ_LABEL_RE = re.compile(r"(?im)^\s*(?P<hz>\d+)\s*hz\s*$")
-_NUMBER_RE = re.compile(
-    r"(?P<num>(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?)"
-)
-_HZ_RANGE_RE = re.compile(
-    r"(?im)(?P<a>\d{3,6})\s*-\s*(?P<b>\d{3,6})\s*hz\b"
-)
+_NUMBER_RE = re.compile(r"(?P<num>(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?)")
+_HZ_RANGE_RE = re.compile(r"(?im)(?P<a>\d{3,6})\s*-\s*(?P<b>\d{3,6})\s*hz\b")
 
 _BIRDSET_TIME_PREFIX_RE: Final[re.Pattern[str]] = re.compile(
     r"(?im)^\s*#?\s*\d+(?:\.\d+)?\s*s?\s*-\s*\d+(?:\.\d+)?\s*s?\s*#?\s*:\s*"
@@ -244,9 +240,7 @@ def _levenshtein_distance(a: str, b: str) -> int:
     for i, ca in enumerate(a, 1):
         prev, row[0] = row[0], i
         for j, cb in enumerate(b, 1):
-            prev, row[j] = row[j], min(
-                row[j] + 1, row[j - 1] + 1, prev + (ca != cb)
-            )
+            prev, row[j] = row[j], min(row[j] + 1, row[j - 1] + 1, prev + (ca != cb))
     return row[n]
 
 

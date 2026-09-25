@@ -5,15 +5,17 @@ The compact Hub layout uses:
 - ``test/metadata.parquet``: one row per evaluation sample. Filter rows with the
   string ``task`` column (legacy tables may still expose ``subset``). ``tier``
   is an integer (1–4). All tiers store prompts and targets in ``messages``.
-  ``id`` and ``sample_id`` are retained. Single-audio rows set ``file_name`` to a
-  path relative to the metadata directory, such as ``audio/<id>.wav``.
-  Multi-audio rows use reference-only ``context_audio_paths`` followed by
-  ``query_audio_path``. Alternate and legacy column names remain supported;
+  ``id`` identifies the example. ``audio_paths`` contains ordered paths
+  relative to the metadata directory, such as
+  ``audio/<sha256[:2]>/<sha256>.wav``. Example IDs are separate from audio hashes.
+  Multi-audio rows put reference clips first and the query last.
+  Alternate and legacy column names remain supported;
   see :func:`_multiaudio_repo_rel_paths`.
 - ``test/audio/``: WAV (or other) files referenced by those paths (not embedded in
   Parquet).
-- ``provenance/metadata.parquet``: optional source and construction details,
-  joined by ``id``. Evaluation does not load this file.
+
+Ordered ``source_datasets`` and related source fields describe audio provenance.
+Earlier releases may also contain ``sample_id`` and a separate provenance table.
 
 Older tables with dedicated ``instruction`` and ``output`` columns remain
 supported, as do metadata files at the repository root.
@@ -497,10 +499,8 @@ def _hf_download_audio_path(
         raise ValueError(msg)
     if _configured_local_root() is not None:
         return str(_local_snapshot_file(rel, base_dir=base_dir))
-    # Some BEANS-Next Hub revisions store data under split directories, e.g.:
-    #   test/metadata.parquet
-    #   test/audio/<id>.wav
-    # while Parquet rows keep ``file_name`` as ``audio/<id>.wav`` for the viewer.
+    # Audio paths in the metadata are relative to its split directory, e.g.
+    # ``audio/ab/<sha256>.wav`` resolves under ``test/``.
     if base_dir is not None and base_dir.strip():
         prefix = base_dir.strip().rstrip("/") + "/"
         if not rel.startswith(prefix):
@@ -537,11 +537,21 @@ def _single_audio_rel_path(row: Mapping[str, Any]) -> str | None:
     Returns
     -------
     str | None
-        ``file_name`` when set, else ``audio/{audio_id}.wav`` when ``audio_id`` exists.
+        The sole ``audio_paths`` entry, or a supported legacy audio path.
+
+    Raises
+    ------
+    ValueError
+        If a single-audio row contains multiple paths.
     """
     fn = row.get("file_name")
     if isinstance(fn, str) and fn.strip():
         return fn.strip()
+    paths = _coerce_str_sequence(row.get("audio_paths"))
+    if paths is not None:
+        if len(paths) != 1:
+            raise ValueError("Single-audio rows require exactly one audio path")
+        return paths[0]
     aid = row.get("audio_id")
     if isinstance(aid, str) and aid.strip():
         return f"audio/{aid.strip()}.wav"
@@ -591,9 +601,7 @@ def _multiaudio_repo_rel_paths(row: Mapping[str, Any]) -> list[str] | None:
     cap = _coerce_str_sequence(
         row.get("context_source_paths") or row.get("context_audio_paths")
     )
-    ap = _coerce_str_sequence(
-        row.get("source_audio_paths") or row.get("audio_paths")
-    )
+    ap = _coerce_str_sequence(row.get("source_audio_paths") or row.get("audio_paths"))
 
     if cap is not None and n_ph is not None and len(cap) == n_ph:
         if q is not None and q not in (cap[0], cap[-1]):
@@ -671,9 +679,7 @@ def _load_audio_map(
     """
     if not needed_ids:
         return {}
-    audio_path = _local_hub_file(
-        repo_id, _AUDIO_PARQUET_LEGACY, revision=revision
-    )
+    audio_path = _local_hub_file(repo_id, _AUDIO_PARQUET_LEGACY, revision=revision)
     out: dict[str, bytes] = {}
     for row in iter_parquet_row_dicts(audio_path):
         aid = row.get("audio_id")
@@ -706,10 +712,10 @@ def _iter_single_examples(
     workers: int,
     load_audio: bool,
 ) -> Iterator[DatasetExample]:
-    from beans_next.datasets.esp_data import (
+    from beans_next.datasets.rows import (
         _build_dataset_example,
         _resolve_row_id,
-        synthesize_esp_data_sample_id,
+        synthesize_row_sample_id,
     )
 
     meta_name = _hub_metadata_filename(repo_id, revision)
@@ -729,7 +735,7 @@ def _iter_single_examples(
             sample_id = (
                 stable
                 if stable is not None
-                else synthesize_esp_data_sample_id(
+                else synthesize_row_sample_id(
                     dataset="beans_next", subset=subset, split=split, ordinal=ordinal
                 )
             )
@@ -778,7 +784,7 @@ def _iter_single_examples(
         sample_id = (
             stable
             if stable is not None
-            else synthesize_esp_data_sample_id(
+            else synthesize_row_sample_id(
                 dataset="beans_next", subset=subset, split=split, ordinal=ordinal
             )
         )
@@ -836,10 +842,10 @@ def _iter_multiaudio_examples(
     workers: int,
     load_audio: bool,
 ) -> Iterator[DatasetExample]:
-    from beans_next.datasets.esp_data import (
+    from beans_next.datasets.rows import (
         _build_multiaudio_dataset_example,
         _resolve_row_id,
-        synthesize_esp_data_sample_id,
+        synthesize_row_sample_id,
     )
 
     meta_name = _hub_metadata_filename(repo_id, revision)
@@ -853,15 +859,13 @@ def _iter_multiaudio_examples(
         if limit is not None and len(meta_rows) >= limit:
             break
 
-    raw_plan: list[
-        tuple[str, dict[str, Any], list[str] | None, list[str] | None]
-    ] = []
+    raw_plan: list[tuple[str, dict[str, Any], list[str] | None, list[str] | None]] = []
     for ordinal, row in enumerate(meta_rows):
         stable = _resolve_row_id(row)
         sample_id = (
             stable
             if stable is not None
-            else synthesize_esp_data_sample_id(
+            else synthesize_row_sample_id(
                 dataset="beans_next_multiaudio",
                 subset=subset,
                 split=split,
@@ -936,9 +940,7 @@ def _iter_multiaudio_examples(
         paths: list[str] = []
         for j, x in enumerate(ids):
             paths.append(
-                _materialize_wav_bytes(
-                    audio_map[x], stem=f"{sample_id}__ctx{j}"
-                )
+                _materialize_wav_bytes(audio_map[x], stem=f"{sample_id}__ctx{j}")
             )
         qid = row.get("query_audio_id")
         if not isinstance(qid, str) or not qid.strip():

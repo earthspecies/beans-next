@@ -56,9 +56,23 @@ def _c(
     metric_aliases: Sequence[str] = (),
     source: str = "summary",
 ) -> ColumnSpec:
+    # Current paper suites use versioned task IDs for refreshed T1/T2 tasks.
+    # Keep the concrete matched ID in cell provenance and reject mixed versions
+    # in _find_task, rather than silently selecting one dataset revision.
+    versioned_aliases = ()
+    if task_id.startswith("beans_next_"):
+        suffix = task_id.removeprefix("beans_next_")
+        registry = Path(__file__).resolve().parents[1] / "beans_next/registry/eval_task"
+        versioned_aliases = tuple(
+            candidate
+            for version in ("v20260707m4afix", "v20260823")
+            if (
+                registry / f"{(candidate := f'beans_next_{version}_{suffix}')}.yaml"
+            ).is_file()
+        )
     return ColumnSpec(
         key=key,
-        task_ids=(task_id, *aliases),
+        task_ids=(task_id, *aliases, *versioned_aliases),
         metric_names=(metric, *metric_aliases),
         scale=scale,
         number_format=number_format,
@@ -67,9 +81,8 @@ def _c(
 
 
 # The task IDs below are the IDs used by the current beans-next registry.  The
-# two tasks not yet present in that registry are included deliberately: they
-# correspond to the Insect and Begging columns in semantic_v2 and remain null
-# until a future suite exports them.
+# Insect and Begging columns remain null when the selected run has no such
+# tasks. Registry entries alone do not establish that examples were evaluated.
 TABLE_SPECS: dict[str, tuple[ColumnSpec, ...]] = {
     "beans_zero": (
         _c("cbi", "beans_zero_cbi", "accuracy", number_format=".3f"),
@@ -205,7 +218,7 @@ TABLE_SPECS: dict[str, tuple[ColumnSpec, ...]] = {
             "caption",
             "beans_next_t2_captioning",
             "cider",
-            number_format=".3f",
+            scale=100.0,
         ),
     ),
     "structural_v3": (
@@ -266,7 +279,7 @@ TABLE_SPECS: dict[str, tuple[ColumnSpec, ...]] = {
         _c(
             "gibbons",
             "beans_next_gibbon_fewshot_detection_balanced",
-            "macro_f1",
+            "accuracy",
             number_format=".3f",
             aliases=("beans_next_multiaudio_gibbon_fewshot_detection_balanced",),
         ),
@@ -281,11 +294,9 @@ TABLE_SPECS: dict[str, tuple[ColumnSpec, ...]] = {
         _c(
             "dcase",
             "beans_next_dcase_fewshot_detection_balanced",
-            "macro_f1",
+            "accuracy",
             number_format=".3f",
-            aliases=(
-                "beans_next_multiaudio_dcase_fewshot_detection_balanced",
-            ),
+            aliases=("beans_next_multiaudio_dcase_fewshot_detection_balanced",),
         ),
         _c(
             "crows",
@@ -490,9 +501,7 @@ def _find_task(
     tasks: Mapping[str, Mapping[str, Any]],
 ) -> tuple[str | None, Mapping[str, Any] | None]:
     matches = [
-        (task_id, tasks[task_id])
-        for task_id in spec.task_ids
-        if task_id in tasks
+        (task_id, tasks[task_id]) for task_id in spec.task_ids if task_id in tasks
     ]
     if len(matches) > 1:
         ids = ", ".join(task_id for task_id, _ in matches)
@@ -528,6 +537,19 @@ def _column_value(
         mean = _task_mean(task_id, task)
         metric_name = next((name for name in spec.metric_names if name in mean), None)
         if metric_name is None:
+            if (
+                mean.get("numeric_parse_success") == 0
+                and "absolute_error" in spec.metric_names
+            ):
+                return None, {
+                    "task_id": task_id,
+                    "metric_name": spec.expected_metric_name,
+                    "raw_value": None,
+                    "value": None,
+                    "scale": spec.scale,
+                    "source": spec.source,
+                    "reason": "undefined: no numeric predictions parsed",
+                }
             expected = ", ".join(repr(name) for name in spec.metric_names)
             available = ", ".join(sorted(str(name) for name in mean)) or "(none)"
             raise ValueError(
@@ -642,9 +664,7 @@ def build_paper_rows(
     )
     main = tables["structural_v3"]
     tables["structural_v3"]["subtables"] = {
-        "main": {
-            key: value for key, value in main.items() if key != "subtables"
-        },
+        "main": {key: value for key, value in main.items() if key != "subtables"},
         "species_id": species,
     }
     latex_rows = {

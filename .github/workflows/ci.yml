@@ -9,6 +9,8 @@ jobs:
   tests:
     name: Tests
     runs-on: ubuntu-latest
+    env:
+      UV_NO_SYNC: "1"
     steps:
       - uses: actions/checkout@v2
 
@@ -24,10 +26,10 @@ jobs:
 
       - name: Install dependencies
         run: |
-          uv sync --group dev
+          uv sync --locked --group dev
 
       - name: Display Python version
-        run: python -c "import sys; print(sys.version)"
+        run: uv run python -c "import sys; print(sys.version)"
 
       - name: Checking dependencies
         run: |

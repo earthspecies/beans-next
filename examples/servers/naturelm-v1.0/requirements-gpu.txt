@@ -3,10 +3,8 @@
 #   pip install -r requirements.txt -r requirements-gpu.txt
 #
 # Then install the NatureLM-audio package (not on PyPI):
-#   pip install git+https://github.com/earthspeciesproject/NatureLM-audio.git
 #
 # For a specific pinned commit (recommended for reproducibility):
-#   pip install git+https://github.com/earthspeciesproject/NatureLM-audio.git@<SHA>
 #
 # GPU note: torch below is CPU-only. On a CUDA cluster install the matching
 # torch+cu* build first (before this file), e.g.:

@@ -29,7 +29,7 @@ def test_hf_revision_and_subset_survive_modality_selection(
     expected: str,
     mode: str,
 ) -> None:
-    """Preserve David's task mapping and Christos's metadata-only loading."""
+    """Preserve task mapping and metadata-only loading across input modes."""
     captured: dict[str, Any] = {}
 
     def load(repo_id: str, **kwargs: Any) -> Iterator[DatasetExample]:

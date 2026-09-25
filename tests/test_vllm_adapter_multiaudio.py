@@ -47,9 +47,7 @@ def _inject_audio_items() -> Callable[..., list[dict[str, Any]]]:
 
 
 def _audio(n: int) -> list[dict[str, Any]]:
-    return [
-        {"type": "audio_url", "audio_url": {"url": f"data:{i}"}} for i in range(n)
-    ]
+    return [{"type": "audio_url", "audio_url": {"url": f"data:{i}"}} for i in range(n)]
 
 
 def test_audios_are_interleaved_at_placeholder_positions() -> None:

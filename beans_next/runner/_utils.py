@@ -91,16 +91,12 @@ def compute_dataset_level_metrics(
             pred_sets: list[list[str]] = []
             tgt_sets: list[list[str]] = []
             for pred_text, tgts in processed_pairs:
-                pred_labels = [
-                    p.strip() for p in pred_text.split(",") if p.strip()
-                ]
+                pred_labels = [p.strip() for p in pred_text.split(",") if p.strip()]
                 pred_sets.append(pred_labels)
                 if isinstance(tgts, list):
                     tgt_sets.append([str(t) for t in tgts])
                 elif isinstance(tgts, str):
-                    tgt_sets.append(
-                        [t.strip() for t in tgts.split(",") if t.strip()]
-                    )
+                    tgt_sets.append([t.strip() for t in tgts.split(",") if t.strip()])
                 else:
                     tgt_sets.append([])
             return {"dataset_map": compute_dataset_map(pred_sets, tgt_sets)}

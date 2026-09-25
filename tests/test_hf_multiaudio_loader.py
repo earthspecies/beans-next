@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any
+from pathlib import Path
 
 import numpy as np
+import pytest
 
 from beans_next.api.types import DatasetExample
 from beans_next.datasets.base import ensure_audio_paths_from_sequence
@@ -17,7 +18,7 @@ from beans_next.prompts.renderer import PromptRenderer, load_builtin_prompt_yaml
 
 
 def test_ensure_audio_paths_from_sequence_materializes_wavs(
-    monkeypatch: Any, tmp_path: Any
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     monkeypatch.setenv("BEANS_NEXT_HF_AUDIO_CACHE_DIR", str(tmp_path))
     audio_val = [
@@ -31,7 +32,7 @@ def test_ensure_audio_paths_from_sequence_materializes_wavs(
 
 
 def test_multiaudio_prompt_alignment_with_passthrough_prompt(
-    monkeypatch: Any, tmp_path: Any
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     monkeypatch.setenv("BEANS_NEXT_HF_AUDIO_CACHE_DIR", str(tmp_path))
     audio_val = [
@@ -42,10 +43,7 @@ def test_multiaudio_prompt_alignment_with_passthrough_prompt(
     assert audio_paths is not None
 
     conversation = (
-        f"{AUDIO_PLACEHOLDER}\n"
-        "Support A.\n"
-        f"{AUDIO_PLACEHOLDER}\n"
-        "Query audio.\n"
+        f"{AUDIO_PLACEHOLDER}\nSupport A.\n{AUDIO_PLACEHOLDER}\nQuery audio.\n"
     )
     ex = DatasetExample(
         sample_id="hf:multi:1",
@@ -53,7 +51,9 @@ def test_multiaudio_prompt_alignment_with_passthrough_prompt(
         labels="A",
         metadata={
             "conversation": conversation,
-            "conversation_query_only": _strip_audio_placeholders_except_last(conversation),
+            "conversation_query_only": _strip_audio_placeholders_except_last(
+                conversation
+            ),
             "audio_paths": audio_paths,
             "audio_path": audio_paths[-1],
         },
@@ -77,5 +77,7 @@ def test_beans_next_multiaudio_row_filter_tier_and_subset() -> None:
 
 
 def test_beans_next_multiaudio_row_filter_task_fallback() -> None:
-    pred = beans_next_multiaudio_row_filter(tier="tier_4_in_context", subset="crow-4way")
+    pred = beans_next_multiaudio_row_filter(
+        tier="tier_4_in_context", subset="crow-4way"
+    )
     assert pred({"tier": "tier_4_in_context", "task": "crow-4way"})

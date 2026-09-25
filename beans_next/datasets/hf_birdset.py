@@ -1,11 +1,13 @@
 """HuggingFace-backed loader for the BirdSet evaluation benchmark.
 
-Loads BirdSet test splits from ``DBD-research-group/BirdSet`` on Hugging Face
-Hub and converts eBird code labels to scientific names using the eBird taxonomy.
+Loads BirdSet test_5s metadata and audio archives directly from a pinned payload
+revision of ``DBD-research-group/BirdSet`` on Hugging Face Hub. Text-only runs
+read only metadata; audio runs reuse the same rows and sample identifiers.
 
 The eBird taxonomy CSV is resolved via:
 1. ``BEANS_NEXT_EBIRD_TAXONOMY_CSV`` environment variable (explicit local path).
-2. ``huggingface_hub.hf_hub_download`` from the BirdSet dataset repo
+2. The bundled public eBird 2024 mapping, with source URL and download hash.
+3. ``huggingface_hub.hf_hub_download`` from the BirdSet dataset repo
    (``resources/ebird_codes/eBird_taxonomy_v2024.csv``).
 
 If neither source is available a ``RuntimeError`` with an actionable message
@@ -29,8 +31,6 @@ from typing import Any
 
 from beans_next.api.types import DatasetExample
 from beans_next.datasets.base import (
-    _ensure_audio_path_from_array,
-    require_datasets,
     synthesize_hf_sample_id,
 )
 
@@ -47,7 +47,7 @@ _DEPRECATED_CODE_FALLBACK: dict[str, str] = {
 }
 
 # Maps eBird taxonomy v2024 scientific names to the canonical evaluation vocabulary
-# used in the esp_data BirdSet labels. Only non-identity entries are listed.
+# used in the benchmark BirdSet labels. Only non-identity entries are listed.
 # Sources: genus renames (eBird 2021-2024), gender corrections, and eBird
 # group-notation simplifications for newly added HF-only species.
 _HF_TO_CANONICAL: dict[str, str] = {
@@ -135,7 +135,7 @@ def _parse_ebird_taxonomy_csv(csv_path: str) -> dict[str, str]:
         reader = csv.DictReader(fh)
         for row in reader:
             code = (row.get("SPECIES_CODE") or "").strip()
-            sci = (row.get("SCI_NAME") or "").strip()
+            sci = (row.get("SCI_NAME") or row.get("SCIENTIFIC_NAME") or "").strip()
             if code and sci:
                 mapping[code] = sci
     return mapping
@@ -147,7 +147,8 @@ def _ebird_taxonomy() -> dict[str, str]:
 
     Resolution order:
     1. ``BEANS_NEXT_EBIRD_TAXONOMY_CSV`` env var (must point to an existing file).
-    2. ``huggingface_hub.hf_hub_download`` from the BirdSet dataset repo.
+    2. Bundled eBird 2024 mapping with provenance.
+    3. ``huggingface_hub.hf_hub_download`` from the BirdSet dataset repo.
 
     Returns
     -------
@@ -163,6 +164,17 @@ def _ebird_taxonomy() -> dict[str, str]:
     if csv_path and os.path.isfile(csv_path):
         _LOG.debug("ebird taxonomy: using env var path %s", csv_path)
         mapping = _parse_ebird_taxonomy_csv(csv_path)
+        mapping.update(
+            {k: v for k, v in _DEPRECATED_CODE_FALLBACK.items() if k not in mapping}
+        )
+        return mapping
+
+    import json
+    from pathlib import Path
+
+    bundled = Path(__file__).resolve().parents[1] / "registry/ebird_taxonomy_2024.json"
+    if bundled.is_file():
+        mapping = json.loads(bundled.read_text())["species_code_to_scientific_name"]
         mapping.update(
             {k: v for k, v in _DEPRECATED_CODE_FALLBACK.items() if k not in mapping}
         )
@@ -221,17 +233,26 @@ def _birdset_hf_labels(
     -------
     list[str] or None
         Deduplicated list of scientific names, or ``None`` when not resolvable.
+
+    Raises
+    ------
+    ValueError
+        If a nonempty multi-label target contains an unknown species code.
     """
+
     def _canonical(sci: str) -> str:
         return _HF_TO_CANONICAL.get(sci, sci)
 
     multilabel_ints = row.get("ebird_code_multilabel")
     if isinstance(multilabel_ints, list) and multilabel_ints:
-        codes = [multi_feat.int2str(i) for i in multilabel_ints]
+        codes = [
+            i if isinstance(i, str) else multi_feat.int2str(i) for i in multilabel_ints
+        ]
+        unknown = set(codes) - taxonomy.keys()
+        if unknown:
+            raise ValueError(f"BirdSet taxonomy lacks species codes: {sorted(unknown)}")
         sci_names = list(
-            dict.fromkeys(
-                _canonical(taxonomy[c]) for c in codes if c in taxonomy
-            )
+            dict.fromkeys(_canonical(taxonomy[c]) for c in codes if c in taxonomy)
         )
         if sci_names:
             return sci_names
@@ -239,7 +260,11 @@ def _birdset_hf_labels(
     single_int = row.get("ebird_code")
     if single_int is not None:
         try:
-            code = single_feat.int2str(int(single_int))
+            code = (
+                single_int
+                if isinstance(single_int, str)
+                else single_feat.int2str(int(single_int))
+            )
             sci = taxonomy.get(code)
             if sci:
                 return [_canonical(sci)]
@@ -249,98 +274,175 @@ def _birdset_hf_labels(
     return None
 
 
+# BirdSet's builder branch and payload branch have independent histories.
+# Pin the actual payloads rather than the builder's mutable resolve/data URLs.
+_BIRDSET_DATA_REVISION = "806ed2cda4ddcbe6efa194ccafff930aa0e557ce"
+
+
+def _birdset_metadata(config: str, revision: str) -> list[dict[str, Any]]:
+    """Read only the requested test_5s metadata from the HF payload branch.
+
+    Returns
+    -------
+    list[dict[str, Any]]
+        File names and multi-label species codes in metadata order.
+    """
+    import pyarrow.parquet as pq
+    from huggingface_hub import hf_hub_download
+
+    path = hf_hub_download(
+        _BIRDSET_HF_REPO,
+        f"{config}/{config}_metadata_test_5s.parquet",
+        repo_type="dataset",
+        revision=revision,
+    )
+    return pq.read_table(
+        path, columns=["filepath", "ebird_code_multilabel"]
+    ).to_pylist()
+
+
+def _birdset_audio(config: str, revision: str, names: set[str]) -> dict[str, str]:
+    """Materialize requested clips from pinned HF archives under a shared lock.
+
+    Archive members are copied by basename; archive paths are never extracted.
+    Existing complete clips are reused and no source or cache files are deleted.
+
+    Returns
+    -------
+    dict[str, str]
+        Requested basenames mapped to complete local audio files.
+
+    Raises
+    ------
+    ValueError
+        If a requested member cannot be read or is absent from all archives.
+    """
+    import shutil
+    import tarfile
+    from pathlib import Path
+
+    from filelock import FileLock
+    from huggingface_hub import hf_hub_download
+
+    cache = (
+        Path(
+            os.environ.get(
+                "BEANS_NEXT_HF_AUDIO_CACHE_DIR",
+                str(
+                    Path(os.environ.get("HF_HOME", "~/.cache/huggingface")).expanduser()
+                    / "birdset-audio"
+                ),
+            )
+        )
+        / "birdset"
+        / revision
+        / config
+    )
+    cache.mkdir(parents=True, exist_ok=True)
+    with FileLock(str(cache / "materialize.lock")):
+        missing = {name for name in names if not (cache / name).is_file()}
+        for shard in range(1, (4 if config == "SSW" else 1) + 1):
+            if not missing:
+                break
+            archive = hf_hub_download(
+                _BIRDSET_HF_REPO,
+                f"{config}/{config}_test5s_shard_{shard:04d}.tar.gz",
+                repo_type="dataset",
+                revision=revision,
+            )
+            with tarfile.open(archive, "r:gz") as tar:
+                for member in tar:
+                    name = Path(member.name).name
+                    if name not in missing or not member.isfile():
+                        continue
+                    stream = tar.extractfile(member)
+                    if stream is None:
+                        raise ValueError(
+                            f"Unreadable BirdSet archive member: {member.name}"
+                        )
+                    temporary = cache / f".{name}.{os.getpid()}.tmp"
+                    with stream, temporary.open("wb") as output:
+                        shutil.copyfileobj(stream, output)
+                    temporary.replace(cache / name)
+                    missing.remove(name)
+        if missing:
+            raise ValueError(
+                f"BirdSet archive lacks requested clips: {sorted(missing)[:10]}"
+            )
+    return {name: str(cache / name) for name in names}
+
+
 def iter_hf_birdset_examples(
     *,
     subset: str,
     split: str = "test",
     task_id: str | None = None,
     limit: int | None = None,
+    load_audio: bool = True,
+    revision: str | None = None,
 ) -> Iterator[DatasetExample]:
-    """Yield ``DatasetExample`` rows for a BirdSet subset from Hugging Face Hub.
-
-    Loads ``DBD-research-group/BirdSet``, converts eBird code integer labels to
-    scientific names via the eBird taxonomy, and materializes audio to local WAV
-    files for prompt evaluation.
+    """Yield pinned BirdSet test metadata with optional HF audio materialization.
 
     Parameters
     ----------
     subset
-        BirdSet subset of the form ``"CONFIG-SPLIT"`` (e.g. ``"HSN-test_5s"``).
+        CONFIG-test_5s identifier, such as HSN-test_5s.
     split
-        Split label stored on each ``DatasetExample`` (default ``"test"``).
+        Split label stored on each example.
     task_id
-        Optional eval-task id stored on each yielded example.
+        Evaluation task identifier.
     limit
-        Optional maximum number of examples to yield.
+        Maximum number of metadata rows; None uses the complete split.
+    load_audio
+        False reads metadata only and never opens audio archives.
+    revision
+        Builder revision recorded for provenance. Payloads use the independently
+        pinned BEANS_NEXT_BIRDSET_DATA_REVISION, or the bundled default.
+
+    Raises
+    ------
+    ValueError
+        For unsupported splits, unknown species codes, or missing audio clips.
 
     Yields
     ------
     DatasetExample
-        One normalized example per row, in dataset order.
-
-    Raises
-    ------
-    TypeError
-        If ``load_dataset`` returns a non-map-style dataset.
+        Same IDs, labels, and order in every modality condition.
     """
-    hf_config, hf_split = _parse_birdset_subset(subset)
-    datasets = require_datasets()
+    from pathlib import Path
+
+    config, hf_split = _parse_birdset_subset(subset)
+    if hf_split != "test_5s":
+        raise ValueError("BirdSet evaluation requires the test_5s split")
+    data_revision = os.environ.get(
+        "BEANS_NEXT_BIRDSET_DATA_REVISION", _BIRDSET_DATA_REVISION
+    )
+    rows = _birdset_metadata(config, data_revision)
+    if limit is not None:
+        rows = rows[:limit]
+    names = {Path(row["filepath"]).name for row in rows}
+    paths = _birdset_audio(config, data_revision, names) if load_audio else {}
     taxonomy = _ebird_taxonomy()
-
-    loaded = datasets.load_dataset(
-        _BIRDSET_HF_REPO,
-        hf_config,
-        split=hf_split,
-        trust_remote_code=True,
-    )
-
-    if not hasattr(loaded, "__len__") or not hasattr(loaded, "__getitem__"):
-        raise TypeError(
-            f"load_dataset returned a non-map dataset for BirdSet subset {subset!r}. "
-            "BirdSet test splits should be map-style."
-        )
-
-    single_feat = loaded.features["ebird_code"]
-    multi_feat = loaded.features["ebird_code_multilabel"].feature
-
-    n_rows = len(loaded)
-    _LOG.debug(
-        "hf_birdset: loaded %s config=%s split=%s rows=%d",
-        _BIRDSET_HF_REPO,
-        hf_config,
-        hf_split,
-        n_rows,
-    )
-
-    for ordinal in range(n_rows):
-        if limit is not None and ordinal >= limit:
-            break
-
-        row: dict[str, Any] = loaded[ordinal]
-        sample_id = synthesize_hf_sample_id(
-            path_or_id=_BIRDSET_HF_REPO,
-            split=subset,
-            revision=None,
-            ordinal=ordinal,
-        )
-
+    for ordinal, row in enumerate(rows):
+        name = Path(row["filepath"]).name
         labels = _birdset_hf_labels(
-            row,
-            single_feat=single_feat,
-            multi_feat=multi_feat,
-            taxonomy=taxonomy,
+            row, single_feat=None, multi_feat=None, taxonomy=taxonomy
         )
-
-        audio_path = _ensure_audio_path_from_array(
-            row.get("audio"),
-            sample_id=sample_id,
-        )
-        meta: dict[str, Any] = {}
-        if audio_path:
-            meta["audio_path"] = audio_path
-
+        meta = {
+            "file_name": name,
+            "birdset_data_revision": data_revision,
+            "birdset_builder_revision": revision,
+            "birdset_target_present": bool(labels),
+        }
+        if load_audio:
+            meta["audio_path"] = paths[name]
         yield DatasetExample(
-            sample_id=sample_id,
+            sample_id=synthesize_hf_sample_id(
+                path_or_id=f"{_BIRDSET_HF_REPO}/{config}/{name}",
+                split=subset,
+                revision=data_revision,
+                ordinal=ordinal,
+            ),
             task_id=task_id,
             split=split,
             labels=labels,

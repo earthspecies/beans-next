@@ -145,9 +145,7 @@ def extract_numeric_value(
     if range_match is not None:
         a = _coerce_float(range_match.group("a"))
         b = _coerce_float(range_match.group("b"))
-        range_unit = (
-            range_match.group("unit") or inferred_unit or ""
-        ).lower() or None
+        range_unit = (range_match.group("unit") or inferred_unit or "").lower() or None
         midpoint = (a + b) / 2.0
         midpoint = _convert_to_target_unit(
             midpoint,

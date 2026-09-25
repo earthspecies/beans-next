@@ -23,12 +23,11 @@ import soundfile as sf
 
 DEFAULT_PROTOCOL_VERSION = "beans-next.gaussian-noise.v1"
 _DEFAULT_CACHE_ENV = "BEANS_NEXT_GAUSSIAN_NOISE_CACHE"
-_DEFAULT_GPFS_CACHE = Path("/gpfs/scratch/acw777/beans-next/gaussian-noise")
 _DEFAULT_LOCAL_CACHE = Path.home() / ".cache" / "beans-next" / "gaussian-noise"
 
 
 def _default_cache_dir() -> Path:
-    """Return the cluster cache when available, otherwise a local cache path.
+    """Return the configured cache or the default per-user cache.
 
     Returns
     -------
@@ -39,8 +38,6 @@ def _default_cache_dir() -> Path:
     configured = os.environ.get(_DEFAULT_CACHE_ENV)
     if configured:
         return Path(configured).expanduser()
-    if _DEFAULT_GPFS_CACHE.parent.parent.exists():
-        return _DEFAULT_GPFS_CACHE
     return _DEFAULT_LOCAL_CACHE
 
 
@@ -213,7 +210,13 @@ def _seed_digest(
 
 
 def _cache_key(seed_digest: str, rms_dbfs: float) -> str:
-    """Identify one rendered amplitude without changing the protocol seed."""
+    """Identify one rendered amplitude without changing the protocol seed.
+
+    Returns
+    -------
+    str
+        Digest of the protocol seed and amplitude.
+    """
 
     material = json.dumps(
         {"seed_sha256": seed_digest, "rms_dbfs": float(rms_dbfs)},

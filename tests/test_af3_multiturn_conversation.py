@@ -49,8 +49,14 @@ def _build() -> Callable[..., list[dict[str, Any]]]:
         "_AUDIO_PLACEHOLDER": re.compile(r"<Audio><AudioHere></Audio>"),
         "annotations": __import__("__future__").annotations,
     }
-    exec(compile("from __future__ import annotations\n" + src[start:end],
-                 "serve_extract", "exec"), ns)  # noqa: S102
+    exec(
+        compile(
+            "from __future__ import annotations\n" + src[start:end],
+            "serve_extract",
+            "exec",
+        ),
+        ns,
+    )  # noqa: S102
     return ns["_build_conversation"]
 
 
@@ -97,6 +103,4 @@ def test_surplus_audio_gets_its_own_turns() -> None:
     conv = build([_Msg("user", f"One.\n{_PH}")], ["/tmp/a.wav", "/tmp/b.wav"])
     audio = [c["path"] for t in conv for c in t["content"] if c["type"] == "audio"]
     assert audio == ["/tmp/a.wav", "/tmp/b.wav"]
-    assert all(
-        [c["type"] for c in t["content"]].count("audio") <= 1 for t in conv
-    )
+    assert all([c["type"] for c in t["content"]].count("audio") <= 1 for t in conv)

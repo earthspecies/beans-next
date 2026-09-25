@@ -307,7 +307,8 @@ def derive_noise_seed(
     dataset_revision
         Immutable dataset revision or commit identifier.
     source_audio_identity
-        Stable source identity, normally the source SHA-256 checksum.
+        Exact source identity supplied by the generator and recorded in the
+        manifest. It can be a path or checksum; preserve the supplied value.
     slot_index
         Zero-based audio slot index within the sample.
     protocol_version
@@ -1097,7 +1098,10 @@ def _validate_artifacts(
             other = artifact_key_lists[name]
             same_alignment = other == first or (
                 len(other) == len(first)
-                and all(left[1:] == right[1:] for left, right in zip(first, other, strict=False))
+                and all(
+                    left[1:] == right[1:]
+                    for left, right in zip(first, other, strict=False)
+                )
             )
             if not same_alignment:
                 errors.append(

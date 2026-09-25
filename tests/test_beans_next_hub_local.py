@@ -10,6 +10,20 @@ import pytest
 from beans_next.datasets import beans_next_hub
 
 
+def test_single_audio_uses_ordered_audio_paths() -> None:
+    assert (
+        beans_next_hub._single_audio_rel_path(
+            {"id": "beans_next_example", "audio_paths": ["audio/ab/clip.wav"]}
+        )
+        == "audio/ab/clip.wav"
+    )
+
+
+def test_single_audio_rejects_multiple_paths() -> None:
+    with pytest.raises(ValueError, match="exactly one audio path"):
+        beans_next_hub._single_audio_rel_path({"audio_paths": ["a.wav", "b.wav"]})
+
+
 def test_local_snapshot_resolves_split_metadata_and_audio(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

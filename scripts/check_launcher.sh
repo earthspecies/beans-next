@@ -1,5 +1,5 @@
 #!/bin/sh
-# BEANS-Next launcher conformance: predictions_v1 + /info + /health (DESIGN §4).
+# BEANS-Next launcher conformance: predictions_v1 + /info + /health.
 # Usage: scripts/check_launcher.sh <base_url>
 # Example: scripts/check_launcher.sh http://127.0.0.1:8000
 set -eu

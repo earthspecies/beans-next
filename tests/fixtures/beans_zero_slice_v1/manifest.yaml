@@ -8,7 +8,7 @@ model_identity:
   source: info_endpoint
   info:
     name: beans-next-naturelm-v1.0
-    model: EarthSpeciesProject/NatureLM-audio
+    model: fixture/model
     model_revision: stub
   info_captured_at_utc: '2026-04-20T14:40:10Z'
 inputs:

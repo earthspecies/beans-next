@@ -1,14 +1,12 @@
 beans_next_v20260823_call_type_fixed_vocab:
   task_type: classification
-  data_source: esp_data
   dataset: beans_next
-  subset: v20260823-call-type-fixed-vocab
-  split: v20260823-call-type-fixed-vocab
-  hf_subset: call-type-fixed-vocab
+  subset: call-type-fixed-vocab
+  split: test
   prompt: classification_beans_zero_official_v1
   generation_config:
     max_length_seconds: 10
   metrics:
-    - name: top1_accuracy
-      scorer_kwargs:
-        label_separator: ","
+  - name: top1_accuracy
+    scorer_kwargs:
+      label_separator: ','

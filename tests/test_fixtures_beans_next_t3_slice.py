@@ -51,9 +51,7 @@ def beans_next_t3_slice_bundle() -> Path:
         )
     manifest_path = bundle / "manifest.yaml"
     if not manifest_path.is_file():
-        pytest.skip(
-            f"Fixture bundle is incomplete (missing manifest): {manifest_path}"
-        )
+        pytest.skip(f"Fixture bundle is incomplete (missing manifest): {manifest_path}")
     return bundle
 
 

@@ -104,7 +104,6 @@ class RunConfig(BaseModel):
     limit: int | None = Field(default=None, ge=1)
     output_dir: str | None = None
     run_id: str | None = None
-    data_source: Literal["hf", "esp_data", "huggingface"] | None = None
 
     @model_validator(mode="after")
     def _validate_suite_xor_tasks(self) -> Self:

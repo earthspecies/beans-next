@@ -1,12 +1,10 @@
 beans_next_t3_species_by_highest_pitch_oe:
   task_type: species_name
-  data_source: esp_data
   dataset: beans_next
   subset: t3-species-by-highest-pitch-oe
-  split: t3-species-by-highest-pitch-oe
+  split: test
   prompt: classification_beans_zero_official_v1
   generation_config:
     max_length_seconds: 30
   metrics:
-    - name: top1_accuracy
-
+  - name: top1_accuracy

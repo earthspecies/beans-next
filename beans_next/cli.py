@@ -1,13 +1,12 @@
 """Command-line interface for BEANS-Next (``beans-next``).
 
-Subcommands dispatch to the benchmark runner (increment I3-B) and to bundled
+Subcommands dispatch to the benchmark runner and to bundled
 registry assets (prompt YAMLs under ``beans_next/registry``).
 """
 
 from __future__ import annotations
 
 import argparse
-import importlib
 import json
 import os
 import sys
@@ -16,15 +15,6 @@ from pathlib import Path
 from typing import Final
 
 import yaml
-
-from beans_next.api.types import DatasetExample
-from beans_next.post_process.pipeline import StepSpec
-
-_RUN_HOOK_NAMES: Final[tuple[str, ...]] = (
-    "run_from_cli_namespace",
-    "main_run_from_cli",
-    "cli_run",
-)
 
 
 def _workers_arg(raw: str) -> int:
@@ -192,285 +182,6 @@ def _cmd_describe(args: argparse.Namespace) -> int:
 _DEFAULT_LIMIT: Final[int] = sys.maxsize
 
 
-def _effective_run_limit(args: argparse.Namespace) -> int:
-    """Return the sample cap for a CLI run.
-
-    Returns
-    -------
-    int
-        At least ``1``; defaults to unlimited (``sys.maxsize``) when ``--limit`` is
-        omitted.
-    """
-    if args.limit is not None:
-        return max(1, int(args.limit))
-    return _DEFAULT_LIMIT
-
-
-def _legacy_builtin_task_type(args: argparse.Namespace) -> str | None:
-    """Best-effort task type for the legacy ``beans-next run`` path (no suite YAML).
-
-    Normal runs use :func:`~beans_next.runner.runner.run_from_cli_namespace`, which
-    reads ``task_type`` from eval-task YAML. This hook only applies when the CLI
-    falls back to :func:`_run_benchmark_cli_builtin`.
-
-    Returns
-    -------
-    str or None
-        ``\"captioning\"`` when ``--dataset-name`` is the BEANS-Zero captioning
-        subset so post-processing does not comma-split or fuzzy-match prose.
-    """
-    dn = str(getattr(args, "dataset_name", "") or "").strip().lower()
-    if dn == "captioning":
-        return "captioning"
-    return None
-
-
-def _build_postprocess_tuples(
-    examples: list[DatasetExample],
-    *,
-    task_type: str | None = None,
-) -> tuple[tuple[StepSpec, ...], tuple[StepSpec, ...]]:
-    """Build parser and cleaner pipeline ``StepSpec`` rows.
-
-    Delegates to :func:`~beans_next.runner.runner._postprocess_steps_for_examples`
-    so behavior matches suite/config runs (captioning and other free-text tasks
-    skip label parsing).
-
-    Parameters
-    ----------
-    examples
-        Loaded dataset rows.
-    task_type
-        Optional eval-task type (e.g. ``\"captioning\"``, ``\"classification\"``).
-
-    Returns
-    -------
-    tuple
-        ``(parser_steps, cleaner_steps)`` for
-        :class:`~beans_next.runner.runner.RunnerConfig`.
-    """
-    from beans_next.runner.runner import _postprocess_steps_for_examples
-
-    return _postprocess_steps_for_examples(examples, task_type=task_type)
-
-
-def _load_examples_for_run(args: argparse.Namespace) -> list[DatasetExample]:
-    """Load HuggingFace rows as :class:`~beans_next.api.types.DatasetExample`.
-
-    Stops after the effective ``--limit`` (see :func:`_effective_run_limit`).
-
-    Returns
-    -------
-    list of DatasetExample
-        Up to ``limit`` normalized rows.
-    """
-    from beans_next.datasets import (
-        dataset_name_equals,
-        iter_esp_data_beans_zero_examples,
-        iter_hf_beans_next_examples,
-        iter_hf_dataset_examples,
-    )
-
-    limit = _effective_run_limit(args)
-    row_filter = dataset_name_equals(args.dataset_name) if args.dataset_name else None
-    hf_config = args.hf_config if args.hf_config else None
-    rows: list[DatasetExample] = []
-    data_source = getattr(args, "data_source", None)
-    load_audio = getattr(args, "modality_mode", "audio") in {
-        "audio",
-        "gaussian-noise",
-    }
-    if data_source == "hf":
-        data_source = "huggingface"
-    if data_source == "esp_data":
-        # esp_data path is BEANS-Zero specific: we use subset via dataset_name.
-        # Row filtering is unnecessary because esp_data already yields by subset.
-        for ex in iter_esp_data_beans_zero_examples(
-            subset=str(args.dataset_name),
-            split=str(args.split),
-            task_id=args.task_id,
-            limit=limit,
-        ):
-            rows.append(ex)
-            if len(rows) >= limit:
-                break
-    elif data_source == "huggingface":
-        from beans_next.datasets.beans_next_hub import BEANS_NEXT_HUB_REPO_ID
-
-        hf_path_arg = (getattr(args, "hf_path", None) or "").strip()
-        repo_id = hf_path_arg or BEANS_NEXT_HUB_REPO_ID
-        subset_name = str(args.dataset_name).strip()
-        for ex in iter_hf_beans_next_examples(
-            repo_id,
-            subset=subset_name,
-            split=str(args.split),
-            task_id=args.task_id,
-            limit=limit,
-            load_audio=load_audio,
-        ):
-            rows.append(ex)
-            if len(rows) >= limit:
-                break
-    else:
-        for ex in iter_hf_dataset_examples(
-            args.hf_path,
-            split=args.split,
-            config_name=hf_config,
-            task_id=args.task_id,
-            row_filter=row_filter,
-            load_audio=load_audio,
-        ):
-            rows.append(ex)
-            if len(rows) >= limit:
-                break
-    return rows
-
-
-def _default_output_dir(args: argparse.Namespace, run_id: str) -> Path:
-    """Resolve the artifact output directory for ``run``.
-
-    Returns
-    -------
-    pathlib.Path
-        Absolute output path (``./results/<run_id>`` when ``-o`` is omitted).
-    """
-    if args.output_dir is not None:
-        return Path(args.output_dir).expanduser().resolve()
-    return (Path.cwd() / "results" / run_id).resolve()
-
-
-def _prompt_path_from_args(args: argparse.Namespace) -> Path:
-    """Resolve the prompt YAML path for ``run``.
-
-    Returns
-    -------
-    pathlib.Path
-        Absolute path to the prompt specification file.
-    """
-    from beans_next.prompts.renderer import builtin_prompt_registry_path
-
-    if args.prompt_yaml is not None:
-        return Path(args.prompt_yaml).expanduser().resolve()
-    return (
-        builtin_prompt_registry_path() / "classification_bioacoustic_v1.yaml"
-    ).resolve()
-
-
-def _validate_builtin_run_args(args: argparse.Namespace) -> None:
-    """Validate flags for the built-in ``beans-next run`` path.
-
-    Raises
-    ------
-    SystemExit
-        When ``--predict-url`` is missing for non-config runs.
-    """
-    if args.config is None and not args.predict_url:
-        raise SystemExit(
-            "--predict-url is required for beans-next run (unless --config is set)."
-        )
-
-
-def _run_benchmark_cli_builtin(args: argparse.Namespace) -> None:
-    """Execute the default HuggingFace-backed ``beans-next run`` path.
-
-    Wires :class:`~beans_next.runner.runner.BenchmarkRunner` with a small batch
-    and the bundled classification prompt unless ``--prompt-yaml`` is set.
-
-    Raises
-    ------
-    SystemExit
-        On invalid CLI combinations, empty example lists, or missing optional
-        dependencies such as the ``datasets`` package.
-    """
-    from beans_next.models.http import HttpClient
-    from beans_next.prompts.renderer import PromptRenderer, load_prompt_spec_from_path
-    from beans_next.runner.runner import BenchmarkRunner, RunnerConfig
-
-    _validate_builtin_run_args(args)
-    if args.suite is not None:
-        print(
-            "warning: --suite is not yet wired to suite YAML; "
-            "using HF path/config instead.",
-            file=sys.stderr,
-        )
-    run_id = (args.run_id or "beans-next-cli").strip() or "beans-next-cli"
-    try:
-        examples = _load_examples_for_run(args)
-    except ImportError as exc:
-        raise SystemExit(str(exc)) from exc
-    if not examples:
-        raise SystemExit("No dataset examples were loaded; check HF parameters.")
-    parsers, cleaners = _build_postprocess_tuples(
-        examples,
-        task_type=_legacy_builtin_task_type(args),
-    )
-    out_dir = _default_output_dir(args, run_id)
-    spec = load_prompt_spec_from_path(_prompt_path_from_args(args))
-    gaussian_noise_config = None
-    if args.modality_mode == "gaussian-noise":
-        from beans_next.audio.gaussian_noise import GaussianNoiseConfig
-
-        noise_kwargs = {
-            "dataset_revision": str(args.hf_revision or "main"),
-            "global_seed": args.gaussian_noise_seed,
-            "protocol_version": args.gaussian_noise_protocol_version,
-            "rms_dbfs": args.gaussian_noise_rms_dbfs,
-        }
-        if args.gaussian_noise_cache_dir is not None:
-            noise_kwargs["cache_dir"] = args.gaussian_noise_cache_dir
-        gaussian_noise_config = GaussianNoiseConfig(**noise_kwargs)
-    renderer = PromptRenderer(
-        spec,
-        modality_mode=args.modality_mode,
-        gaussian_noise_config=gaussian_noise_config,
-    )
-    cfg = RunnerConfig(
-        output_dir=out_dir,
-        run_id=run_id,
-        parser_steps=parsers,
-        cleaner_steps=cleaners,
-    )
-    with HttpClient(args.predict_url, probe_on_init=True) as client:
-        runner = BenchmarkRunner(client, renderer, cfg)
-        runner.run(examples)
-
-
-def _dispatch_run(args: argparse.Namespace) -> None:
-    """Forward ``beans-next run`` to ``beans_next.runner.runner``.
-
-    If the runner module defines one of ``run_from_cli_namespace``,
-    ``main_run_from_cli``, or ``cli_run``, that hook receives the
-    :class:`argparse.Namespace` and owns execution. Otherwise this CLI builds a
-    minimal :class:`~beans_next.runner.runner.BenchmarkRunner` from the
-    namespace (HuggingFace slice + bundled prompt + HTTP endpoint).
-
-    Parameters
-    ----------
-    args
-        Parsed ``run`` subcommand arguments.
-
-    Raises
-    ------
-    SystemExit
-        If the runner module cannot be imported.
-    """
-    try:
-        mod = importlib.import_module("beans_next.runner.runner")
-    except ImportError as exc:
-        msg = (
-            "Benchmark runner is unavailable: could not import "
-            "'beans_next.runner.runner'. Merge increment I3-B (BenchmarkRunner) "
-            "before using 'beans-next run'."
-        )
-        raise SystemExit(msg) from exc
-    for name in _RUN_HOOK_NAMES:
-        fn = getattr(mod, name, None)
-        if callable(fn):
-            fn(args)
-            return
-    _run_benchmark_cli_builtin(args)
-
-
 def _resolve_predict_url(args: argparse.Namespace) -> None:
     """Populate ``args.predict_url`` from ``--predict-url-file`` when set.
 
@@ -518,32 +229,9 @@ def _cmd_run(args: argparse.Namespace) -> int:
     if args.limit is not None and args.sample_fraction is not None:
         raise SystemExit("--limit and --sample-fraction cannot be used together.")
     _resolve_predict_url(args)
-    _dispatch_run(args)
-    return 0
+    from beans_next.runner.runner import run_from_cli_namespace
 
-
-def _cmd_setup_spice(args: argparse.Namespace) -> int:
-    """Download Stanford CoreNLP JARs required by SPICE.
-
-    Returns
-    -------
-    int
-        ``0`` on success.
-
-    Raises
-    ------
-    SystemExit
-        If the download fails.
-    """
-    from beans_next.metrics._spice._download import download_stanford_models
-
-    force = getattr(args, "force", False)
-    print("Downloading Stanford CoreNLP 3.6.0 JARs for SPICE …")
-    try:
-        download_stanford_models(force=force)
-    except Exception as exc:
-        raise SystemExit(f"Download failed: {exc}") from exc
-    print("Done. SPICE is ready.")
+    run_from_cli_namespace(args)
     return 0
 
 
@@ -568,33 +256,16 @@ def _cmd_score_from_file(args: argparse.Namespace) -> int:
         if args.output_dir is not None
         else None
     )
-    judge_url: str | None = getattr(args, "judge_url", None) or None
-    judge_extract_url: str | None = getattr(args, "judge_extract_url", None) or None
     task_type: str | None = getattr(args, "task_type", None) or None
     try:
         rescore_predictions_file(
             predictions_path,
             output_dir=out_dir,
             task_type=task_type,
-            judge_url=judge_url,
-            judge_extract_url=judge_extract_url,
         )
     except (FileNotFoundError, ValueError) as exc:
         raise SystemExit(str(exc)) from exc
     return 0
-
-
-def _cmd_pairs(args: argparse.Namespace) -> int:
-    """Generate prompt/answer/ground-truth pairs for BEANSNext subsets.
-
-    Returns
-    -------
-    int
-        ``0`` on success.
-    """
-    from beans_next.scripts.generate_pairs import generate_pairs_main
-
-    return int(generate_pairs_main(args))
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -611,7 +282,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
-    p_run = sub.add_parser("run", help="Run a benchmark via BenchmarkRunner (I3-B).")
+    p_run = sub.add_parser("run", help="Run a benchmark through the HF evaluator.")
     p_run.add_argument(
         "--predict-url",
         default=None,
@@ -667,7 +338,7 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         metavar="DIR",
         help=(
-            "Optional directory for SQLite inference + scoring caches (I6-A). "
+            "Optional directory for SQLite inference + scoring caches. "
             "Omit for default uncached behavior."
         ),
     )
@@ -704,15 +375,6 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Seed for deterministic per-task sampling (default 0).",
     )
     p_run.add_argument(
-        "--permute-answer-order",
-        action="store_true",
-        default=False,
-        help=(
-            "Deterministically permute explicit textual multiple-choice options "
-            "and remap their reference labels (diagnostic use only)."
-        ),
-    )
-    p_run.add_argument(
         "--stratify-by-label",
         action="store_true",
         default=False,
@@ -733,23 +395,9 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Optional path to a run configuration YAML.",
     )
     p_run.add_argument(
-        "--backend",
-        dest="data_source",
-        default=None,
-        choices=("esp_data", "huggingface", "hf"),
-        help=(
-            "Dataset backend. `esp_data` (default) loads BEANS-Next audio from GCS "
-            "via the esp_data library. `huggingface` loads from the two-table Parquet "
-            "bundle on the HuggingFace Hub (no private credentials needed). "
-            "`hf` is the legacy streaming backend for other HF datasets."
-        ),
-    )
-    p_run.add_argument(
         "--hf-path",
         default="EarthSpeciesProject/BEANS-Zero",
-        help=(
-            "HuggingFace dataset id for the built-in runner (ignored by custom hooks)."
-        ),
+        help=("HuggingFace dataset id for the built-in runner."),
     )
     p_run.add_argument(
         "--hf-config",
@@ -811,8 +459,8 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         metavar="DIR",
         help=(
-            "Shared deterministic noise cache. On Apocrita the default is under "
-            "/gpfs/scratch/acw777/."
+            "Shared deterministic noise cache. Defaults to "
+            "~/.cache/beans-next/gaussian-noise."
         ),
     )
     p_run.add_argument(
@@ -833,41 +481,12 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Version string included in deterministic noise seeds and manifests.",
     )
     p_run.add_argument(
-        "--judge-url",
-        default=None,
-        metavar="URL",
-        help=(
-            "URL for the judge POST endpoint (enables LLM-as-judge scoring). "
-            "When set, judge_outputs.jsonl is written after the run."
-        ),
-    )
-    p_run.add_argument(
         "--preserve-file-paths",
         action="store_true",
         default=False,
         help=(
             "Send file_path audio payloads without base64 conversion. Use only "
             "when the runner and model server can read the same filesystem paths."
-        ),
-    )
-    p_run.add_argument(
-        "--upload-gcs",
-        action="store_true",
-        default=False,
-        help=(
-            "Upload run artifacts to GCS after the run completes. "
-            "Uses --gcs-prefix (default foundation-model-data bucket). "
-            "Requires google-cloud-storage to be installed."
-        ),
-    )
-    p_run.add_argument(
-        "--gcs-prefix",
-        default="gs://foundation-model-data/synthetic/predictions",
-        metavar="GCS_PREFIX",
-        help=(
-            "Base GCS prefix for artifact uploads (used with --upload-gcs). "
-            "The run id is appended automatically. "
-            "Default: gs://foundation-model-data/synthetic/predictions"
         ),
     )
     p_run.set_defaults(_handler=_cmd_run)
@@ -930,65 +549,15 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Directory to write artifacts into (default: predictions file directory).",
     )
     p_score.add_argument(
-        "--judge-url",
-        default=None,
-        metavar="URL",
-        help=(
-            "URL for the YES/NO judge model POST /predict endpoint. When set, "
-            "judge_scored_predictions.jsonl, judge_summary.json, and "
-            "judge_outputs.jsonl are written alongside normal rescorer artifacts."
-        ),
-    )
-    p_score.add_argument(
-        "--judge-extract-url",
-        default=None,
-        metavar="URL",
-        help=(
-            "URL for the extractor judge model POST /predict endpoint. When set, "
-            "the judge converts each raw prediction into a structured prediction "
-            "using task-specific templates, then scores with the normal pipeline. "
-            "Writes judge_extracted_scored_predictions.jsonl and "
-            "judge_extracted_summary.json. Use --task-type to select the right "
-            "extraction template (classification / detection / captioning)."
-        ),
-    )
-    p_score.add_argument(
         "--task-type",
         default=None,
         metavar="TYPE",
         help=(
-            "Task type for post-processing and judge extraction template selection "
+            "Task type for post-processing and scoring "
             "(e.g. classification, detection, captioning)."
         ),
     )
     p_score.set_defaults(_handler=_cmd_score_from_file)
-
-    p_pairs = sub.add_parser(
-        "pairs",
-        help=(
-            "Generate prompt/answer/ground-truth pairs for BEANSNext subsets "
-            "(stores raw + post-processed predictions)."
-        ),
-    )
-    from beans_next.scripts.generate_pairs import build_pairs_arg_parser
-
-    build_pairs_arg_parser(p_pairs)
-    p_pairs.set_defaults(_handler=_cmd_pairs)
-
-    p_setup_spice = sub.add_parser(
-        "setup-spice",
-        help=(
-            "Download Stanford CoreNLP 3.6.0 JARs required by the SPICE metric. "
-            "JARs are cached in ~/.cache/beans-next/spice/lib/."
-        ),
-    )
-    p_setup_spice.add_argument(
-        "--force",
-        action="store_true",
-        default=False,
-        help="Re-download even if the JARs are already present.",
-    )
-    p_setup_spice.set_defaults(_handler=_cmd_setup_spice)
 
     return parser
 
