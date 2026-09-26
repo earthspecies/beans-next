@@ -4,19 +4,18 @@
 
 | Columns | Meaning |
 | --- | --- |
-| `id`, `sample_id` | Example ID; both contain the same value. |
+| `id` | Unique example ID. |
 | `tier`, `task` | Integer tier from 1 to 4, and task identifier. |
 | `messages` | One user message with the prompt, followed by one assistant message with the expected answer. |
-| `file_name` | Single-audio path, relative to `test/`. Null for tier 4. |
-| `context_audio_paths`, `query_audio_path` | Tier 4 reference clips in prompt order, and the final query clip. Paths are relative to `test/`. |
-| `source_dataset`, `license` | Normalized source name and license metadata, where available. |
+| `audio_paths` | Ordered audio paths relative to `test/`. One clip for tiers 1–3; reference clips followed by the query for tier 4. |
+| `license` | Source license metadata, where available. |
 | `metadata` | JSON text with task-specific annotations. Keys vary by task. |
 | `source_datasets`, `source_audio_ids`, `source_file_paths` | Ordered source names, recording IDs or filenames, and source paths for each clip. |
 | `source_urls` | Recording-specific URLs where established, otherwise null. |
 | `audio_start_seconds`, `audio_end_seconds` | Source crop boundaries in seconds, where established. |
 | `source_id_types` | Meaning of each source identifier. |
 
-For tiers 1–3, load `file_name`. For tier 4, load `context_audio_paths` followed by `query_audio_path`. Paths are relative to `test/`. Keep the clip order and repeated paths.
+Load every entry in `audio_paths`. Keep the clip order and repeated paths. For tier 4, the final clip is the query.
 
 Give the model the user prompt and audio. Use the assistant message for scoring. The supplied clips already include any crops.
 

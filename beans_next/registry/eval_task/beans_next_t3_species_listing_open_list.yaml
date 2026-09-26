@@ -1,11 +1,10 @@
-beans_next_t3_structural_captioning:
-  task_type: captioning
+beans_next_t3_species_listing_open_list:
+  task_type: species_set
   dataset: beans_next
-  subset: t3-structural-captioning
+  subset: t3-species-listing-open-list
   split: test
   prompt: classification_beans_zero_official_v1
   generation_config:
     max_length_seconds: 30
-    max_tokens: 256
   metrics:
-  - name: cider
+  - name: f1

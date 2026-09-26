@@ -18,6 +18,12 @@ Use `uv run beans-next list --kind suite` to list suites.
 Use `uv run beans-next describe eval_task <task-id>` to inspect a task.
 
 Task definitions set the prompt, task type, audio cap, and metric.
+The paper suites contain 42 tasks. Three additional datasets have standalone task IDs:
+
+- `beans_next_zebra_description`
+- `beans_next_multiaudio_zebra_4way`
+- `beans_next_t3_species_listing_open_list`
+
 Tiers 1 and 2 use a 10-second cap. Tier 3 uses a 30-second cap.
 Tier 4 uses a 10-second cap for each clip, with references before the query.
 

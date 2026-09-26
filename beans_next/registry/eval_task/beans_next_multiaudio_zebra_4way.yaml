@@ -1,0 +1,10 @@
+beans_next_multiaudio_zebra_4way:
+  task_type: classification
+  dataset: beans_next_multiaudio
+  subset: zebra-4way
+  split: test
+  prompt: beans_next_multiaudio_passthrough_v1
+  generation_config:
+    max_length_seconds: 10
+  metrics:
+  - name: accuracy
