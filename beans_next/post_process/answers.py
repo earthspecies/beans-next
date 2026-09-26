@@ -7,7 +7,7 @@ from collections.abc import Mapping
 from typing import Any
 
 INVALID_ANSWER = "__invalid_answer__"
-SCORING_VERSION = "2026-09-25-v5"
+SCORING_VERSION = "2026-09-25-v7"
 FREE_TEXT_TASKS = frozenset(
     {
         "captioning",
@@ -306,9 +306,14 @@ def parse_call_types(text: str) -> set[str] | None:
     """
     if explicit_empty(text):
         return set()
-    text = _plain(_unwrap(text))
+    # Keep list boundaries until after splitting: _plain collapses newlines.
+    # _unwrap may leave the colon in "The correct answer is: ...".
+    text = _unwrap(text).lstrip(": ").casefold()
+    text = re.sub(r"^[ \t]*[-*•][ \t]+", "", text, flags=re.MULTILINE)
     text = re.sub(r"^(?:the following (?:are present|can be heard):\s*)", "", text)
-    parts = [p.strip(" .") for p in re.split(r"[,;\n]|\band\b", text) if p.strip()]
+    if explicit_empty(text):
+        return set()
+    parts = [_plain(p) for p in re.split(r"[,;\n]|\band\b", text) if p.strip()]
     known = set(parts) & set(CALL_TYPES)
     if not known:
         return None
@@ -316,6 +321,60 @@ def parse_call_types(text: str) -> set[str] | None:
     # Preserve its presence for parse coverage and exact-set accuracy.
     return known | (
         {INVALID_ANSWER} if any(p not in CALL_TYPES for p in parts) else set()
+    )
+
+
+def is_presence_nonanswer(raw: str, task_type: str | None) -> bool:
+    """Identify explicit unavailable-audio refusals before binary fuzzy fallback.
+
+    Ordinary ALM answers keep the existing extraction path. A clear subsequent
+    yes/no answer also keeps that path; mentioning missing audio alone is not
+    enough to discard an explicit guess.
+
+    Returns
+    -------
+    bool
+        Whether a binary-presence response explicitly declines to answer.
+    """
+    if task_type != "presence_binary":
+        return False
+    text = clean_answer(raw)
+    if re.search(
+        r"(?:^|[.!?\n]\s*)(?:yes|no)(?=[,.;!\s]*$|[,.;!]\s)", text, re.I
+    ) or re.search(r"\b(?:answer|guess)\s*(?:is\s*:?|:)\s*(?:yes|no)\b", text, re.I):
+        return False
+    direct_refusal = re.match(
+        r"^(?:(?:I'm|I am) sorry[,;]?\s*(?:but\s+)?)?"
+        r"(?:I|we)\s+(?:cannot|can't|can’t|am unable to|are unable to)\s+"
+        r"(?:accurately\s+|reliably\s+)?"
+        r"(?:determine|tell|identify|assess|confirm|hear|listen|access|analy[sz]e)\b",
+        text,
+        re.I,
+    )
+    unavailable_recording = re.search(
+        r"\b(?:I (?:don't|do not) (?:see|have) (?:any |a |the )?"
+        r"(?:recording|audio(?: file)?)|"
+        r"you (?:haven't|have not) provided (?:a |the )?(?:recording|audio)|"
+        r"(?:please|could you) (?:provide|upload) (?:me with )?"
+        r"(?:a |the |an |actual )?(?:recording|audio(?: file)?))\b",
+        text,
+        re.I,
+    )
+    cannot_access_audio = re.search(
+        r"\b(?:I (?:can't|cannot) (?:directly )?(?:access|listen to|analy[sz]e)|"
+        r"I'm not able to (?:directly )?(?:listen to|analy[sz]e)|"
+        r"I don't have the ability to (?:access|listen to))"
+        r"[^.!?\n]{0,60}\b(?:audio|recordings?|files)\b",
+        text,
+        re.I,
+    )
+    requests_input = (
+        re.match(r"^To (?:answer|determine|detect)\b", text, re.I)
+        and re.search(r"\bI would need\b", text, re.I)
+        and re.search(r"\b(?:recording|audio)\b", text, re.I)
+    )
+    return bool(
+        direct_refusal or unavailable_recording or cannot_access_audio or requests_input
     )
 
 

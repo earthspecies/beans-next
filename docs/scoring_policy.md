@@ -24,11 +24,18 @@ Sample IDs alone do not establish that two dataset revisions have the same optio
 
 Fixed-vocabulary call type uses macro-F1 across its five labels.
 Each label is matched separately: `alarm call` does not imply `call`.
+Comma-, semicolon-, newline-, and bullet-separated lists are equivalent, and an answer prefix such as `The correct answer is:` is ignored.
+Definitions or alternatives (`alarm call or flight call`) are not selections.
 Unrecognized list items receive no credit and make exact-set accuracy fail.
 
 Tier 4 detection computes F1 for each reference label, then averages across labels.
 `None` denotes an empty set. It is not a positive class.
 Complete-set accuracy is a separate diagnostic: `A, C` equals `C, A`, but differs from `A`.
+
+## Binary presence
+
+A response that declines to answer because it cannot access or hear the audio is invalid, even if it mentions a species or label.
+It is not matched to `yes` or `no`. A refusal followed by an explicit `yes` or `no` answer keeps that answer.
 
 ## Summaries and captions
 
@@ -48,11 +55,10 @@ Use a separate output directory for rescored results.
 The scorer version identifies the scoring policy in cache entries and summaries.
 Inspect raw and parsed answers alongside coverage before comparing scores.
 
-
-## Per-species count validity (scoring v5)
+## Per-species count validity
 
 Per-species count MAE is conditional on a parseable prediction. An explicit empty answer (`None`, `no calls`, or an unambiguous statement that no vocalizations are present) is a valid zero-count prediction. An empty string, refusal, unrelated text, species names without counts, or a scalar count without a species is invalid: it contributes `parse_success=0` but no `count_mae`. Report the mean `parse_success` (valid percentage) alongside conditional MAE. Species precision/recall/F1 remain zero for invalid predictions rather than omitting them.
 
 For each valid prediction, compute MAE over the union of reference and predicted species, supplying zero only for species absent from an otherwise valid mapping. Thus missed and hallucinated species remain penalized. Average these per-example MAEs with equal example weights. Valid empty prediction and reference have zero count error. Parsing is independent of reference labels and supports colon-separated counts, explicit named-count prose, and scientific names supplied in parentheses. Conflicting duplicate counts and ambiguous ranges are invalid. Common/scientific aliases are not inferred from reference labels. A successfully parsed partial mapping remains valid; omitted species are scored as above.
 
-The scoring version is bumped so saved processed/scored caches are not treated as current. Rescoring must use the original saved targets and task configuration, not a newer dataset release with changed examples or options.
+Rescoring must use the original saved targets and task configuration, not a newer dataset release with changed examples or options.

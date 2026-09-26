@@ -42,7 +42,9 @@ from beans_next.cache.two_layer import TwoLayerRunCache, scoring_cache_key
 from beans_next.models.http import HttpClient
 from beans_next.post_process.answers import (
     FREE_TEXT_TASKS,
+    INVALID_ANSWER,
     SCORING_VERSION,
+    is_presence_nonanswer,
     normalize_task_answer,
     question_options,
     question_text,
@@ -904,6 +906,9 @@ class BenchmarkRunner:
                     raw_text, self._config.task_type, ex.metadata
                 )
                 post = PostProcessResult(segments=[text] if text else [], text=text)
+
+            if is_presence_nonanswer(raw_text, self._config.task_type):
+                post = PostProcessResult(segments=[INVALID_ANSWER], text=INVALID_ANSWER)
 
             row_err = _merge_row_error(pred, post_err)
             targets = _targets_from_example(ex)

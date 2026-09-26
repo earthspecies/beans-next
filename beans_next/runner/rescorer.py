@@ -23,7 +23,11 @@ from beans_next.api.types import (
     RunSummary,
     ScoredPrediction,
 )
-from beans_next.post_process.answers import SCORING_VERSION
+from beans_next.post_process.answers import (
+    INVALID_ANSWER,
+    SCORING_VERSION,
+    is_presence_nonanswer,
+)
 from beans_next.post_process.pipeline import (
     PostProcessPipelineError,
     PostProcessResult,
@@ -320,6 +324,8 @@ def rescore_predictions_file(
             if task_type in FREE_TEXT_TASKS or question_options(metadata):
                 text = normalize_task_answer(raw_text, task_type, metadata)
                 post = PostProcessResult(segments=[text] if text else [], text=text)
+            if is_presence_nonanswer(raw_text, task_type):
+                post = PostProcessResult(segments=[INVALID_ANSWER], text=INVALID_ANSWER)
 
             processed_row = ScoredPrediction(
                 sample_id=sid,
