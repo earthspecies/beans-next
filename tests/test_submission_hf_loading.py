@@ -39,7 +39,7 @@ def test_hf_revision_and_subset_survive_modality_selection(
     rows = _load_examples_for_eval_task(
         {
             "dataset": "beans_next",
-            "subset": "v20260823-alarm-call-presence",
+            "subset": "alarm-call-presence",
             "hf_subset": "alarm-call-presence",
             "revision": task_revision,
         },

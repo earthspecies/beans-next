@@ -1,0 +1,10 @@
+beans_next_t2_captioning:
+  task_type: captioning
+  dataset: beans_next
+  subset: t2-captioning
+  split: test
+  prompt: classification_beans_zero_official_v1
+  generation_config:
+    max_length_seconds: 10
+  metrics:
+  - name: cider

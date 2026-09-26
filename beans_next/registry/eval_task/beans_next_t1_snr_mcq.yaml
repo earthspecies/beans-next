@@ -1,10 +1,12 @@
-beans_next_v20260707m4afix_insect_presence:
-  task_type: presence_binary
+beans_next_t1_snr_mcq:
+  task_type: classification
   dataset: beans_next
-  subset: insect-presence
+  subset: t1-snr-mcq
   split: test
   prompt: classification_beans_zero_official_v1
   generation_config:
     max_length_seconds: 10
   metrics:
   - name: top1_accuracy
+    scorer_kwargs:
+      label_separator: ','

@@ -258,7 +258,7 @@ def test_undefined_numeric_metric_remains_unreported(
     assert result["tables"]["structural_v3"]["values"]["species_count"] is None
 
 
-def test_current_versioned_task_ids_are_exported(
+def test_task_ids_are_exported(
     row_builder: ModuleType,
     tmp_path: Path,
 ) -> None:
@@ -268,18 +268,18 @@ def test_current_versioned_task_ids_are_exported(
             {
                 "eval_tasks": [
                     _task(
-                        "beans_next_v20260707m4afix_insect_presence",
+                        "beans_next_insect_presence",
                         {"top1_accuracy": 0.25},
                     ),
                     _task(
-                        "beans_next_v20260823_begging_call_presence",
+                        "beans_next_begging_call_presence",
                         {"top1_accuracy": 0.75},
                     ),
                 ]
             }
         )
     )
-    values = row_builder.build_paper_rows(path, "Current model")["tables"][
+    values = row_builder.build_paper_rows(path, "Test model")["tables"][
         "semantic_v2"
     ]["values"]
     assert values["insect"] == 25.0

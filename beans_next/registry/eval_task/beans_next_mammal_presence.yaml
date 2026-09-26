@@ -1,4 +1,4 @@
-beans_next_v20260707m4afix_mammal_presence:
+beans_next_mammal_presence:
   task_type: presence_binary
   dataset: beans_next
   subset: mammal-presence

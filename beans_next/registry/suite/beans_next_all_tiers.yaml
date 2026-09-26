@@ -1,23 +1,23 @@
 beans_next_all_tiers:
   description: "All paper tasks across tiers 1\u20134."
   eval_tasks:
-  - beans_next_v20260707m4afix_t1_caption
-  - beans_next_v20260707m4afix_t1_description_mcq
-  - beans_next_v20260707m4afix_t1_snr_mcq
-  - beans_next_v20260707m4afix_t1_snr_regression
+  - beans_next_t1_caption
+  - beans_next_t1_description_mcq
+  - beans_next_t1_snr_mcq
+  - beans_next_t1_snr_regression
   - beans_next_f0_mean_seen_taxa
   - beans_next_f0_mean_heldout_taxa
   - beans_next_crow_description
-  - beans_next_v20260707m4afix_t2_behavior
-  - beans_next_v20260707m4afix_t2_captioning
-  - beans_next_v20260707m4afix_bird_presence
-  - beans_next_v20260707m4afix_mammal_presence
-  - beans_next_v20260707m4afix_amphibian_presence
-  - beans_next_v20260707m4afix_insect_presence
-  - beans_next_v20260823_alarm_call_presence
-  - beans_next_v20260823_begging_call_presence
-  - beans_next_v20260823_flight_call_presence
-  - beans_next_v20260823_call_type_fixed_vocab
+  - beans_next_t2_behavior
+  - beans_next_t2_captioning
+  - beans_next_bird_presence
+  - beans_next_mammal_presence
+  - beans_next_amphibian_presence
+  - beans_next_insect_presence
+  - beans_next_alarm_call_presence
+  - beans_next_begging_call_presence
+  - beans_next_flight_call_presence
+  - beans_next_call_type_fixed_vocab
   - beans_next_t3_species_count_oe
   - beans_next_t3_vocalization_count_total_oe
   - beans_next_t3_vocalization_count_total_mcq

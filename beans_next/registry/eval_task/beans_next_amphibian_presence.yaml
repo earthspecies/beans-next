@@ -1,10 +1,10 @@
-beans_next_v20260823_call_type_fixed_vocab:
-  task_type: multilabel_classification
+beans_next_amphibian_presence:
+  task_type: presence_binary
   dataset: beans_next
-  subset: call-type-fixed-vocab
+  subset: amphibian-presence
   split: test
   prompt: classification_beans_zero_official_v1
   generation_config:
     max_length_seconds: 10
   metrics:
-  - name: macro_f1
+  - name: top1_accuracy

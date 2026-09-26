@@ -1,7 +1,7 @@
-beans_next_v20260707m4afix_bird_presence:
+beans_next_begging_call_presence:
   task_type: presence_binary
   dataset: beans_next
-  subset: bird-presence
+  subset: begging-call-presence
   split: test
   prompt: classification_beans_zero_official_v1
   generation_config:

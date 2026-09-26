@@ -1,4 +1,4 @@
-beans_next_v20260707m4afix_t1_description_mcq:
+beans_next_t1_description_mcq:
   task_type: classification
   dataset: beans_next
   subset: t1-description-mcq

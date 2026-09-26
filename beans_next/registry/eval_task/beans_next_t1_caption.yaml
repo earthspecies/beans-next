@@ -1,10 +1,10 @@
-beans_next_v20260823_begging_call_presence:
-  task_type: presence_binary
+beans_next_t1_caption:
+  task_type: captioning
   dataset: beans_next
-  subset: begging-call-presence
+  subset: t1-caption
   split: test
   prompt: classification_beans_zero_official_v1
   generation_config:
     max_length_seconds: 10
   metrics:
-  - name: top1_accuracy
+  - name: cider

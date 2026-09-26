@@ -56,23 +56,9 @@ def _c(
     metric_aliases: Sequence[str] = (),
     source: str = "summary",
 ) -> ColumnSpec:
-    # Current paper suites use versioned task IDs for refreshed T1/T2 tasks.
-    # Keep the concrete matched ID in cell provenance and reject mixed versions
-    # in _find_task, rather than silently selecting one dataset revision.
-    versioned_aliases = ()
-    if task_id.startswith("beans_next_"):
-        suffix = task_id.removeprefix("beans_next_")
-        registry = Path(__file__).resolve().parents[1] / "beans_next/registry/eval_task"
-        versioned_aliases = tuple(
-            candidate
-            for version in ("v20260707m4afix", "v20260823")
-            if (
-                registry / f"{(candidate := f'beans_next_{version}_{suffix}')}.yaml"
-            ).is_file()
-        )
     return ColumnSpec(
         key=key,
-        task_ids=(task_id, *aliases, *versioned_aliases),
+        task_ids=(task_id, *aliases),
         metric_names=(metric, *metric_aliases),
         scale=scale,
         number_format=number_format,
