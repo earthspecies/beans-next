@@ -1,4 +1,4 @@
-"""Tests for metric gap fixes: Levenshtein fuzzy matching and top1_accuracy."""
+"""Tests for metric edge cases: Levenshtein fuzzy matching and top1_accuracy."""
 
 from __future__ import annotations
 

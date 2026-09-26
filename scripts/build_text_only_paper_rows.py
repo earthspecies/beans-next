@@ -140,7 +140,7 @@ TABLE_SPECS: dict[str, tuple[ColumnSpec, ...]] = {
             metric_aliases=("mean_absolute_error",),
         ),
     ),
-    "semantic_v2": (
+    "semantic": (
         _c(
             "bird",
             "beans_next_bird_presence",
@@ -171,7 +171,7 @@ TABLE_SPECS: dict[str, tuple[ColumnSpec, ...]] = {
             "beans_next_alarm_call_presence",
             "top1_accuracy",
             scale=100.0,
-            # Older summaries used the registry's ``accuracy`` name for this
+            # Summaries may use the registry's ``accuracy`` name for this
             # binary detection task; it is numerically the same quantity.
             metric_aliases=("accuracy",),
         ),
@@ -207,7 +207,7 @@ TABLE_SPECS: dict[str, tuple[ColumnSpec, ...]] = {
             scale=100.0,
         ),
     ),
-    "structural_v3": (
+    "structural": (
         _c(
             "species_count",
             "beans_next_t3_species_count_oe",
@@ -303,7 +303,7 @@ TABLE_SPECS: dict[str, tuple[ColumnSpec, ...]] = {
     ),
 }
 
-# The second structural table has the same ordering as structural_v3.tex.
+# The second structural table uses the same row ordering as the first.
 STRUCTURAL_SPECIES_SPECS: tuple[ColumnSpec, ...] = (
     _c(
         "order_oe",
@@ -642,23 +642,23 @@ def build_paper_rows(
         )
 
     species = _table_result(
-        "structural_v3_species_id",
+        "structural_species_id",
         STRUCTURAL_SPECIES_SPECS,
         label=model_label,
         summary_path=summary_path,
         tasks=tasks,
     )
-    main = tables["structural_v3"]
-    tables["structural_v3"]["subtables"] = {
+    main = tables["structural"]
+    tables["structural"]["subtables"] = {
         "main": {key: value for key, value in main.items() if key != "subtables"},
         "species_id": species,
     }
     latex_rows = {
         "beans_zero": tables["beans_zero"]["latex_row"],
         "acoustic_v2": tables["acoustic_v2"]["latex_row"],
-        "semantic_v2": tables["semantic_v2"]["latex_row"],
-        "structural_v3_main": tables["structural_v3"]["latex_row"],
-        "structural_v3_species_id": species["latex_row"],
+        "semantic": tables["semantic"]["latex_row"],
+        "structural_main": tables["structural"]["latex_row"],
+        "structural_species_id": species["latex_row"],
         "tier4": tables["tier4"]["latex_row"],
     }
     # ``rows`` is a compact, table-oriented view for consumers that do not
@@ -666,9 +666,9 @@ def build_paper_rows(
     rows = {
         "beans_zero": tables["beans_zero"]["row"],
         "acoustic_v2": tables["acoustic_v2"]["row"],
-        "semantic_v2": tables["semantic_v2"]["row"],
-        "structural_v3_main": tables["structural_v3"]["row"],
-        "structural_v3_species_id": species["row"],
+        "semantic": tables["semantic"]["row"],
+        "structural_main": tables["structural"]["row"],
+        "structural_species_id": species["row"],
         "tier4": tables["tier4"]["row"],
     }
     return {
@@ -694,9 +694,9 @@ def _latex_output(result: Mapping[str, Any]) -> str:
     order = (
         "beans_zero",
         "acoustic_v2",
-        "semantic_v2",
-        "structural_v3_main",
-        "structural_v3_species_id",
+        "semantic",
+        "structural_main",
+        "structural_species_id",
         "tier4",
     )
     return "\n".join(str(latex_rows[name]) for name in order) + "\n"

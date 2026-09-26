@@ -135,7 +135,7 @@ class PredictionsV1Response(BaseModel):
 
 
 class InfoResponse(BaseModel):
-    """``GET /info`` capability document (DESIGN §4.3)."""
+    """``GET /info`` capability document (see `docs/http_contract.md`)."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -284,7 +284,7 @@ def _maybe_load_naturelm(snapshot_path: str) -> Any | None:  # noqa: ANN401
             ),
         ) from exc
 
-    # Note: the NatureLM-audio v1.x codebase historically expects a concrete torch
+    # Note: the NatureLM-audio v1.x codebase expects a concrete torch
     # device ("cuda", "cuda:0", "cpu") rather than HF-style device maps.
     device = os.environ.get("NATURELM_DEVICE", "cuda:0")
     try:
@@ -319,7 +319,7 @@ def _maybe_load_naturelm(snapshot_path: str) -> Any | None:  # noqa: ANN401
             .eval()
         )
     except Exception as exc:  # noqa: BLE001
-        # Print the full traceback so a load failure is not mistaken for a stall.
+        # Print the full traceback for load failures.
         import traceback as _tb
 
         print(
@@ -924,7 +924,7 @@ def health() -> dict[str, Any]:
 
 @app.get("/info")
 def info() -> InfoResponse:
-    """Server capability discovery (DESIGN §4.3).
+    """Server capability discovery (see `docs/http_contract.md`).
 
     Returns
     -------

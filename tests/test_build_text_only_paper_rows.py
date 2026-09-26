@@ -131,7 +131,7 @@ def test_build_rows_scales_units_and_preserves_missing_tasks(
     assert acoustic["values"]["description_mcq"] == pytest.approx(34.5)
     assert acoustic["values"]["snr_regression"] == pytest.approx(3.21)
 
-    semantic = result["tables"]["semantic_v2"]
+    semantic = result["tables"]["semantic"]
     assert semantic["values"]["bird"] == pytest.approx(50.0)
     assert semantic["values"]["fixed"] == pytest.approx(25.0)
     assert semantic["values"]["behavior"] == pytest.approx(75.0)
@@ -140,7 +140,7 @@ def test_build_rows_scales_units_and_preserves_missing_tasks(
     assert semantic["values"]["begging"] is None
     assert "--" in semantic["latex_row"]
 
-    structural = result["tables"]["structural_v3"]
+    structural = result["tables"]["structural"]
     assert structural["values"]["species_count"] == pytest.approx(1.25)
     assert structural["values"]["frequency"] == pytest.approx(40.0)
     assert structural["values"]["summary"] == pytest.approx(8.0)
@@ -171,9 +171,7 @@ def test_frequency_mean_counts_rows_without_scores_as_zero(
         encoding="utf-8",
     )
     result = row_builder.build_rows(summary_path, "Test model")
-    assert result["tables"]["structural_v3"]["values"]["frequency"] == pytest.approx(
-        25.0
-    )
+    assert result["tables"]["structural"]["values"]["frequency"] == pytest.approx(25.0)
 
 
 def test_frequency_prefers_portable_sibling_over_stale_output_dir(
@@ -196,7 +194,7 @@ def test_frequency_prefers_portable_sibling_over_stale_output_dir(
     frequency["output_dir"] = "/missing/original/path"
     summary_path.write_text(json.dumps(raw), encoding="utf-8")
     result = row_builder.build_paper_rows(summary_path, "Test model")
-    assert result["tables"]["structural_v3"]["values"]["frequency"] == 25.0
+    assert result["tables"]["structural"]["values"]["frequency"] == 25.0
 
 
 def test_wrong_metric_name_is_a_clear_error(
@@ -255,7 +253,7 @@ def test_undefined_numeric_metric_remains_unreported(
         )
     )
     result = row_builder.build_paper_rows(path, "Silent model")
-    assert result["tables"]["structural_v3"]["values"]["species_count"] is None
+    assert result["tables"]["structural"]["values"]["species_count"] is None
 
 
 def test_task_ids_are_exported(
@@ -279,8 +277,8 @@ def test_task_ids_are_exported(
             }
         )
     )
-    values = row_builder.build_paper_rows(path, "Test model")["tables"][
-        "semantic_v2"
-    ]["values"]
+    values = row_builder.build_paper_rows(path, "Test model")["tables"]["semantic"][
+        "values"
+    ]
     assert values["insect"] == 25.0
     assert values["begging"] == 75.0

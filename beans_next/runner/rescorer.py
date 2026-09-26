@@ -1,6 +1,6 @@
 """Rescore existing prediction artifacts on CPU.
 
-This module supports the Phase-3 utility CLI:
+This module backs the utility CLI:
 
 `beans-next score-from-file <predictions.jsonl>`
 
@@ -120,11 +120,10 @@ def _default_postprocess_steps(
     ]
     task_s = (task_type or "").lower()
 
-    # Open-ended tasks preserve free text; label parsing would corrupt it and,
-    # for captioning specifically, would silently turn every reference caption
-    # into a comma-split "label vocabulary" and fuzzy-match (Levenshtein) each
-    # prediction against all of it — O(n^2) over the whole corpus and never
-    # semantically meaningful, since CIDEr (not label matching) scores these.
+    # Open-ended tasks preserve free text: label parsing would split reference
+    # captions into a comma-separated "label vocabulary" and fuzzy-match each
+    # prediction against it, which is quadratic in corpus size and not
+    # meaningful, since CIDEr (not label matching) scores these tasks.
     # Mirrors the live runner's `_postprocess_steps_for_examples`.
     from beans_next.post_process.answers import FREE_TEXT_TASKS
 
@@ -226,7 +225,7 @@ def rescore_predictions_file(
         Task type string (e.g. ``"classification"``, ``"detection"``).  When
         provided, selects the correct post-processing pipeline and routes
         ``score_sample`` appropriately.  When ``None``, detection-style
-        post-processing is used (backward-compatible default).
+        post-processing is used.
     Returns
     -------
     RunSummary

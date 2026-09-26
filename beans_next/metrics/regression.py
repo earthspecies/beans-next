@@ -89,7 +89,7 @@ def extract_numeric_value(
 ) -> float:
     """Extract an unambiguous scalar or range midpoint, independently of targets.
 
-    ``target_value`` is retained for API compatibility and intentionally ignored.
+    ``target_value`` is accepted but ignored; extraction never uses the target.
     Explicit kHz values are converted to Hz. Multiple distinct measurements,
     incompatible units, and unrelated numbers are rejected rather than guessed.
 

@@ -104,8 +104,8 @@ def _mcq_content_match(y_pred: str, y_true: str, pred_mcq: str | None) -> bool:
     bool
         Whether the full label matches exactly.
     """
-    # Legacy full-label artifacts without the original question support only
-    # literal letter/content equivalence. Never search the answer for GT text.
+    # Without the original question, full-label targets support only literal
+    # letter/content equivalence. Never search the answer for GT text.
     match = re.match(r"^\s*\(?([a-h])\)?[).:\s]+(.+)$", y_true, re.I)
     if not match:
         return False
@@ -454,7 +454,8 @@ def score_sample(
         task = meta.get("task") if isinstance(meta, dict) else None
         task_s = task.lower() if isinstance(task, str) else ""
 
-    # Scoring must never inherit target-vocabulary snapping from old artifacts.
+    # Free-text scoring recomputes the answer from raw text rather than using
+    # target-vocabulary snapping stored in prediction artifacts.
     if task_s in FREE_TEXT_TASKS and raw_predictions:
         processed = clean_answer(pred_text)
 

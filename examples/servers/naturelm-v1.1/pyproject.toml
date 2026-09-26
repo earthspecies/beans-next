@@ -23,7 +23,7 @@ dependencies = [
 # Real inference deps (GPU required; keep launcher-only).
 real = [
   "transformers>=5.3.0",
-  # Pin to a CUDA-12-compatible PyTorch; unpinned torch may require a newer driver.
+  # Pinned to a CUDA 12 build of PyTorch.
   "torch==2.5.1",
   "torchaudio==2.5.1",
   "sympy>=1.13.1",

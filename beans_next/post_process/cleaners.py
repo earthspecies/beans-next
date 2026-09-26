@@ -615,15 +615,15 @@ def apply_extract_hz_bucket_from_text(
 
     mapped: list[str] = []
     for seg in ctx.segments:
-        # Special-case: NatureLM sometimes emits a range like "2131-4440 Hz"
-        # which is best interpreted as deci-Hz (213.1–444.0 Hz). Use the midpoint.
+        # Special-case: a range like "2131-4440 Hz" is interpreted as deci-Hz
+        # (213.1–444.0 Hz). Use the midpoint.
         m_range = _HZ_RANGE_RE.search(seg)
         if m_range is not None:
             try:
                 a = float(m_range.group("a"))
                 b = float(m_range.group("b"))
                 # Heuristic: if both ends are "too large" for plausible F0 (Hz),
-                # interpret as deci-Hz. This matches observed NatureLM outputs.
+                # interpret as deci-Hz.
                 scale = 0.1 if (a >= 1000 and b >= 1000 and max(a, b) <= 50000) else 1.0
                 mapped.append(_nearest_bucket(((a + b) / 2.0) * scale))
                 continue

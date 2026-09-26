@@ -124,8 +124,8 @@ def beans_next_multiaudio_row_filter(
 ) -> Callable[[Mapping[str, Any]], bool]:
     """Build a row predicate for unified BEANS-Next tables (``tier`` / ``task``).
 
-    Rows from the Hub use integer ``tier`` (1–4) and string ``task``; legacy tables
-    may still expose string tiers (e.g. ``\"tier_4_in_context\"``) or ``subset``.
+    Rows from the Hub use integer ``tier`` (1–4) and string ``task``; other tables
+    may expose string tiers (e.g. ``\"tier_4_in_context\"``) or ``subset``.
 
     Parameters
     ----------
@@ -185,7 +185,7 @@ def iter_hf_streaming_multiaudio_examples(
     config_name
         Optional Hub builder config. Use ``None`` for a **single-config** dataset
         (e.g. ``iclr2027anon/BEANS-Next``) where ``tier`` and ``task`` are
-        columns on each row. Pass a string only for legacy multi-config repos.
+        columns on each row. Pass a string only for multi-config repos.
     revision
         Optional Hub revision.
     task_id

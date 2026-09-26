@@ -55,16 +55,16 @@ _ANNOTATION_COLUMNS = (
 
 
 def compact_hub_row(row: Mapping[str, Any]) -> tuple[dict[str, Any], dict[str, str]]:
-    """Separate one legacy Hub row into evaluation metadata and provenance.
+    """Separate one full-schema Hub row into evaluation metadata and provenance.
 
     Preserve both identifiers, existing messages, and all audio paths. Convert
-    legacy instruction/output pairs without changing their text. Keep task
+    instruction/output pairs without changing their text. Keep task
     annotations in JSON metadata and move construction details to provenance.
 
     Parameters
     ----------
     row
-        A legacy row containing every column in `MAIN_COLUMNS`.
+        A full-schema row containing every column in `MAIN_COLUMNS`.
 
     Returns
     -------
@@ -80,7 +80,7 @@ def compact_hub_row(row: Mapping[str, Any]) -> tuple[dict[str, Any], dict[str, s
     """
     missing = set(MAIN_COLUMNS) - row.keys()
     if missing:
-        raise ValueError(f"Missing legacy columns: {sorted(missing)}")
+        raise ValueError(f"Missing required columns: {sorted(missing)}")
     if any(not isinstance(row[k], str) or not row[k] for k in ("id", "sample_id")):
         raise ValueError("Both id and sample_id must be nonempty strings")
     result = {k: row[k] for k in MAIN_COLUMNS}

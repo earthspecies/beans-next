@@ -11,7 +11,7 @@ Stub mode (``AF3_STUB=1``):
     testing and CPU-only validation.
 
 Real inference (``AF3_STUB=0``, default when env var is absent):
-    Loads the model at startup (requires GPU + transformers ≥ 4.47).
+    Loads the model at startup (requires a GPU and transformers 5.16.1).
     Audio is accepted as ``base64_wav``, ``file_path``, or ``file_url``;
     base64 and URL payloads are written to a per-request temp directory
     that is cleaned up after each call.
@@ -47,10 +47,8 @@ PREDICTIONS_V1: Literal["predictions_v1"] = "predictions_v1"
 LAUNCHER_NAME: str = "beans-next-af-next"
 _DEFAULT_MODEL_ID: str = "nvidia/audio-flamingo-next-hf"
 _DEFAULT_MAX_NEW_TOKENS: int = 512
-# Optional cap on input audio length. AF-Next itself has no length guard, so a
-# single long recording can blow past the processor's windowing and trip a CUDA
-# index assert. BEANS-Next also needs a *uniform* cap across launchers so models
-# are compared on the same input. 0 / unset means "no cap".
+# Optional cap on input audio length. A uniform cap across launchers ensures
+# models are compared on the same input. 0 / unset means "no cap".
 _DEFAULT_MAX_AUDIO_SECONDS: float = float(
     os.environ.get("AF3_MAX_AUDIO_SECONDS", "0") or 0
 )
@@ -109,10 +107,8 @@ _LOAD_STATE = _LoadState()
 _LOAD_LOCK = threading.Lock()
 
 # FastAPI runs the sync `/predict` handler in a threadpool, so several requests
-# can reach the model at once. A single CUDA model instance is not thread-safe:
-# concurrent `model.generate()` calls corrupt the processor's windowing indices
-# and trip `IndexKernel.cu: index out of bounds`, which poisons the CUDA context
-# so every later request returns empty. Serialize all GPU work behind one lock.
+# can reach the model at once. A single CUDA model instance is not thread-safe,
+# so all GPU work is serialized behind one lock.
 _INFER_LOCK = threading.Lock()
 
 
@@ -155,13 +151,10 @@ def _load_model() -> None:
         model_id, **({"revision": revision} if revision else {})
     )
     _install_safe_audio_processor_call(_processor)
-    # `AutoModel` resolves to the *base* MusicFlamingoModel on released
-    # Transformers, which has no `generate` -- every request then fails with
-    # "'MusicFlamingoModel' object has no attribute 'generate'". Honour the
-    # class the checkpoint's config declares
+    # `AutoModel` resolves to the base MusicFlamingoModel, which has no
+    # `generate`. Load the class the checkpoint's config declares
     # (`MusicFlamingoForConditionalGeneration`, which mixes in GenerationMixin)
-    # instead of guessing an Auto* alias, so this keeps working if the
-    # checkpoint's architecture is renamed.
+    # instead of an Auto* alias.
     model_cls: Any = AutoModel
     cfg = AutoConfig.from_pretrained(
         model_id, **({"revision": revision} if revision else {})
@@ -361,9 +354,9 @@ def _install_safe_audio_processor_call(processor: object) -> None:
     """Prevent zero-token trailing windows in the pinned HF processor.
 
     Transformers splits audio into 30-second windows. A trailing window shorter
-    than three Whisper hop frames produces zero encoder tokens. The upstream
-    timestamp code then performs an out-of-range CUDA index and poisons the model
-    process. Drop only that unusable sub-30-ms tail before feature extraction.
+    than three Whisper hop frames produces zero encoder tokens, which the
+    timestamp code cannot index. Drop only that unusable sub-30-ms tail before
+    feature extraction.
     """
     processor_class = type(processor)
     if getattr(processor_class, "_beans_next_safe_tail_patch", False):
@@ -472,27 +465,24 @@ def _truncate_audio(path: str, max_seconds: float, tmp_dir: str) -> str:
 
 
 def _install_multi_audio_validation(processor: object) -> str:  # noqa: C901
-    """Swap AF-Next's batch-parity assertion for the check it should be making.
+    """Replace AF-Next's batch-parity check with a placeholder/audio parity check.
 
     `AudioFlamingo3Processor.validate_inputs` raises
     `Got {len(text)} text but {len(audio)} audios; they must match 1:1` -- it
     compares the *batch size* to the audio count, so a single conversation
-    carrying N clips is rejected. That is the wrong comparison for this model:
+    carrying N clips is rejected. This launcher needs multi-audio conversations:
 
     - the paper describes training on multi-turn, multi-audio interleaved data,
       and the model card lists 1M multi-audio instruction examples;
     - the library's own chat template renders one `<sound>` placeholder per clip
-      for a multi-turn conversation, then this check rejects what it produced;
-    - with the assertion removed the rest of the pipeline is correct -- audio
+      for a multi-turn conversation;
+    - without the batch-parity assertion the rest of the pipeline handles it -- audio
       features come back as (N, 128, 3000) and each `<sound>` expands to its
       own duration-derived token span with none left unconsumed.
 
-    So rather than dropping validation, this replaces it with the correct
-    invariant: the number of audio placeholders must equal the number of audio
-    inputs. Every other check in the base `ProcessorMixin` still runs. The swap
-    is skipped when the upstream assertion is absent, so it becomes a no-op once
-    transformers is fixed (still present in 5.16.1 and on main as of
-    2026-09-07).
+    The replacement checks that the number of audio placeholders equals the
+    number of audio inputs. Every other check in the base `ProcessorMixin` still
+    runs. The replacement is skipped when the batch-parity assertion is absent.
 
     Parameters
     ----------
@@ -515,7 +505,7 @@ def _install_multi_audio_validation(processor: object) -> str:  # noqa: C901
     except (OSError, TypeError):
         src = ""
     if "must match 1:1" not in src:
-        return "not needed: upstream batch-parity assertion is gone"
+        return "not needed: processor has no batch-parity assertion"
 
     audio_token = getattr(processor, "audio_token", None) or "<sound>"
 

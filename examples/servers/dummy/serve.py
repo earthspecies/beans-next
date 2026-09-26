@@ -105,7 +105,7 @@ class PredictionsV1Response(BaseModel):
 
 
 class InfoResponse(BaseModel):
-    """``GET /info`` capability document (DESIGN §4.3)."""
+    """``GET /info`` capability document (see `docs/http_contract.md`)."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -223,7 +223,7 @@ def health() -> dict[str, str]:
 
 @app.get("/info")
 def info() -> InfoResponse:
-    """Server capability discovery (DESIGN §4.3).
+    """Server capability discovery (see `docs/http_contract.md`).
 
     Returns
     -------

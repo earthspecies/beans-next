@@ -493,7 +493,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     p_list = sub.add_parser(
         "list",
-        help="List bundled registry YAML files (prompts, future dataset/suite ids).",
+        help="List bundled registry YAML files (prompts, eval tasks, suites, models).",
     )
     p_list.add_argument(
         "--kind",

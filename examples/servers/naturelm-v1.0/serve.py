@@ -180,7 +180,7 @@ class PredictionsV1Response(BaseModel):
 
 
 class InfoResponse(BaseModel):
-    """``GET /info`` capability document (DESIGN §4.3)."""
+    """``GET /info`` capability document (see `docs/http_contract.md`)."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -427,8 +427,8 @@ def _load_real_pipeline(model_name: str, device: str) -> object:  # noqa: ANN401
 class _HFTransformersPipeline:
     """Best-effort wrapper exposing `infer(messages, audio, sample_rate)`.
 
-    This is used only when `NatureLM.infer.Pipeline` is unavailable (e.g. GitHub
-    install path is blocked on this host).
+    This is used only when `NatureLM.infer.Pipeline` is unavailable (e.g. the
+    NatureLM-audio package is not installed).
     """
 
     def __init__(self, model: object, processor: object, device: str) -> None:
@@ -582,8 +582,8 @@ def _generation_kwargs_from_messages(messages: list[dict[str, Any]]) -> dict[str
     dict[str, Any]
         Keyword arguments passed to `model.generate`.
     """
-    # This launcher only needs minimal compatibility for a bring-up check. If the
-    # model requires a richer API (chat templates, etc.), we fail fast elsewhere.
+    # Only minimal generation settings are needed here. If the model requires a
+    # richer API (chat templates, etc.), inference fails fast elsewhere.
     return {"max_new_tokens": 256}
 
 

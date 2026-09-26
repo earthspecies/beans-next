@@ -7,7 +7,7 @@ from collections.abc import Mapping
 from typing import Any
 
 INVALID_ANSWER = "__invalid_answer__"
-SCORING_VERSION = "2026-09-25-v7"
+SCORING_VERSION = "1.0"
 FREE_TEXT_TASKS = frozenset(
     {
         "captioning",

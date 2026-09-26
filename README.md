@@ -60,7 +60,7 @@ Server contract tests use local HTTP ports. They do not require GPUs or model we
 - `configs/`: a portable evaluation configuration.
 - `examples/servers/`: model adapters and a dummy server.
 - `scripts/`: server checks, result tables, and Gaussian-noise analysis.
-- `tests/`: local fixtures and regression tests.
+- `tests/`: local fixtures and tests.
 
 ## License
 

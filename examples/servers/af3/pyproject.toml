@@ -9,9 +9,7 @@ dependencies = [
   "pydantic==2.11.7",
 ]
 
-# PyTorch CUDA wheels: install from the official index so the build matches the
-# NVIDIA driver. Default PyPI `torch` may resolve to a newer CUDA build that the
-# driver does not support.
+# PyTorch CUDA wheels: install the CUDA 12.4 build from the official PyTorch index.
 [tool.uv]
 [[tool.uv.index]]
 name = "pytorch-cu124"

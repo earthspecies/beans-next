@@ -3,25 +3,26 @@
 The compact Hub layout uses:
 
 - ``test/metadata.parquet``: one row per evaluation sample. Filter rows with the
-  string ``task`` column (legacy tables may still expose ``subset``). ``tier``
+  string ``task`` column (tables may expose ``subset`` instead). ``tier``
   is an integer (1–4). All tiers store prompts and targets in ``messages``.
   ``id`` identifies the example. ``audio_paths`` contains ordered paths
   relative to the metadata directory, such as
   ``audio/<sha256[:2]>/<sha256>.wav``. Example IDs are separate from audio hashes.
   Multi-audio rows put reference clips first and the query last.
-  Alternate and legacy column names remain supported;
+  Alternate column names are also supported;
   see :func:`_multiaudio_repo_rel_paths`.
 - ``test/audio/``: WAV (or other) files referenced by those paths (not embedded in
   Parquet).
 
 Ordered ``source_datasets`` and related source fields describe audio provenance.
-Earlier releases may also contain ``sample_id`` and a separate provenance table.
+Rows may also contain ``sample_id``, with provenance in a separate table.
 
-Older tables with dedicated ``instruction`` and ``output`` columns remain
-supported, as do metadata files at the repository root.
+Tables with dedicated ``instruction`` and ``output`` columns are also
+supported, as are metadata files at the repository root.
 
-Older revisions used ``beans_next_metadata.parquet`` + ``beans_next_audio.parquet``
-(with ``audio_bytes``). That path remains supported when those files are present.
+An alternative single-file layout uses ``beans_next_metadata.parquet`` +
+``beans_next_audio.parquet`` (with ``audio_bytes``). It is used when those files
+are present.
 
 Callers use :func:`iter_hf_beans_next_examples` with a ``subset`` argument that
 must match the Hub ``task`` string (e.g. ``\"crow-description\"``,
@@ -48,9 +49,9 @@ from beans_next.api.types import DatasetExample
 from beans_next.prompts.audio_tags import AUDIO_PLACEHOLDER
 
 BEANS_NEXT_HUB_REPO_ID: Final[str] = "iclr2027anon/BEANS-Next"
-_METADATA_PARQUET_LEGACY: Final[str] = "beans_next_metadata.parquet"
+_METADATA_PARQUET_ALT: Final[str] = "beans_next_metadata.parquet"
 _METADATA_PARQUET_CANONICAL: Final[str] = "metadata.parquet"
-_AUDIO_PARQUET_LEGACY: Final[str] = "beans_next_audio.parquet"
+_AUDIO_PARQUET_ALT: Final[str] = "beans_next_audio.parquet"
 _METADATA_FILE_ENV: Final[str] = "BEANS_NEXT_HF_BEANS_NEXT_METADATA_FILE"
 _HF_SPLIT_DIRNAME_ENV: Final[str] = "BEANS_NEXT_HF_BEANS_NEXT_SPLIT_DIR"
 _LOCAL_ROOT_ENV: Final[str] = "BEANS_NEXT_HF_BEANS_NEXT_ROOT"
@@ -78,7 +79,6 @@ TIER_2_SUBSETS: Final[frozenset[str]] = frozenset(
         "alarm-call-presence",
         "flight-call-presence",
         "call-type-fixed-vocab",
-        # Added in the 2026-09 refresh; absent from revisions before it.
         "insect-presence",
         "begging-call-presence",
     }
@@ -417,7 +417,7 @@ def _hub_metadata_filename(repo_id: str, revision: str) -> str:
     Returns
     -------
     str
-        Filename such as ``metadata.parquet`` or the legacy metadata name.
+        Filename such as ``metadata.parquet`` or the alternative metadata name.
 
     Raises
     ------
@@ -430,7 +430,7 @@ def _hub_metadata_filename(repo_id: str, revision: str) -> str:
     split_dir = os.environ.get(_HF_SPLIT_DIRNAME_ENV, "").strip()
     candidates = [
         _METADATA_PARQUET_CANONICAL,
-        _METADATA_PARQUET_LEGACY,
+        _METADATA_PARQUET_ALT,
         "test/metadata.parquet",
         "test/beans_next_metadata.parquet",
         "train/metadata.parquet",
@@ -439,7 +439,7 @@ def _hub_metadata_filename(repo_id: str, revision: str) -> str:
     if split_dir:
         candidates = [
             f"{split_dir.strip().rstrip('/')}/{_METADATA_PARQUET_CANONICAL}",
-            f"{split_dir.strip().rstrip('/')}/{_METADATA_PARQUET_LEGACY}",
+            f"{split_dir.strip().rstrip('/')}/{_METADATA_PARQUET_ALT}",
         ] + candidates
     if _configured_local_root() is not None:
         for name in candidates:
@@ -459,19 +459,19 @@ def _hub_metadata_filename(repo_id: str, revision: str) -> str:
             return name
     msg = (
         f"No metadata parquet found in {repo_id}@{revision!r}; expected "
-        f"{_METADATA_PARQUET_CANONICAL!r} or {_METADATA_PARQUET_LEGACY!r}"
+        f"{_METADATA_PARQUET_CANONICAL!r} or {_METADATA_PARQUET_ALT!r}"
     )
     raise RuntimeError(msg)
 
 
-def _hub_has_legacy_audio_parquet(repo_id: str, revision: str) -> bool:
+def _hub_has_audio_parquet(repo_id: str, revision: str) -> bool:
     if _configured_local_root() is not None:
         try:
-            _local_snapshot_file(_AUDIO_PARQUET_LEGACY)
+            _local_snapshot_file(_AUDIO_PARQUET_ALT)
         except FileNotFoundError:
             return False
         return True
-    return _AUDIO_PARQUET_LEGACY in _hub_dataset_files(repo_id, revision)
+    return _AUDIO_PARQUET_ALT in _hub_dataset_files(repo_id, revision)
 
 
 def _hf_download_audio_path(
@@ -524,7 +524,7 @@ def _row_matches_task(row: Mapping[str, Any], task: str) -> bool:
     Returns
     -------
     bool
-        ``True`` when ``row["task"]`` or legacy ``row["subset"]`` equals ``task``.
+        ``True`` when ``row["task"]`` or ``row["subset"]`` equals ``task``.
     """
     if row.get("task") == task:
         return True
@@ -537,7 +537,7 @@ def _single_audio_rel_path(row: Mapping[str, Any]) -> str | None:
     Returns
     -------
     str | None
-        The sole ``audio_paths`` entry, or a supported legacy audio path.
+        The sole ``audio_paths`` entry, or a ``file_name`` / ``audio_id`` path.
 
     Raises
     ------
@@ -573,16 +573,16 @@ def _placeholder_count_from_messages(row: Mapping[str, Any]) -> int | None:
 def _multiaudio_repo_rel_paths(row: Mapping[str, Any]) -> list[str] | None:
     """Pick ordered repo-relative paths for multi-audio rows.
 
-    Append the query to reference-only contexts. Legacy exports put the whole
+    Append the query to reference-only contexts. Some tables put the whole
     ordered sequence in the context column and duplicate its first entry in the
     query column; preserve that complete sequence without replacing its tail.
 
-    This function supports both the newer column names:
+    Each column is read under either of two names:
 
-    - ``query_source_path`` (formerly ``query_audio_path``)
-    - ``context_source_paths`` (formerly ``context_audio_paths``)
-    - ``source_audio_paths`` (formerly ``audio_paths``)
-    - ``original_source_path`` (formerly ``audio_path_original_sample_rate``)
+    - ``query_source_path`` or ``query_audio_path``
+    - ``context_source_paths`` or ``context_audio_paths``
+    - ``source_audio_paths`` or ``audio_paths``
+    - ``original_source_path`` or ``audio_path_original_sample_rate``
 
     Returns
     -------
@@ -665,7 +665,7 @@ def _load_audio_map(
     revision: str,
     needed_ids: set[str],
 ) -> dict[str, bytes]:
-    """Scan legacy ``beans_next_audio.parquet`` for WAV bytes by ``audio_id``.
+    """Scan ``beans_next_audio.parquet`` for WAV bytes by ``audio_id``.
 
     Returns
     -------
@@ -679,7 +679,7 @@ def _load_audio_map(
     """
     if not needed_ids:
         return {}
-    audio_path = _local_hub_file(repo_id, _AUDIO_PARQUET_LEGACY, revision=revision)
+    audio_path = _local_hub_file(repo_id, _AUDIO_PARQUET_ALT, revision=revision)
     out: dict[str, bytes] = {}
     for row in iter_parquet_row_dicts(audio_path):
         aid = row.get("audio_id")
@@ -694,7 +694,7 @@ def _load_audio_map(
     missing = needed_ids - frozenset(out)
     if missing:
         raise RuntimeError(
-            f"{_AUDIO_PARQUET_LEGACY} missing audio_id(s): "
+            f"{_AUDIO_PARQUET_ALT} missing audio_id(s): "
             + ", ".join(sorted(missing)[:12])
             + (" …" if len(missing) > 12 else "")
         )
@@ -748,25 +748,27 @@ def _iter_single_examples(
             )
         return
 
-    legacy_audio = _hub_has_legacy_audio_parquet(repo_id, revision)
+    has_audio_parquet = _hub_has_audio_parquet(repo_id, revision)
     rels: list[str | None] = [_single_audio_rel_path(r) for r in meta_rows]
-    legacy_ids: set[str] = set()
+    parquet_audio_ids: set[str] = set()
     for row, rel in zip(meta_rows, rels, strict=True):
         if rel is None:
             aid = row.get("audio_id")
             if isinstance(aid, str) and aid.strip():
-                legacy_ids.add(aid.strip())
+                parquet_audio_ids.add(aid.strip())
 
     audio_map: dict[str, bytes] = {}
-    if legacy_ids:
-        if not legacy_audio:
-            keys_preview = ", ".join(sorted(legacy_ids)[:8])
+    if parquet_audio_ids:
+        if not has_audio_parquet:
+            keys_preview = ", ".join(sorted(parquet_audio_ids)[:8])
             raise RuntimeError(
                 "Single-audio Hub rows lack file_name/audio paths but "
-                f"{_AUDIO_PARQUET_LEGACY!r} is not in the repo. audio_id(s): "
+                f"{_AUDIO_PARQUET_ALT!r} is not in the repo. audio_id(s): "
                 f"{keys_preview}"
             )
-        audio_map = _load_audio_map(repo_id, revision=revision, needed_ids=legacy_ids)
+        audio_map = _load_audio_map(
+            repo_id, revision=revision, needed_ids=parquet_audio_ids
+        )
 
     to_fetch = [r for r in rels if r is not None]
     path_by_rel = _prefetch_hub_files(
@@ -888,27 +890,27 @@ def _iter_multiaudio_examples(
             )
         return
 
-    legacy_audio = _hub_has_legacy_audio_parquet(repo_id, revision)
+    has_audio_parquet = _hub_has_audio_parquet(repo_id, revision)
 
-    needed_legacy: set[str] = set()
+    needed_parquet_ids: set[str] = set()
     for _sid, row, rels, ids in raw_plan:
         if rels is not None:
             continue
         if ids is not None:
-            needed_legacy.update(ids)
+            needed_parquet_ids.update(ids)
         qid = row.get("query_audio_id")
         if isinstance(qid, str) and qid.strip():
-            needed_legacy.add(qid.strip())
+            needed_parquet_ids.add(qid.strip())
 
     audio_map: dict[str, bytes] = {}
-    if needed_legacy:
-        if not legacy_audio:
+    if needed_parquet_ids:
+        if not has_audio_parquet:
             raise RuntimeError(
                 "multiaudio row missing repo-relative audio paths and "
-                f"{_AUDIO_PARQUET_LEGACY!r} is not available for subset={subset!r}"
+                f"{_AUDIO_PARQUET_ALT!r} is not available for subset={subset!r}"
             )
         audio_map = _load_audio_map(
-            repo_id, revision=revision, needed_ids=needed_legacy
+            repo_id, revision=revision, needed_ids=needed_parquet_ids
         )
 
     all_rels: list[str] = []
@@ -954,7 +956,7 @@ def _iter_multiaudio_examples(
         if n_slots == len(paths) + 1:
             paths.append(q_path)
         elif n_slots != len(paths):
-            raise ValueError("Legacy audio IDs do not match prompt audio slots")
+            raise ValueError("Audio IDs do not match prompt audio slots")
         q_path = paths[-1]
         raw_rows.append((sample_id, row, paths, q_path))
 
@@ -1001,7 +1003,7 @@ def iter_hf_beans_next_examples(
 ) -> Iterator[DatasetExample]:
     """Yield ``DatasetExample`` rows for a BEANS-Next subset from HuggingFace Hub.
 
-    Reads ``metadata.parquet`` (or the legacy metadata filename), resolves
+    Reads ``metadata.parquet`` (or the alternative metadata filename), resolves
     repo-relative audio paths under ``audio/``, and routes to the single-audio
     loader for tiers 1–3 or the multi-audio loader for tier 4, based on the
     built-in subset catalog.
@@ -1024,7 +1026,7 @@ def iter_hf_beans_next_examples(
     workers
         Parallel download / WAV materialization threads when ``>1``.
     load_audio
-        Resolve audio files and materialize legacy audio bytes. When ``False``,
+        Resolve audio files and materialize embedded audio bytes. When ``False``,
         yield metadata-only rows without accessing audio files.
 
     Yields

@@ -114,8 +114,8 @@ def test_beans_next_metadata_only_loader_does_not_resolve_audio(
     )
     monkeypatch.setattr(
         beans_next_hub,
-        "_hub_has_legacy_audio_parquet",
-        lambda *_args, **_kwargs: pytest.fail("legacy audio must not be inspected"),
+        "_hub_has_audio_parquet",
+        lambda *_args, **_kwargs: pytest.fail("audio parquet must not be inspected"),
     )
 
     examples = list(
@@ -165,8 +165,8 @@ def test_beans_next_multiaudio_metadata_only_loader_skips_all_audio(
     )
     monkeypatch.setattr(
         beans_next_hub,
-        "_hub_has_legacy_audio_parquet",
-        lambda *_args, **_kwargs: pytest.fail("legacy audio must not be inspected"),
+        "_hub_has_audio_parquet",
+        lambda *_args, **_kwargs: pytest.fail("audio parquet must not be inspected"),
     )
 
     examples = list(

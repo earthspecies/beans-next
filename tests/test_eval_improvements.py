@@ -84,16 +84,15 @@ class TestExtractLabelLevenshteinFallback:
 
 
 # ---------------------------------------------------------------------------
-# Regression: binary Yes/No must not be comma-split
+# Binary Yes/No must not be comma-split
 # ---------------------------------------------------------------------------
 
 
 class TestBinaryYesNoDoesNotCommaSplit:
     """Verbose Yes/No answers must map to a single label (no duplication).
 
-    This reproduces the failure mode where OpenAI returns prose like
-    "Yes, there is a bird vocalizing..." and the comma-split parser turns it
-    into fragments which then fuzzy-match back to "Yes" repeatedly.
+    Covers prose like "Yes, there is a bird vocalizing...", which a
+    comma-split parser would turn into fragments that each fuzzy-match "Yes".
     """
 
     @pytest.mark.parametrize(
@@ -114,7 +113,7 @@ class TestBinaryYesNoDoesNotCommaSplit:
     def test_score_from_file_default_pipeline(self, raw: str, expected: str) -> None:
         parsers, cleaners = _default_postprocess_steps(
             targets=["Yes", "No"],
-            task_type=None,  # critical: the buggy case was task_type omitted
+            task_type=None,  # task_type omitted on purpose
         )
         result = run_post_process_pipeline(
             raw, parser_steps=parsers, cleaner_steps=cleaners
@@ -149,7 +148,7 @@ class TestMcqDoesNotCommaSplitAndChoosesFinalLetter:
     def test_score_from_file_default_pipeline(self, raw: str, expected: str) -> None:
         parsers, cleaners = _default_postprocess_steps(
             targets=["A", "B", "C", "D"],
-            task_type=None,  # critical: without task_type this used to comma-split
+            task_type=None,  # task_type omitted on purpose
         )
         result = run_post_process_pipeline(
             raw, parser_steps=parsers, cleaner_steps=cleaners
@@ -277,7 +276,7 @@ class TestComputeDatasetMap:
         Global vocab = {a, b}.  Sample 1 predicts [a], target [a, b].
         Sample 2 predicts [b], target [b].
 
-        Per-sample AP (old approach) would compute AP on each sample's local vocab.
+        Per-sample AP would compute AP on each sample's local vocab.
         Dataset MAP uses both samples for each class, so AP_b includes the
         negative evidence from sample 2 not predicting b initially, etc.
 

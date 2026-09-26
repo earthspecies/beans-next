@@ -1,4 +1,4 @@
-"""Runner regression: prompt render errors must be sample-level."""
+"""Runner: prompt render errors must be sample-level."""
 
 from __future__ import annotations
 

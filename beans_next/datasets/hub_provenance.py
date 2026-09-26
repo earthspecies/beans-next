@@ -154,7 +154,7 @@ def ordered_source_provenance(
 def restore_provenance_row(
     row: Mapping[str, Any], provenance: Mapping[str, Any]
 ) -> dict[str, Any]:
-    """Restore a legacy row, excluding fields added by a later schema.
+    """Restore the full source row, excluding columns listed as added.
 
     Parameters
     ----------
@@ -166,7 +166,7 @@ def restore_provenance_row(
     Returns
     -------
     dict
-        Exact row from before the compact-schema migration.
+        Exact full-schema row the compact row was derived from.
 
     Raises
     ------

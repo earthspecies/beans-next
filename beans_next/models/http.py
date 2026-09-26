@@ -275,7 +275,7 @@ class HttpClient:
         including retries).
     max_attempts
         Maximum attempts per logical operation (initial try plus retries).
-        Default ``3`` matches DESIGN §4.4 ("3 attempts").
+        Defaults to ``3``.
     backoff_initial
         Initial backoff lower bound in seconds before the first retry.
     backoff_max
@@ -285,7 +285,7 @@ class HttpClient:
     retry_policy
         Optional :class:`RetryPolicy` (or mapping accepted by
         :meth:`RetryPolicy.from_mapping`) to fully control retry decisions and
-        backoff. When provided, it takes precedence over the legacy
+        backoff. When provided, it takes precedence over the individual
         ``max_attempts``/backoff/retry flags.
     probe_on_init
         When ``True``, :meth:`probe_info` runs during construction so the client

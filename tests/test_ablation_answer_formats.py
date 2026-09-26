@@ -129,8 +129,8 @@ def test_rescore_refusal_wrong_and_normal_yes_no_preserved(tmp_path: Path) -> No
 
 
 def test_saved_options_not_current_shuffled_options() -> None:
-    old = {"instruction": "Which species?\nA: Parus major\nB: Galerida theklae"}
+    saved = {"instruction": "Which species?\nA: Parus major\nB: Galerida theklae"}
     shuffled = {"instruction": "Which species?\nA: Galerida theklae\nB: Parus major"}
-    assert parse_choice_set("Parus major", question_options(old)) == {"a"}
+    assert parse_choice_set("Parus major", question_options(saved)) == {"a"}
     assert parse_choice_set("Parus major", question_options(shuffled)) == {"b"}
-    assert parse_choice_set("A", question_options(old)) == {"a"}
+    assert parse_choice_set("A", question_options(saved)) == {"a"}

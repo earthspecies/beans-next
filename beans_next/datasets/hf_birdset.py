@@ -40,9 +40,9 @@ _BIRDSET_HF_REPO = "DBD-research-group/BirdSet"
 _EBIRD_TAXONOMY_CSV_ENV = "BEANS_NEXT_EBIRD_TAXONOMY_CSV"
 _EBIRD_TAXONOMY_FILENAME = "resources/ebird_codes/eBird_taxonomy_v2024.csv"
 
-# eBird codes used in the BirdSet HF dataset that were deprecated in later taxonomy
-# releases. Maps the old code to the current scientific name directly.
-_DEPRECATED_CODE_FALLBACK: dict[str, str] = {
+# eBird codes used in the BirdSet HF dataset that are absent from the bundled
+# taxonomy. Maps each code to its scientific name directly.
+_EXTRA_CODE_FALLBACK: dict[str, str] = {
     "runwre1": "Campylorhynchus rufinucha",
 }
 
@@ -165,7 +165,7 @@ def _ebird_taxonomy() -> dict[str, str]:
         _LOG.debug("ebird taxonomy: using env var path %s", csv_path)
         mapping = _parse_ebird_taxonomy_csv(csv_path)
         mapping.update(
-            {k: v for k, v in _DEPRECATED_CODE_FALLBACK.items() if k not in mapping}
+            {k: v for k, v in _EXTRA_CODE_FALLBACK.items() if k not in mapping}
         )
         return mapping
 
@@ -176,7 +176,7 @@ def _ebird_taxonomy() -> dict[str, str]:
     if bundled.is_file():
         mapping = json.loads(bundled.read_text())["species_code_to_scientific_name"]
         mapping.update(
-            {k: v for k, v in _DEPRECATED_CODE_FALLBACK.items() if k not in mapping}
+            {k: v for k, v in _EXTRA_CODE_FALLBACK.items() if k not in mapping}
         )
         return mapping
 
@@ -191,7 +191,7 @@ def _ebird_taxonomy() -> dict[str, str]:
         _LOG.debug("ebird taxonomy: downloaded to %s", downloaded)
         mapping = _parse_ebird_taxonomy_csv(downloaded)
         mapping.update(
-            {k: v for k, v in _DEPRECATED_CODE_FALLBACK.items() if k not in mapping}
+            {k: v for k, v in _EXTRA_CODE_FALLBACK.items() if k not in mapping}
         )
         return mapping
     except Exception as exc:

@@ -63,7 +63,7 @@ Each request item is a JSON object:
 
 #### Audio placeholder alignment
 
-Prompts may include `<Audio><AudioHere></Audio>` placeholders (see `DESIGN.md`).
+Prompts may include `<Audio><AudioHere></Audio>` placeholders.
 `audio_inputs[i]` aligns with the i-th `<AudioHere>` placeholder in the rendered prompt.
 
 ### Response

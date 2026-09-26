@@ -552,7 +552,7 @@ def materialize(
         seed_digest,
         cache_key,
     )
-    if cached is None:  # pragma: no cover - defensive against a broken filesystem
+    if cached is None:  # pragma: no cover - defensive against filesystem failures
         raise RuntimeError(
             f"Unable to publish Gaussian-noise cache entry: {audio_path}"
         )

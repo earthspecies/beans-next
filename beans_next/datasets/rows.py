@@ -71,7 +71,7 @@ def _build_dataset_example(
 ) -> DatasetExample:
     """Assemble a `DatasetExample` from a metadata row and a resolved audio path.
 
-    Accepts dedicated legacy ``instruction`` and ``output`` columns, or the
+    Accepts dedicated ``instruction`` and ``output`` columns, or the
     ``messages`` column used by every tier in the compact Hub schema.
 
     Parameters
@@ -197,7 +197,7 @@ def _build_multiaudio_dataset_example(
     audio_paths
         Resolved local WAV paths for all ``audio_paths`` entries.
     query_audio_path
-        Legacy fallback when the complete ordered audio list is unavailable.
+        Fallback when the complete ordered audio list is unavailable.
         Otherwise the final list entry is the query, including for single-audio
         prompt specs, so its waveform matches full multi-audio evaluation.
     split

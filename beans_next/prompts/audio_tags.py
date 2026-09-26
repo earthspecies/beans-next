@@ -1,7 +1,7 @@
 """Audio placeholder markers aligned with the `predictions_v1` prompt convention.
 
 The i-th entry in `audio_inputs` on the wire aligns with the i-th `AUDIO_HERE`
-placeholder in the rendered user/system message text (see DESIGN §4.1).
+placeholder in the rendered user/system message text (see ``docs/http_contract.md``).
 """
 
 # Outer wrapper (NatureLM-style multimodal marker)

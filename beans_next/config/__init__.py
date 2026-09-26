@@ -1,6 +1,6 @@
 """Configuration schemas + loaders.
 
-Currently includes:
+Includes:
 
 - Run-config loader for `beans-next run --config`
 - Eval-task schema (for registry validation)

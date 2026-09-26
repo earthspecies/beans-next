@@ -241,7 +241,7 @@ def _compute_cell(export_dir: Path, model: str, col: Column) -> float | None:
         from beans_next.post_process.answers import clean_answer
 
         # "None" is a literal reference, not missing data. Summary must use the
-        # full response, not an old species-only normalized artifact.
+        # full response, not a species-only normalized prediction.
         prediction_column = (
             "raw_prediction" if "raw_prediction" in df else "processed_prediction"
         )

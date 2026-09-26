@@ -6,7 +6,7 @@ The evaluator uses Hugging Face datasets only. BEANS-Next loads [the dataset rel
 BEANS-Zero and BirdSet have separate HF loaders because their schemas differ.
 
 For BEANS-Next, set `BEANS_NEXT_HF_BEANS_NEXT_ROOT` to a local HF snapshot directory.
-The directory can contain `test/metadata.parquet` and its audio files, or a supported older HF layout.
+The directory can contain `test/metadata.parquet` and its audio files, or another supported HF layout.
 Missing files cause an error. The local loader does not fall back to remote downloads.
 
 For BEANS-Next, revision precedence is: `--hf-revision`, `BEANS_NEXT_HF_REVISION`, task revision, then `main`.

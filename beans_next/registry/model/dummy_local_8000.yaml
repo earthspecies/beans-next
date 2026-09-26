@@ -11,7 +11,7 @@ audio_payload: base64_wav
 auth: {}
 
 # Optional: retry policy overrides for this endpoint preset.
-# Defaults shown here match `HttpClient`'s current behavior.
+# Values shown here match `HttpClient`'s defaults.
 retry_policy:
   max_attempts: 3
   backoff_initial: 1.0

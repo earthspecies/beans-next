@@ -19,10 +19,13 @@ from beans_next.prompts.audio_tags import AUDIO_PLACEHOLDER
 from beans_next.prompts.renderer import PromptRenderer, load_builtin_prompt_yaml
 
 
-@pytest.mark.parametrize("legacy", [False, True])
+@pytest.mark.parametrize("context_includes_query", [False, True])
 @pytest.mark.parametrize("workers", [1, 2])
 def test_snapshot_audio_order_and_query(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, legacy: bool, workers: int
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    context_includes_query: bool,
+    workers: int,
 ) -> None:
     root = tmp_path / "test"
     (root / "audio").mkdir(parents=True)
@@ -40,8 +43,8 @@ def test_snapshot_audio_order_and_query(
             {"role": "user", "content": prompt},
             {"role": "assistant", "content": "B"},
         ],
-        "context_audio_paths": names if legacy else names[:-1],
-        "query_audio_path": names[0] if legacy else names[-1],
+        "context_audio_paths": names if context_includes_query else names[:-1],
+        "query_audio_path": names[0] if context_includes_query else names[-1],
     }
     pq.write_table(pa.Table.from_pylist([row]), root / "metadata.parquet")
     monkeypatch.setenv("BEANS_NEXT_HF_BEANS_NEXT_ROOT", str(tmp_path))
@@ -133,7 +136,7 @@ def test_naturelm_v10_rejects_multi_audio_before_inference() -> None:
 
 
 @pytest.mark.parametrize("includes_query", [False, True])
-def test_legacy_audio_table_retains_query(
+def test_audio_table_retains_query(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, includes_query: bool
 ) -> None:
     from beans_next.datasets import beans_next_hub
@@ -145,7 +148,7 @@ def test_legacy_audio_table_retains_query(
         audio.append({"audio_id": key, "audio_bytes": buf.getvalue()})
     pq.write_table(pa.Table.from_pylist(audio), tmp_path / "beans_next_audio.parquet")
     row = {
-        "sample_id": "legacy",
+        "sample_id": "audio-table",
         "task": "crow-4way",
         "tier": 4,
         "messages": [{"role": "user", "content": AUDIO_PLACEHOLDER * 3}],

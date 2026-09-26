@@ -1619,7 +1619,7 @@ def _load_examples_for_eval_task(
     # Use eval task hf_path if set; else canonical BEANS-Next repo (not CLI hf-path
     # default EarthSpeciesProject/BEANS-Zero).
     repo_id = (eval_task.get("hf_path") or "").strip() or BEANS_NEXT_HUB_REPO_ID
-    # Explicit Hub task names take precedence over historical subset aliases.
+    # Explicit Hub task names take precedence over subset aliases.
     subset_name = eval_task.get("hf_subset") or eval_task.get("subset") or split
     if not isinstance(subset_name, str) or not subset_name.strip():
         raise SystemExit(
@@ -1634,8 +1634,8 @@ def _load_examples_for_eval_task(
         or "main"
     )
     # BEANS-Next on Hugging Face is a single-table Parquet dataset. We treat the
-    # benchmark split as "test" by default (older configs sometimes used
-    # subset-named splits, and HF defaults can be "train" depending on the card).
+    # benchmark split as "test" by default (HF defaults can be "train"
+    # depending on the card).
     hf_split = str(eval_task.get("hf_split") or "test")
     for ex in iter_hf_beans_next_examples(
         repo_id,
@@ -2162,9 +2162,9 @@ def run_from_cli_namespace(args: Namespace) -> None:
     with HttpClient(str(predict_url), **client_kwargs2) as client:
         if eval_task_ids is None:
             # Single-task fallback: load the full eval-task YAML when --task-id is
-            # given so prompt / task_type / subset fields are respected.  Callers
-            # that don't pass --task-id keep the previous behaviour (empty mapping,
-            # falls back to HF args + default prompt).
+            # given so prompt / task_type / subset fields are respected.  Without
+            # --task-id the mapping stays empty and HF args + the default prompt
+            # are used.
             raw_task_id = getattr(args, "task_id", None)
             if isinstance(raw_task_id, str) and raw_task_id.strip():
                 task_yaml_path = _eval_task_yaml_path(raw_task_id.strip())

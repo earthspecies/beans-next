@@ -395,8 +395,7 @@ def derive_seed_sha256(
     return hashlib.sha256(payload).hexdigest()
 
 
-# A short alias is convenient for generation scripts and backwards-compatible
-# with early experiment notebooks that called this helper ``derive_seed``.
+# Short alias used by generation scripts.
 derive_seed = derive_noise_seed
 
 

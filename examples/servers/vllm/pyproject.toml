@@ -14,8 +14,8 @@ dependencies = [
 # Needed only when this environment also runs the upstream `vllm serve ...` console script.
 upstream = [
   "vllm",
-  # vLLM 0.11.0 tokenizer caching still expects Transformers 4.x APIs such as
-  # all_special_tokens_extended; Transformers 5.x breaks Qwen2Tokenizer startup.
+  # vLLM 0.11.0 tokenizer caching requires Transformers 4.x APIs such as
+  # all_special_tokens_extended.
   "transformers==4.57.6",
 ]
 

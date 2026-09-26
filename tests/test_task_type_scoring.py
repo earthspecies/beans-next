@@ -1,4 +1,4 @@
-"""Numerical and parsing regressions for benchmark task types.
+"""Numerical and parsing checks for benchmark task types.
 
 Covers per-sample score_sample routing and dataset-level aggregation for:
   frequency_range, species_set, species_count_dict, species_order,
