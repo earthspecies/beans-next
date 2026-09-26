@@ -1952,9 +1952,8 @@ def run_from_cli_namespace(args: Namespace) -> None:
             raise SystemExit(str(exc)) from exc
 
         # If the CLI provided a predict URL override, apply it to all endpoints in the
-        # loaded run-config plan. This is required for Slurm workflows where the
-        # bundled run-configs use localhost placeholders but inference is against a
-        # remote launcher discovered via the URL-file protocol.
+        # loaded run-config plan. Bundled run-configs use localhost placeholders, so
+        # this points them at a remote server, e.g. one read from a URL file.
         predict_url_override = getattr(args, "predict_url", None)
         if predict_url_override:
             from urllib.parse import urljoin

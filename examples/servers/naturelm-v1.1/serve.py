@@ -319,8 +319,7 @@ def _maybe_load_naturelm(snapshot_path: str) -> Any | None:  # noqa: ANN401
             .eval()
         )
     except Exception as exc:  # noqa: BLE001
-        # Also emit the full traceback on stderr — without this, a silent load
-        # failure looks identical to a stall in the Slurm log.
+        # Print the full traceback so a load failure is not mistaken for a stall.
         import traceback as _tb
 
         print(

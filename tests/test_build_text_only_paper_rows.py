@@ -193,7 +193,7 @@ def test_frequency_prefers_portable_sibling_over_stale_output_dir(
         json.dumps({"scores": {"freq_mean_iou": 0.25}}) + "\n",
         encoding="utf-8",
     )
-    frequency["output_dir"] = "/missing/cluster/path"
+    frequency["output_dir"] = "/missing/original/path"
     summary_path.write_text(json.dumps(raw), encoding="utf-8")
     result = row_builder.build_paper_rows(summary_path, "Test model")
     assert result["tables"]["structural_v3"]["values"]["frequency"] == 25.0

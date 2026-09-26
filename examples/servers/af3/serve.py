@@ -137,10 +137,10 @@ def _load_model() -> None:
     ):
         raise RuntimeError(
             "AF-Next real mode requires CUDA, but torch.cuda.is_available() is False. "
-            "The cluster driver must match the PyTorch CUDA build. "
+            "The NVIDIA driver must match the PyTorch CUDA build. "
             "Install the launcher "
             "with `uv sync --group gpu` (torch from the PyTorch cu124 index; see "
-            "examples/servers/af3/pyproject.toml), or on misconfigured nodes set "
+            "examples/servers/af3/pyproject.toml), or set "
             "AF3_ALLOW_CPU=1 for debugging only."
         )
 

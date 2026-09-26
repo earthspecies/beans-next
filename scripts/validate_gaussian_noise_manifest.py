@@ -3,7 +3,7 @@
 """Validate a deterministic BEANS-Next Gaussian-noise manifest.
 
 The validator deliberately has no dependency on the BEANS-Next package.  This
-makes it useful on a login node, on a copied result bundle, and in CI.  The
+makes it usable on a copied result bundle and in CI.  The
 canonical document is a JSON object with ``schema_version``, ``protocol``, and
 ``records`` keys.  A record describes one ``(task_id, sample_id, slot_index)``
 audio slot and has ``source`` and ``noise`` objects, each containing a path,

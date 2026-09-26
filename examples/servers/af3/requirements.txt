@@ -5,7 +5,7 @@ uvicorn[standard]==0.34.2
 pydantic==2.11.7
 
 # Real inference deps (GPU required; install when AF3_STUB is not set).
-# PyTorch: use the PyTorch cu124 index so the wheel matches the cluster driver
+# PyTorch: use the PyTorch cu124 index so the wheel matches the NVIDIA driver
 # (see pyproject.toml [tool.uv]; prefer `uv sync --group gpu` in this directory).
 torch==2.5.1
 # AF-Next (`nvidia/audio-flamingo-next-hf`) needed an unreleased fork when this

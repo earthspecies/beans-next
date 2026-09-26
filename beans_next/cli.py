@@ -293,7 +293,7 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         metavar="PATH",
         help=(
-            "Read the predict URL from a file (e.g. written by a SLURM serving job). "
+            "Read the predict URL from a file (e.g. written by the model server). "
             "Ignored when --predict-url is also given."
         ),
     )

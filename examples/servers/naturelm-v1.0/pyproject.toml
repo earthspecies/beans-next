@@ -19,8 +19,7 @@ dependencies = [
 [project.optional-dependencies]
 # Real inference deps (GPU required; keep launcher-only).
 real = [
-  # Pin to a CUDA-12-compatible PyTorch. Unpinned torch has been observed to
-  # resolve to newer CUDA major versions (e.g. cu13) that fail on cluster drivers.
+  # Pin to a CUDA-12-compatible PyTorch; unpinned torch may require a newer driver.
   "torch==2.5.1",
   "torchaudio==2.5.1",
   # NatureLM-audio v1.0 imports APIs removed in newer transformers.

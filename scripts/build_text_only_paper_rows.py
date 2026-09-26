@@ -429,7 +429,7 @@ def _task_mean(task_id: str, task: Mapping[str, Any]) -> Mapping[str, Any]:
 
 
 def _task_output_dir(summary_path: Path, task_id: str, task: Mapping[str, Any]) -> Path:
-    # A copied result tree retains the cluster's absolute ``output_dir`` in its
+    # A copied result tree retains the original absolute ``output_dir`` in its
     # summary.  Prefer the colocated task directory so exports stay portable.
     sibling = summary_path.parent / task_id
     if sibling.is_dir():

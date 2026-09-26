@@ -47,7 +47,7 @@ class GaussianNoiseConfig:
 
     ``rms_dbfs`` is expressed relative to full-scale amplitude 1.0.  The
     default is the BEANS Gaussian-noise protocol value of -20 dBFS.  Set
-    ``cache_dir`` explicitly for a shared scratch cache on a cluster.
+    ``cache_dir`` to share the noise cache across runs.
     """
 
     dataset_revision: str = "unknown"

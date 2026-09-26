@@ -10,9 +10,8 @@ dependencies = [
 ]
 
 # PyTorch CUDA wheels: install from the official index so the build matches the
-# cluster NVIDIA driver. Default PyPI `torch` may resolve to a +cu12x / +cu13x
-# build that is incompatible (e.g. `torch.cuda.is_available()` false on
-# driver 12.4 with a CUDA 13.0 userland stack).
+# NVIDIA driver. Default PyPI `torch` may resolve to a newer CUDA build that the
+# driver does not support.
 [tool.uv]
 [[tool.uv.index]]
 name = "pytorch-cu124"

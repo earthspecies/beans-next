@@ -11,7 +11,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# Needed only when this job also runs the upstream `vllm serve ...` console script.
+# Needed only when this environment also runs the upstream `vllm serve ...` console script.
 upstream = [
   "vllm",
   # vLLM 0.11.0 tokenizer caching still expects Transformers 4.x APIs such as
