@@ -1,0 +1,22 @@
+beans_next_v20260707m4afix:
+  description: >
+    Raw v20260707m4afix split family; for current Tier 1/2 numbers use `beans_next_tier1` / `beans_next_tier2`.
+
+    BEANS-Next v20260707 with iNaturalist .m4a rows transcoded to .wav
+    (identical rows, only audio URIs rewritten). Eliminates the ~5.7% audio
+    format errors seen on the original v20260707 runs.
+  eval_tasks:
+    - beans_next_v20260707m4afix_t1_caption
+    - beans_next_v20260707m4afix_t1_description_mcq
+    - beans_next_v20260707m4afix_t1_snr_mcq
+    - beans_next_v20260707m4afix_t1_snr_regression
+    - beans_next_v20260707m4afix_t2_behavior
+    - beans_next_v20260707m4afix_t2_captioning
+    - beans_next_v20260707m4afix_bird_presence
+    - beans_next_v20260707m4afix_mammal_presence
+    - beans_next_v20260707m4afix_amphibian_presence
+    - beans_next_v20260707m4afix_insect_presence
+    - beans_next_v20260707m4afix_alarm_call_presence
+    - beans_next_v20260707m4afix_flight_call_presence
+    - beans_next_v20260707m4afix_begging_call_presence
+    - beans_next_v20260707m4afix_call_type_fixed_vocab

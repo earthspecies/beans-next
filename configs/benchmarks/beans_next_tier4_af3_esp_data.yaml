@@ -1,0 +1,28 @@
+# BEANS-Next Tier 4 (genuine in-context multi-audio) — Audio Flamingo 3 / Next.
+#
+# AF3 splits message content on `<Audio><AudioHere></Audio>` and interleaves the
+# resolved audio paths in order (examples/servers/af3/serve.py:_build_conversation),
+# so it can use the labelled support clips rather than only the query.
+#
+# Note: `_INFER_LOCK` serialises GPU work in this launcher (concurrent
+# `model.generate()` corrupted the processor's windowing indices and poisoned
+# the CUDA context), so extra client workers do not increase throughput.
+#
+# Submit: bash examples/slurm/submit_beans_next_tier4_af3.sh
+
+models:
+  - inline:
+      name: "af3-tier4"
+      description: "Audio Flamingo Next on BEANS-Next tier 4 multi-audio ICL"
+      predict_url: http://127.0.0.1:8002/predict
+      info_url: http://127.0.0.1:8002/info
+      health_url: http://127.0.0.1:8002/health
+      response_schema: predictions_v1
+      audio_payload: base64_wav
+      retry_policy:
+        max_attempts: 12
+        backoff_initial: 0.5
+        backoff_max: 10.0
+
+suite: beans_next_tier4
+data_source: esp_data

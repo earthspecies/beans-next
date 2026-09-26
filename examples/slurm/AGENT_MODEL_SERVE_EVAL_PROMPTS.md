@@ -184,7 +184,9 @@ Output back to me:
 Prompt:
 You are on the Slurm login node. Serve Qwen3-Omni Instruct via vLLM using `examples/slurm/serve_qwen3_omni.sh` (which execs `examples/slurm/serve_vllm.sh`).
 Defaults:
-- vLLM adapter sidecar port is fixed to `19082` by the script.
+- vLLM adapter sidecar port defaults to `19082` (override with `BEANS_NEXT_PORT`;
+  required when running two vLLM serves on the same node, else the second dies
+  with `EADDRINUSE`).
 - vLLM upstream port is `19083`.
 - Script defaults `VLLM_MODEL_ID` to `Qwen/Qwen3-Omni-7B`; override to the desired model.
 If you want the known-good “lean” single-stage config from prior runs:

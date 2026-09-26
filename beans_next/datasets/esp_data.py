@@ -51,8 +51,39 @@ _CROPPED_AUDIO_ROOTS: dict[str, str] = {
     "WABADCropped": "gs://foundation-model-data/synthetic/cropped/wabad/audio",
 }
 
-# GCS JSONL paths for all T3 splits (audio paths inside are absolute GCS URIs).
-_BEANS_NEXT_T3_SPLIT_JSONL: dict[str, str] = {
+# GCS JSONL paths for BEANS-Next splits whose audio paths inside the JSONL are
+# absolute GCS URIs. For these splits we bypass `esp_data.BEANSNext` and stream
+# directly from the JSONL with `data_root=""`. Covers T1 and T2 splits added in
+# the T1/T2/T3 metric overhaul, plus all T3 splits, plus the v20260707 refreshed
+# T1/T2/presence variants.
+_BEANS_NEXT_ABS_PATH_SPLIT_JSONL: dict[str, str] = {
+    # T1 (single-audio): JSONLs live at the beanspro top level.
+    "t1-caption": "gs://foundation-model-data/synthetic/beanspro/t1-caption.jsonl",
+    "t1-description-mcq": "gs://foundation-model-data/synthetic/beanspro/t1-description-mcq.jsonl",
+    "t1-snr-mcq": "gs://foundation-model-data/synthetic/beanspro/t1-snr-mcq.jsonl",
+    "t1-snr-regression": "gs://foundation-model-data/synthetic/beanspro/t1-snr-regression.jsonl",
+    # T2 (single-audio): JSONLs live at the beanspro top level.
+    "t2-behavior": "gs://foundation-model-data/synthetic/beanspro/t2-behavior.jsonl",
+    "t2-captioning": "gs://foundation-model-data/synthetic/beanspro/t2-captioning.jsonl",
+    # v20260707 refresh (all absolute audio URIs; distinct row sets from prior splits).
+    # v20260707_m4afix — same rows as v20260707 but with iNaturalist .m4a URIs
+    # rewritten to sibling .wav URIs (esp_data.io.read_audio can't decode .m4a).
+    # Eliminates the ~5.7% "unsupported audio format" errors on v20260707 runs.
+    "v20260707m4afix-t1-caption": "gs://foundation-model-data/synthetic/beanspro/v20260707_m4afix/t1-caption.jsonl",
+    "v20260707m4afix-t1-description-mcq": "gs://foundation-model-data/synthetic/beanspro/v20260707_m4afix/t1-description-mcq.jsonl",
+    "v20260707m4afix-t1-snr-mcq": "gs://foundation-model-data/synthetic/beanspro/v20260707_m4afix/t1-snr-mcq.jsonl",
+    "v20260707m4afix-t1-snr-regression": "gs://foundation-model-data/synthetic/beanspro/v20260707_m4afix/t1-snr-regression.jsonl",
+    "v20260707m4afix-t2-behavior": "gs://foundation-model-data/synthetic/beanspro/v20260707_m4afix/t2-behavior.jsonl",
+    "v20260707m4afix-t2-captioning": "gs://foundation-model-data/synthetic/beanspro/v20260707_m4afix/t2-captioning.jsonl",
+    "v20260707m4afix-bird-presence": "gs://foundation-model-data/synthetic/beanspro/v20260707_m4afix/bird-presence.jsonl",
+    "v20260707m4afix-mammal-presence": "gs://foundation-model-data/synthetic/beanspro/v20260707_m4afix/mammal-presence.jsonl",
+    "v20260707m4afix-amphibian-presence": "gs://foundation-model-data/synthetic/beanspro/v20260707_m4afix/amphibian-presence.jsonl",
+    "v20260707m4afix-insect-presence": "gs://foundation-model-data/synthetic/beanspro/v20260707_m4afix/insect-presence.jsonl",
+    "v20260707m4afix-alarm-call-presence": "gs://foundation-model-data/synthetic/beanspro/v20260707_m4afix/alarm-call-presence.jsonl",
+    "v20260707m4afix-flight-call-presence": "gs://foundation-model-data/synthetic/beanspro/v20260707_m4afix/flight-call-presence.jsonl",
+    "v20260707m4afix-begging-call-presence": "gs://foundation-model-data/synthetic/beanspro/v20260707_m4afix/begging-call-presence.jsonl",
+    "v20260707m4afix-call-type-fixed-vocab": "gs://foundation-model-data/synthetic/beanspro/v20260707_m4afix/call-type-fixed-vocab.jsonl",
+    # T3 (single-audio): JSONLs live under beanspro/t3/.
     "t3-frequency-range-description": "gs://foundation-model-data/synthetic/beanspro/t3/frequency_range_description_oe.jsonl",
     "t3-ordered-species-summary": "gs://foundation-model-data/synthetic/beanspro/t3/ordered_species_summary_oe.jsonl",
     "t3-species-by-highest-pitch-mcq": "gs://foundation-model-data/synthetic/beanspro/t3/species_by_highest_pitch_mcq.jsonl",
@@ -530,19 +561,43 @@ def _audio_path_candidates_from_row(row: Mapping[str, object]) -> list[str]:
     if isinstance(audio_paths_list, list) and audio_paths_list:
         _add(out, audio_paths_list[0] if isinstance(audio_paths_list[0], str) else None)
 
-    # Prefer consistent resampled paths when present.
-    for key in (
-        "audio_path_16KHz",
-        "audio_path_32KHz",
-        "audio_path_original_sample_rate",
-        # Common generic column name.
-        "audio_path",
-        # BirdSet column names (sometimes present even before normalization).
-        "16khz_path",
-        "32khz_path",
-        # Absolute GCS path for BirdSet (gs://...).
-        "gcs_path",
-    ):
+    # Prefer consistent resampled paths when present. The preference order can
+    # be swapped by `BEANS_NEXT_ESP_AUDIO_SR_HZ` — critical for models trained
+    # on 32 kHz or original-SR audio (e.g. NatureLM v1.5-qwen35-32khz), where
+    # the historical 16 kHz-first default silently band-limits the input to
+    # 8 kHz after the server resamples.
+    _sr_pref = os.environ.get("BEANS_NEXT_ESP_AUDIO_SR_HZ", "16000").strip().lower()
+    if _sr_pref in {"32000", "32k", "32khz"}:
+        _ordered_keys = (
+            "audio_path_32KHz",
+            "audio_path_original_sample_rate",
+            "audio_path_16KHz",
+            "audio_path",
+            "32khz_path",
+            "16khz_path",
+            "gcs_path",
+        )
+    elif _sr_pref in {"original", "orig", "0"}:
+        _ordered_keys = (
+            "audio_path_original_sample_rate",
+            "audio_path_32KHz",
+            "audio_path_16KHz",
+            "audio_path",
+            "32khz_path",
+            "16khz_path",
+            "gcs_path",
+        )
+    else:
+        _ordered_keys = (
+            "audio_path_16KHz",
+            "audio_path_32KHz",
+            "audio_path_original_sample_rate",
+            "audio_path",
+            "16khz_path",
+            "32khz_path",
+            "gcs_path",
+        )
+    for key in _ordered_keys:
         _add(out, row.get(key))
 
     audio = row.get("audio")
@@ -706,9 +761,11 @@ def _load_beans_next_rows_via_reflection(
         If `esp_data.BEANSNext` is unavailable or the installed API does not match
         expected access patterns.
     """
-    # T3 rows use cropped-clip audio paths that are best resolved via the GCS
-    # JSONL loader; always bypass the BEANSNext class for these splits.
-    if split in _BEANS_NEXT_T3_SPLIT_JSONL:
+    # T1/T2/T3 rows use audio paths that are absolute GCS URIs inside the
+    # JSONL; bypass the BEANSNext class for these splits and stream the JSONL
+    # directly. (T1/T2 new tasks have no BEANSNext mapping in current esp_data
+    # releases; T3 cropped clips are only addressable via the JSONL.)
+    if split in _BEANS_NEXT_ABS_PATH_SPLIT_JSONL:
         yield from _load_beans_next_rows_from_gcs_jsonl(split=split)
         return
 
@@ -839,8 +896,30 @@ def _load_beans_next_rows_from_gcs_jsonl(
             "gs://esp-data-ingestion/beans-pro/v0.1.0/raw/call_type_fixed_vocab/test.jsonl",
             "gs://esp-data-ingestion/xeno-canto/v0.1.0/raw/",
         ),
-        # Tier-3 multi-species reasoning (audio paths in rows are absolute GCS URIs).
-        **{split: (jsonl, "") for split, jsonl in _BEANS_NEXT_T3_SPLIT_JSONL.items()},
+        # v20260823 v21 refresh (regenerated 2026-08-23). Rows carry paths
+        # relative to gs://esp-data-ingestion/
+        # (e.g. "xeno-canto/v0.1.0/raw/audio_32k/XC*.wav").
+        "v20260823-alarm-call-presence": (
+            "gs://esp-data-ingestion/beans-pro-v2-eval/alarm_call_presence_v21.jsonl",
+            "gs://esp-data-ingestion/",
+        ),
+        "v20260823-begging-call-presence": (
+            "gs://esp-data-ingestion/beans-pro-v2-eval/begging_call_presence_v21.jsonl",
+            "gs://esp-data-ingestion/",
+        ),
+        "v20260823-flight-call-presence": (
+            "gs://esp-data-ingestion/beans-pro-v2-eval/flight_call_presence_v21.jsonl",
+            "gs://esp-data-ingestion/",
+        ),
+        "v20260823-call-type-fixed-vocab": (
+            "gs://esp-data-ingestion/beans-pro-v2-eval/call_type_fixed_vocab_v21.jsonl",
+            "gs://esp-data-ingestion/",
+        ),
+        # T1/T2/T3 splits whose JSONL rows already carry absolute GCS audio URIs.
+        **{
+            split: (jsonl, "")
+            for split, jsonl in _BEANS_NEXT_ABS_PATH_SPLIT_JSONL.items()
+        },
     }
 
     cfg = split_to_jsonl_and_root.get(split)
@@ -1816,9 +1895,14 @@ _MULTIAUDIO_SPLIT_JSONL_AND_ROOT: dict[str, tuple[str, str]] = {
         f"{_MULTIAUDIO_GCS_BASE}/unseen_species_4way/test.jsonl",
         "gs://esp-data-ingestion/",
     ),
+    # Unlike unseen-species-4way (xeno-canto/inaturalist paths under the
+    # ingestion bucket), the "hard" rows carry BEANS-Zero relative paths such as
+    # `audio/unseen-species-sci/32KHz/<id>.flac`, which live under the BEANS-Zero
+    # raw base. Pointing this at the ingestion bucket resolved nothing, so every
+    # row lost its audio and came back empty.
     "unseen-species-4way-hard": (
         f"{_MULTIAUDIO_GCS_BASE}/unseen_species_4way_hard/test.jsonl",
-        "gs://esp-data-ingestion/",
+        f"{_MULTIAUDIO_GIBBON_BASE}/",
     ),
     "unseen-genus-4way": (
         f"{_MULTIAUDIO_GCS_BASE}/unseen_genus_4way/test.jsonl",

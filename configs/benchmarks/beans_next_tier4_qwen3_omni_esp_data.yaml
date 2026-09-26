@@ -1,0 +1,32 @@
+# BEANS-Next Tier 4 (genuine in-context multi-audio) — Qwen3-Omni via vLLM.
+#
+# Qwen3-Omni accepts several audios in one request, so it can actually use the
+# labelled support clips. The vllm adapter interleaves them at their
+# `<Audio><AudioHere></Audio>` placeholder positions.
+#
+# Submit env (see examples/slurm/serve_vllm.sh):
+#   export VLLM_MODEL_ID=Qwen/Qwen3-Omni-30B-A3B-Instruct
+#   export VLLM_OMNI=1
+#   export VLLM_AUDIO_CONTENT_FORMAT=audio_url_data
+#   export VLLM_LIMIT_MM_PER_PROMPT='{"audio": 6}'   # rows carry up to 6 audios
+#
+# The JSON form is required by vLLM 0.18, which rejects the `audio=6` syntax.
+# Setting it matters: vLLM defaults to one multimodal item per prompt and drops
+# the rest, which would silently degrade this back to a query-only run.
+
+models:
+  - inline:
+      name: "qwen3-omni-tier4"
+      description: "Qwen3-Omni-30B-A3B-Instruct on BEANS-Next tier 4 multi-audio ICL"
+      predict_url: http://127.0.0.1:19082/predict
+      info_url: http://127.0.0.1:19082/info
+      health_url: http://127.0.0.1:19082/health
+      response_schema: predictions_v1
+      audio_payload: base64_wav
+      retry_policy:
+        max_attempts: 12
+        backoff_initial: 0.5
+        backoff_max: 10.0
+
+suite: beans_next_tier4
+data_source: esp_data

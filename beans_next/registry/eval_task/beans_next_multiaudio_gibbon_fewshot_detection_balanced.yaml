@@ -4,6 +4,8 @@ beans_next_multiaudio_gibbon_fewshot_detection_balanced:
   dataset: beans_next_multiaudio
   subset: gibbon-fewshot-detection-balanced
   split: gibbon-fewshot-detection-balanced
-  prompt: beans_next_multiaudio_query_only_v1
+  prompt: beans_next_multiaudio_passthrough_v1
+  generation_config:
+    max_length_seconds: 10
   metrics:
     - name: accuracy

@@ -5,6 +5,8 @@ beans_next_t1_snr_regression:
   subset: t1-snr-regression
   split: t1-snr-regression
   prompt: classification_beans_zero_official_v1
+  generation_config:
+    max_length_seconds: 10
   metrics:
     - name: mean_absolute_error
 

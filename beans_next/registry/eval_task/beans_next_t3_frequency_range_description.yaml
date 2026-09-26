@@ -5,5 +5,7 @@ beans_next_t3_frequency_range_description:
   subset: t3-frequency-range-description
   split: t3-frequency-range-description
   prompt: classification_beans_zero_official_v1
+  generation_config:
+    max_length_seconds: 30
   metrics:
     - name: freq_mae_low

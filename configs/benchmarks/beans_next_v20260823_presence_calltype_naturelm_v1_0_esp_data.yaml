@@ -1,0 +1,23 @@
+# BEANS-Next v20260823 (4 v21 presence/call-type tasks) — NatureLM-audio v1.0.
+# Uses the `examples/servers/naturelm-v1.0/` launcher with the HF-gated v1.0 model
+# (Llama 3.1-8B, 16 kHz BEATs — no 32 kHz trick).
+#
+# Submit env:
+#   export HF_TOKEN=$(< ~/.config/huggingface/hf_token)
+
+models:
+  - inline:
+      name: "naturelm-v1.0-v20260823"
+      description: "NatureLM-audio v1.0 on v20260823 v21 presence/call-type splits"
+      predict_url: http://127.0.0.1:8000/predict
+      info_url: http://127.0.0.1:8000/info
+      health_url: http://127.0.0.1:8000/health
+      response_schema: predictions_v1
+      audio_payload: base64_wav
+      retry_policy:
+        max_attempts: 12
+        backoff_initial: 0.5
+        backoff_max: 10.0
+
+suite: beans_next_v20260823_presence_calltype
+data_source: esp_data

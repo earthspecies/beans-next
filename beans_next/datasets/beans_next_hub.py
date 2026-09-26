@@ -67,6 +67,9 @@ TIER_2_SUBSETS: Final[frozenset[str]] = frozenset(
         "alarm-call-presence",
         "flight-call-presence",
         "call-type-fixed-vocab",
+        # Added in the 2026-09 refresh; absent from revisions before it.
+        "insect-presence",
+        "begging-call-presence",
     }
 )
 TIER_3_SUBSETS: Final[frozenset[str]] = frozenset(

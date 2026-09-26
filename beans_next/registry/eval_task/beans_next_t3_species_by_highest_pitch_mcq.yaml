@@ -5,6 +5,8 @@ beans_next_t3_species_by_highest_pitch_mcq:
   subset: t3-species-by-highest-pitch-mcq
   split: t3-species-by-highest-pitch-mcq
   prompt: classification_beans_zero_official_v1
+  generation_config:
+    max_length_seconds: 30
   metrics:
     - name: top1_accuracy
       scorer_kwargs:

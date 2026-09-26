@@ -1,0 +1,20 @@
+# Tier-1 f0 (seen/held-out) + crow description — NatureLM-audio v1.1 t1_with_captions ckpt 70000.
+# These tasks are NOT on the v20260707 splits, so they were missed by the
+# m4afix sweep. Same 10 s cap as the other Tier-1/Tier-2 columns.
+
+models:
+  - inline:
+      name: "naturelm-v1.1-t1cap-f0crow"
+      description: "NatureLM-audio v1.1 t1_with_captions ckpt 70000 on f0 seen/heldout + crow description (10s cap)"
+      predict_url: http://127.0.0.1:8001/predict
+      info_url: http://127.0.0.1:8001/info
+      health_url: http://127.0.0.1:8001/health
+      response_schema: predictions_v1
+      audio_payload: base64_wav
+      retry_policy:
+        max_attempts: 12
+        backoff_initial: 0.5
+        backoff_max: 10.0
+
+suite: beans_next_t1_f0_crow
+data_source: esp_data

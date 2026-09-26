@@ -5,6 +5,8 @@ beans_next_t3_species_by_vocalization_order_oe:
   subset: t3-species-by-vocalization-order-oe
   split: t3-species-by-vocalization-order-oe
   prompt: classification_beans_zero_official_v1
+  generation_config:
+    max_length_seconds: 30
   metrics:
     - name: top1_accuracy
 

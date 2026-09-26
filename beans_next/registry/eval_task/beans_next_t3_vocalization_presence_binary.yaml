@@ -5,6 +5,8 @@ beans_next_t3_vocalization_presence_binary:
   subset: t3-vocalization-presence-binary
   split: t3-vocalization-presence-binary
   prompt: classification_beans_zero_official_v1
+  generation_config:
+    max_length_seconds: 30
   metrics:
     - name: top1_accuracy
 
