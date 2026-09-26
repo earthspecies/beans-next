@@ -114,7 +114,6 @@ TIER_4_SUBSETS: Final[frozenset[str]] = frozenset(
         "giant-otter-4way",
         "dcase-fewshot-detection-balanced",
         "crow-4way",
-        # Back-compat: some Hub revisions still include this task.
         "zebra-4way",
         "unseen-species-4way",
     }
