@@ -10,12 +10,17 @@
   <meta property="og:type" content="website">
   <title>BEANS-Next and ROOTS: Broadening Audio-Language Capabilities for Bioacoustics</title>
   <style>
-    :root { --pine: #0b4a3c; --ink: #223b32; --muted: #52675e; --line: #d8e0d8; --cream: #f7f8f3; --sage: #eaf0e7; }
+    /* Typography and accents follow ESP's NatureLM site and earthspecies.org.
+       Brand fonts are served by ESP; system fallbacks keep the page usable offline. */
+    @font-face { font-family: "Euclid Circular B"; src: url("https://earthspecies.github.io/naturelm-audio-demo/latest/assets/fonts/EuclidCircularB-Regular-WebS.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+    @font-face { font-family: "Euclid Circular B"; src: url("https://earthspecies.github.io/naturelm-audio-demo/latest/assets/fonts/EuclidCircularB-Medium-WebS.woff2") format("woff2"); font-weight: 500 700; font-style: normal; font-display: swap; }
+    @font-face { font-family: "Tiempos Text"; src: url("https://earthspecies.github.io/naturelm-audio-demo/latest/assets/fonts/TiemposText-Regular.otf") format("opentype"); font-weight: 400; font-style: normal; font-display: swap; }
+    :root { --pine: #08745b; --ink: #00100d; --muted: #52605a; --line: #dce7df; --cream: #f4faf3; --green: #129c7b; --mint: #a7ed99; --lime: #c3e409; --sans: "Euclid Circular B", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
     * { box-sizing: border-box; }
     html { scroll-behavior: smooth; scroll-padding-top: 24px; }
-    body { margin: 0; color: var(--ink); background: #fff; font: 16px/1.65 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    body { margin: 0; color: var(--ink); background: #fff; font: 16px/1.65 var(--sans); }
     h1, h2, h3, p, figure { margin: 0; }
-    h1, h2, h3 { font-family: Georgia, "Times New Roman", serif; font-weight: 400; line-height: 1.15; color: var(--pine); }
+    h1, h2, h3 { font-family: var(--sans); font-weight: 500; line-height: 1.18; color: var(--ink); }
     h2 { font-size: clamp(2rem, 4vw, 2.7rem); letter-spacing: -.03em; }
     h3 { font-size: 1.4rem; }
     a { color: var(--pine); text-underline-offset: .22em; }
@@ -28,10 +33,10 @@
     .wordmark { font-size: .82rem; letter-spacing: .12em; text-transform: uppercase; font-weight: 650; }
     nav { display: flex; gap: 24px; font-size: .88rem; }
     nav a { text-decoration: none; }
-    header { background: var(--cream); }
+    header { background: var(--cream); border-top: 5px solid; border-image: linear-gradient(90deg, var(--green), var(--mint)) 1; }
     .hero { padding-block: 65px 48px; text-align: center; }
-    h1 { font-size: clamp(3rem, 7.5vw, 5.5rem); letter-spacing: -.05em; }
-    .subtitle { max-width: 780px; margin: 18px auto 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(1.35rem, 3.3vw, 2rem); line-height: 1.3; }
+    h1 { font-size: clamp(2.8rem, 6.5vw, 4.8rem); letter-spacing: -.045em; text-wrap: balance; }
+    .subtitle { max-width: 780px; margin: 18px auto 0; font-family: "Tiempos Text", Georgia, serif; font-size: clamp(1.35rem, 3.3vw, 2rem); line-height: 1.3; }
     .lede { max-width: 700px; margin: 24px auto 0; color: var(--muted); font-size: 1.08rem; }
     .authors { max-width: 980px; margin: 30px auto 0; font-size: .86rem; line-height: 1.9; }
     .authors span { display: inline-block; }
@@ -41,21 +46,22 @@
     section { padding-block: 60px; }
     .resources { padding-top: 0; background: var(--cream); }
     .resource-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-    .resource { padding: 30px; background: white; border: 1px solid var(--line); border-radius: 12px; display: flex; flex-direction: column; }
-    .eyebrow { margin-bottom: 12px; color: var(--muted); font-size: .75rem; text-transform: uppercase; letter-spacing: .12em; font-weight: 650; }
+    .resource { padding: 30px; background: white; border: 1px solid var(--line); border-radius: 16px; display: flex; flex-direction: column; }
+    .eyebrow { margin-bottom: 12px; color: var(--pine); font-size: .75rem; text-transform: uppercase; letter-spacing: .12em; font-weight: 650; }
     .resource h2 { font-size: 2.3rem; }
     .resource p { margin-block: 16px 22px; max-width: 46ch; color: var(--muted); }
     .links { display: flex; flex-wrap: wrap; gap: 10px; margin-top: auto; }
-    .button { display: inline-flex; align-items: center; justify-content: center; padding: 10px 16px; border: 1px solid var(--pine); border-radius: 6px; text-decoration: none; font-size: .88rem; font-weight: 600; }
-    .button.primary { color: white; background: var(--pine); }
-    .button:hover { box-shadow: 0 0 0 1px var(--pine); }
+    .button { display: inline-flex; align-items: center; justify-content: center; padding: 10px 16px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink); text-decoration: none; font-size: .88rem; font-weight: 500; transition: background .15s ease, border-color .15s ease; }
+    .button.primary { color: var(--ink); background: var(--lime); border-color: var(--lime); }
+    .button:hover { background: #e5f5e1; border-color: var(--green); }
+    .button.primary:hover { background: #b4d20b; border-color: #b4d20b; }
     .section-intro { max-width: 720px; margin-top: 18px; color: var(--muted); }
     .overview { margin-top: 36px; }
     figure img { display: block; width: 100%; height: auto; }
     figcaption { margin-top: 16px; color: var(--muted); font-size: .86rem; max-width: 800px; }
     .tiers { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; margin-top: 42px; }
-    .tier { border-top: 2px solid var(--pine); padding-top: 18px; }
-    .tier-number { display: block; color: var(--muted); font-size: .75rem; letter-spacing: .1em; margin-bottom: 12px; }
+    .tier { border-top: 2px solid var(--green); padding-top: 18px; }
+    .tier-number { display: block; color: var(--muted); font-size: .75rem; letter-spacing: .1em; margin-bottom: 12px; font-weight: 500; }
     .tier h3 { min-height: 3.3em; }
     .tier p { margin-top: 12px; font-size: .9rem; color: var(--muted); }
     .section-link { margin-top: 28px; font-size: .9rem; }
@@ -89,7 +95,7 @@
       .tiers { grid-template-columns: 1fr; gap: 24px; }
       .pipeline { padding: 12px; }
     }
-    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .button { transition: none; } }
   </style>
 </head>
 <body>
