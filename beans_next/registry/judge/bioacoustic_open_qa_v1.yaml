@@ -1,3 +1,0 @@
-bioacoustic_open_qa_v1:
-  template_id: bioacoustic_open_qa_v1
-  description: "Open-ended bioacoustic QA judge using the built-in rubric template."

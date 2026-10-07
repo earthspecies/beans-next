@@ -1,12 +1,9 @@
 """Rescore existing prediction artifacts on CPU.
 
-This module supports the Phase-3 utility CLI:
+This module backs the utility CLI:
 
 `beans-next score-from-file <predictions.jsonl>`
 
-When ``--judge-url`` is provided, a second pass calls a judge model served via
-the ``predictions_v1`` HTTP predict API and writes separate artifacts prefixed
-with ``judge_`` so normal rescorer outputs are never overwritten.
 """
 
 from __future__ import annotations
@@ -26,6 +23,11 @@ from beans_next.api.types import (
     RunSummary,
     ScoredPrediction,
 )
+from beans_next.post_process.answers import (
+    INVALID_ANSWER,
+    SCORING_VERSION,
+    is_presence_nonanswer,
+)
 from beans_next.post_process.pipeline import (
     PostProcessPipelineError,
     PostProcessResult,
@@ -38,7 +40,7 @@ from beans_next.runner._utils import (
     compute_dataset_level_metrics,
 )
 
-__all__ = ["rescore_predictions_file", "judge_extract_from_predictions_file"]
+__all__ = ["rescore_predictions_file"]
 
 _logger = logging.getLogger(__name__)
 
@@ -116,8 +118,19 @@ def _default_postprocess_steps(
         StepSpec("normalize_whitespace", {}),
         StepSpec("strip_eos", {}),
     ]
-    vocab = _collect_label_vocab(targets)
     task_s = (task_type or "").lower()
+
+    # Open-ended tasks preserve free text: label parsing would split reference
+    # captions into a comma-separated "label vocabulary" and fuzzy-match each
+    # prediction against it, which is quadratic in corpus size and not
+    # meaningful, since CIDEr (not label matching) scores these tasks.
+    # Mirrors the live runner's `_postprocess_steps_for_examples`.
+    from beans_next.post_process.answers import FREE_TEXT_TASKS
+
+    if task_s in FREE_TEXT_TASKS:
+        return (), tuple(cleaners)
+
+    vocab = _collect_label_vocab(targets)
 
     # Regression metrics parse numbers from the processed text, so avoid
     # snapping F0/SNR outputs onto a closed label vocabulary before scoring.
@@ -150,7 +163,9 @@ def _default_postprocess_steps(
     # Hz bucket tasks (e.g. "4010 Hz"): map numeric text to closest bucket and
     # avoid comma-splitting prose (commas appear in normal sentences and in
     # thousands separators like "1,654.75").
-    if vocab and all(isinstance(v, str) and v.strip().lower().endswith("hz") for v in vocab):
+    if vocab and all(
+        isinstance(v, str) and v.strip().lower().endswith("hz") for v in vocab
+    ):
         # Be strict: require a leading integer to avoid accidentally catching
         # unrelated "Hz" mentions in other tasks.
         if all(v.strip().split()[0].isdigit() for v in vocab):
@@ -195,14 +210,8 @@ def rescore_predictions_file(
     *,
     output_dir: Path | None = None,
     task_type: str | None = None,
-    judge_url: str | None = None,
-    judge_extract_url: str | None = None,
 ) -> RunSummary:
     """Rescore an existing ``predictions.jsonl`` artifact on CPU.
-
-    Two optional judge passes can run after normal scoring.  Both write to
-    separate files prefixed with ``judge_`` or ``judge_extracted_`` and never
-    overwrite normal rescorer artifacts.  They may be combined in one call.
 
     Parameters
     ----------
@@ -216,30 +225,7 @@ def rescore_predictions_file(
         Task type string (e.g. ``"classification"``, ``"detection"``).  When
         provided, selects the correct post-processing pipeline and routes
         ``score_sample`` appropriately.  When ``None``, detection-style
-        post-processing is used (backward-compatible default).
-    judge_url : str or None, optional
-        Full URL for ``POST /predict`` on the YES/NO judge model endpoint.
-        When set, :class:`~beans_next.judges.predict_v1_judge.PredictV1Judge`
-        is called and these artifacts are written:
-
-        * ``judge_scored_predictions.jsonl`` — rows with
-          ``scores = {"judge_accuracy": 0.0 or 1.0}``.
-        * ``judge_summary.json`` — summary with ``metrics.mean.judge_accuracy``.
-        * ``judge_outputs.jsonl`` — raw judge responses.
-
-    judge_extract_url : str or None, optional
-        Full URL for ``POST /predict`` on the extractor judge model endpoint.
-        When set, :class:`~beans_next.judges.predict_v1_extractor.PredictV1Extractor`
-        converts each raw prediction into a structured prediction using
-        task-specific templates, then scores the result with the normal pipeline.
-        These artifacts are written:
-
-        * ``judge_extracted_scored_predictions.jsonl`` — rows with
-          ``processed_prediction`` replaced by the judge-extracted text and
-          ``scores`` computed via the normal metrics pipeline.
-        * ``judge_extracted_summary.json`` — summary with standard metrics
-          (e.g. ``accuracy``, ``f1``) computed on extracted predictions.
-
+        post-processing is used.
     Returns
     -------
     RunSummary
@@ -275,6 +261,7 @@ def rescore_predictions_file(
     processed_path = predictions_jsonl.parent / "processed_predictions.jsonl"
     targets_by_id: dict[str, object] = {}
     task_id_by_id: dict[str, str | None] = {}
+    question_by_id: dict[str, str] = {}
     if processed_path.is_file():
         for obj in _read_jsonl(processed_path):
             try:
@@ -283,6 +270,8 @@ def rescore_predictions_file(
                 continue
             targets_by_id[row.sample_id] = row.targets
             task_id_by_id[row.sample_id] = row.task_id
+            if row.question:
+                question_by_id[row.sample_id] = row.question
 
     if not targets_by_id:
         raise ValueError(
@@ -300,10 +289,6 @@ def rescore_predictions_file(
     score_rows: list[Mapping[str, float]] = []
     dataset_pairs: list[tuple[str, Any]] = []
     n_errors = 0
-
-    # Collect all scored rows and judge-eligible (example, raw_text) pairs.
-    all_scored_rows: list[ScoredPrediction] = []
-    judge_eligible: list[tuple[DatasetExample, str]] = []
 
     with contextlib.ExitStack() as stack:
         processed_f = stack.enter_context(
@@ -326,6 +311,20 @@ def rescore_predictions_file(
             sid = pred.sample_id
             targets = targets_by_id.get(sid)
             task_id = task_id_by_id.get(sid)
+            metadata = (
+                {"instruction": question_by_id[sid]} if sid in question_by_id else {}
+            )
+            from beans_next.post_process.answers import (
+                FREE_TEXT_TASKS,
+                normalize_task_answer,
+                question_options,
+            )
+
+            if task_type in FREE_TEXT_TASKS or question_options(metadata):
+                text = normalize_task_answer(raw_text, task_type, metadata)
+                post = PostProcessResult(segments=[text] if text else [], text=text)
+            if is_presence_nonanswer(raw_text, task_type):
+                post = PostProcessResult(segments=[INVALID_ANSWER], text=INVALID_ANSWER)
 
             processed_row = ScoredPrediction(
                 sample_id=sid,
@@ -333,6 +332,7 @@ def rescore_predictions_file(
                 predictions=list(pred.predictions),
                 processed_prediction=post.text,
                 targets=targets,
+                question=question_by_id.get(sid),
                 scores=None,
                 postprocess_version=None,
                 error=row_err,
@@ -354,7 +354,7 @@ def rescore_predictions_file(
                     sample_id=sid,
                     task_id=task_id,
                     labels=targets,
-                    metadata={},
+                    metadata=metadata,
                 )
                 scores = _score_sample_if_available(
                     example,
@@ -363,16 +363,12 @@ def rescore_predictions_file(
                     task_type=task_type,
                 )
                 dataset_pairs.append((post.text, targets))
-                # Collect for judge pass (raw text, not post-processed).
-                if judge_url is not None:
-                    judge_eligible.append((example, raw_text))
 
             scored_row = processed_row.model_copy(
                 update={"scores": dict(scores) if scores else None}
             )
             scored_f.write(dumps_canonical(scored_row.model_dump(mode="json")) + "\n")
             score_rows.append(scores)
-            all_scored_rows.append(scored_row)
 
     model_identity: dict[str, Any] = {}
     for pred in preds:
@@ -389,7 +385,7 @@ def rescore_predictions_file(
         run_config_hash=None,
         prompt_version=None,
         postprocess_version=None,
-        scorer_versions=None,
+        scorer_versions={"deterministic": SCORING_VERSION},
         model_identity=model_identity,
         seed=None,
         n_samples=len(preds),
@@ -404,322 +400,4 @@ def rescore_predictions_file(
         dumps_canonical(model_identity) + "\n", encoding="utf-8"
     )
 
-    if judge_url is not None and judge_eligible:
-        _run_judge_pass(
-            judge_url=judge_url,
-            judge_eligible=judge_eligible,
-            all_scored_rows=all_scored_rows,
-            out_dir=out_dir,
-            model_identity=model_identity,
-            n_errors=n_errors,
-            library_version=_package_version(),
-        )
-
-    if judge_extract_url is not None and judge_eligible:
-        _run_judge_extraction_pass(
-            judge_extract_url=judge_extract_url,
-            judge_eligible=judge_eligible,
-            all_scored_rows=all_scored_rows,
-            task_type=task_type,
-            out_dir=out_dir,
-            model_identity=model_identity,
-            n_errors=n_errors,
-            library_version=_package_version(),
-        )
-
     return summary
-
-
-def _run_judge_pass(
-    *,
-    judge_url: str,
-    judge_eligible: list[tuple[DatasetExample, str]],
-    all_scored_rows: list[ScoredPrediction],
-    out_dir: Path,
-    model_identity: dict[str, Any],
-    n_errors: int,
-    library_version: str,
-) -> None:
-    """Call the judge model and write ``judge_*`` artifacts.
-
-    Writes to ``out_dir``:
-
-    * ``judge_outputs.jsonl`` — raw judge response items.
-    * ``judge_scored_predictions.jsonl`` — all scored rows with judge scores.
-    * ``judge_summary.json`` — summary with ``judge_accuracy`` metric.
-
-    Parameters
-    ----------
-    judge_url
-        Full URL for ``POST /predict`` on the judge model endpoint.
-    judge_eligible
-        ``(DatasetExample, raw_text)`` pairs for non-error samples with targets.
-    all_scored_rows
-        All :class:`~beans_next.api.types.ScoredPrediction` rows in original
-        prediction order (including errored rows).
-    out_dir
-        Output directory (must already exist).
-    model_identity
-        Server identity dict carried from the primary scoring pass.
-    n_errors
-        Error count from the primary scoring pass.
-    library_version
-        Library version string for :class:`~beans_next.api.types.RunSummary`.
-    """
-    from beans_next.judges.predict_v1_judge import PredictV1Judge
-
-    examples = [ex for ex, _ in judge_eligible]
-    raw_texts = [txt for _, txt in judge_eligible]
-
-    _logger.info(
-        "Running judge pass: %d samples → %s", len(examples), judge_url
-    )
-    judge = PredictV1Judge(judge_url)
-    judge_results = judge.score_batch(examples, raw_texts)
-
-    judge_scores_by_id: dict[str, float | None] = {
-        r.sample_id: r.score for r in judge_results
-    }
-
-    # judge_outputs.jsonl — raw judge responses.
-    judge_outputs_path = out_dir / "judge_outputs.jsonl"
-    with judge_outputs_path.open("w", encoding="utf-8") as f:
-        for r in judge_results:
-            f.write(dumps_canonical(r.model_dump(mode="json")) + "\n")
-
-    # judge_scored_predictions.jsonl — all rows with judge_accuracy scores.
-    judge_scored_path = out_dir / "judge_scored_predictions.jsonl"
-    judge_score_rows: list[Mapping[str, float]] = []
-    with judge_scored_path.open("w", encoding="utf-8") as f:
-        for scored_row in all_scored_rows:
-            sid = scored_row.sample_id
-            if scored_row.error is not None:
-                judge_row_scores: dict[str, float] | None = None
-                judge_score_rows.append({})
-            else:
-                judge_score = judge_scores_by_id.get(sid)
-                if judge_score is not None:
-                    judge_row_scores = {"judge_accuracy": judge_score}
-                    judge_score_rows.append({"judge_accuracy": judge_score})
-                else:
-                    judge_row_scores = None
-                    judge_score_rows.append({})
-            judge_row = scored_row.model_copy(update={"scores": judge_row_scores})
-            f.write(dumps_canonical(judge_row.model_dump(mode="json")) + "\n")
-
-    # judge_summary.json — aggregate judge metrics.
-    judge_summary = RunSummary(
-        run_id="judge-score-from-file",
-        library_version=library_version,
-        code_git_sha=None,
-        run_config_hash=None,
-        prompt_version=None,
-        postprocess_version=None,
-        scorer_versions=None,
-        model_identity=model_identity,
-        seed=None,
-        n_samples=len(all_scored_rows),
-        n_errors=n_errors,
-        metrics={"mean": aggregate_score_means(judge_score_rows)},
-        task_results=None,
-    )
-    (out_dir / "judge_summary.json").write_text(
-        dumps_canonical(judge_summary.model_dump(mode="json")) + "\n",
-        encoding="utf-8",
-    )
-
-
-def _run_judge_extraction_pass(
-    *,
-    judge_extract_url: str,
-    judge_eligible: list[tuple[DatasetExample, str]],
-    all_scored_rows: list[ScoredPrediction],
-    task_type: str | None,
-    out_dir: Path,
-    model_identity: dict[str, Any],
-    n_errors: int,
-    library_version: str,
-) -> None:
-    """Run the extractor judge and write ``judge_extracted_*`` artifacts.
-
-    The extractor judge converts each raw model output into a structured
-    prediction using task-specific templates, then scores the result with the
-    normal post-process and metrics pipeline.
-
-    Writes to ``out_dir``:
-
-    * ``judge_extracted_scored_predictions.jsonl`` — all rows with
-      ``processed_prediction`` replaced by judge-extracted text and ``scores``
-      computed via the standard metrics pipeline.
-    * ``judge_extracted_summary.json`` — summary with standard metric means.
-
-    Parameters
-    ----------
-    judge_extract_url
-        Full URL for ``POST /predict`` on the extractor judge endpoint.
-    judge_eligible
-        ``(DatasetExample, raw_text)`` pairs for non-error samples with targets.
-    all_scored_rows
-        All :class:`~beans_next.api.types.ScoredPrediction` rows in original
-        prediction order (including errored rows).
-    task_type
-        Task type string used to select the extraction template and scoring path.
-    out_dir
-        Output directory (must already exist).
-    model_identity
-        Server identity dict carried from the primary scoring pass.
-    n_errors
-        Error count from the primary scoring pass.
-    library_version
-        Library version string for :class:`~beans_next.api.types.RunSummary`.
-    """
-    from beans_next.judges.predict_v1_extractor import PredictV1Extractor
-
-    examples = [ex for ex, _ in judge_eligible]
-    raw_texts = [txt for _, txt in judge_eligible]
-
-    _logger.info(
-        "Running extraction judge pass: %d samples → %s",
-        len(examples),
-        judge_extract_url,
-    )
-    extractor = PredictV1Extractor(judge_extract_url, task_type=task_type)
-    extracted_texts = extractor.extract_batch(examples, raw_texts)
-    extracted_by_id = {
-        ex.sample_id: txt for ex, txt in zip(examples, extracted_texts, strict=True)
-    }
-
-    # Minimal post-process steps for extracted predictions: whitespace + EOS
-    # strip only; no label matching (the judge already extracted the right labels).
-    min_cleaners: tuple[StepSpec, ...] = (
-        StepSpec("normalize_whitespace", {}),
-        StepSpec("strip_eos", {}),
-    )
-    task_s = (task_type or "").lower()
-    min_parsers: tuple[StepSpec, ...] = (
-        (StepSpec("parse_labels_comma", {}),) if "detection" in task_s else ()
-    )
-
-    extraction_scored_path = out_dir / "judge_extracted_scored_predictions.jsonl"
-    extraction_score_rows: list[Mapping[str, float]] = []
-
-    with extraction_scored_path.open("w", encoding="utf-8") as f:
-        for scored_row in all_scored_rows:
-            sid = scored_row.sample_id
-            extracted_text = extracted_by_id.get(sid)
-
-            if scored_row.error is not None or not extracted_text:
-                extraction_row = scored_row.model_copy(
-                    update={"scores": None}
-                )
-                extraction_score_rows.append({})
-            else:
-                try:
-                    post = run_post_process_pipeline(
-                        extracted_text,
-                        parser_steps=min_parsers,
-                        cleaner_steps=min_cleaners,
-                    )
-                except PostProcessPipelineError as exc:
-                    _logger.warning(
-                        "Post-process failed on extracted text for "
-                        "sample_id=%r: %s",
-                        sid,
-                        exc,
-                    )
-                    extraction_row = scored_row.model_copy(
-                        update={"processed_prediction": extracted_text, "scores": None}
-                    )
-                    extraction_score_rows.append({})
-                    f.write(
-                        dumps_canonical(extraction_row.model_dump(mode="json")) + "\n"
-                    )
-                    continue
-
-                example = DatasetExample(
-                    sample_id=scored_row.sample_id,
-                    task_id=scored_row.task_id,
-                    labels=scored_row.targets,
-                    metadata={},
-                )
-                scores = _score_sample_if_available(
-                    example,
-                    post=post,
-                    raw_predictions=[extracted_text],
-                    task_type=task_type,
-                )
-                extraction_row = scored_row.model_copy(
-                    update={
-                        "processed_prediction": post.text,
-                        "scores": dict(scores) if scores else None,
-                    }
-                )
-                extraction_score_rows.append(scores)
-
-            f.write(dumps_canonical(extraction_row.model_dump(mode="json")) + "\n")
-
-    extraction_summary = RunSummary(
-        run_id="judge-extract-from-file",
-        library_version=library_version,
-        code_git_sha=None,
-        run_config_hash=None,
-        prompt_version=None,
-        postprocess_version=None,
-        scorer_versions=None,
-        model_identity=model_identity,
-        seed=None,
-        n_samples=len(all_scored_rows),
-        n_errors=n_errors,
-        metrics={"mean": aggregate_score_means(extraction_score_rows)},
-        task_results=None,
-    )
-    (out_dir / "judge_extracted_summary.json").write_text(
-        dumps_canonical(extraction_summary.model_dump(mode="json")) + "\n",
-        encoding="utf-8",
-    )
-
-
-def judge_extract_from_predictions_file(
-    predictions_jsonl: Path,
-    judge_extract_url: str,
-    *,
-    output_dir: Path | None = None,
-    task_type: str | None = None,
-) -> RunSummary:
-    """Run judge extraction on raw predictions and score the results.
-
-    Convenience wrapper for the judge-extraction-only workflow.  Loads raw
-    model outputs from ``predictions_jsonl``, uses a judge model to convert
-    each output into a structured prediction, then scores the extracted
-    predictions with the normal beans-next metrics pipeline.
-
-    Normal rescoring is **not** performed; only the judge-extracted artifacts
-    are written.  To combine normal rescoring with extraction, call
-    :func:`rescore_predictions_file` with both ``judge_extract_url`` and
-    optionally ``judge_url`` set.
-
-    Parameters
-    ----------
-    predictions_jsonl
-        Path to a ``predictions.jsonl`` file produced by ``beans-next run``.
-    judge_extract_url
-        Full URL for ``POST /predict`` on the extractor judge model endpoint
-        (e.g. ``http://localhost:8010/predict``).
-    output_dir
-        Directory to write artifacts into.  Defaults to the parent directory
-        of ``predictions_jsonl``.
-    task_type : str or None, optional
-        Task type string (e.g. ``"classification"``, ``"detection"``,
-        ``"captioning"``).  Selects the extraction template and scoring path.
-
-    Returns
-    -------
-    RunSummary
-        Summary written to ``judge_extracted_summary.json`` in ``output_dir``.
-    """
-    return rescore_predictions_file(
-        predictions_jsonl,
-        output_dir=output_dir,
-        task_type=task_type,
-        judge_extract_url=judge_extract_url,
-    )

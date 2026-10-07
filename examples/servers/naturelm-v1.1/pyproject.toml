@@ -6,7 +6,6 @@ requires-python = ">=3.12"
 dependencies = [
   "fastapi==0.115.12",
   "uvicorn[standard]==0.34.2",
-  # Keep schemas aligned with the esp-research NatureLM-audio-v1.5 stack.
   "pydantic>=2.12.4",
   "pydantic-settings>=2.12.0",
   "typing-extensions>=4.15.0",
@@ -17,9 +16,6 @@ dependencies = [
   # Used for explicit resampling when input sr != 16kHz.
   "resampy>=0.4.0",
   "pyyaml>=6.0.0",
-  # Used by esp-research + esp-data I/O utilities.
-  "cloudpathlib[gs]>=0.20.0",
-  # NatureLM/esp tooling still imports `pkg_resources` in some places.
   "setuptools<81",
 ]
 
@@ -27,14 +23,13 @@ dependencies = [
 # Real inference deps (GPU required; keep launcher-only).
 real = [
   "transformers>=5.3.0",
-  # Pin to a CUDA-12-compatible PyTorch. Unpinned torch has been observed to
-  # resolve to newer CUDA major versions (e.g. cu13) that fail on cluster drivers.
+  # Pinned to a CUDA 12 build of PyTorch.
   "torch==2.5.1",
   "torchaudio==2.5.1",
   "sympy>=1.13.1",
   "peft>=0.18.1",
-  # Optional perf/quant deps intentionally omitted here: they can pull in CUDA
-  # major-version-specific wheels that are brittle across clusters.
+  # Optional performance and quantization packages are omitted: they can pull in
+  # CUDA-version-specific wheels.
 ]
 
 [dependency-groups]

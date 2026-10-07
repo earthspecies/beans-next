@@ -1,4 +1,0 @@
-beans_next_tiny:
-  description: BEANSNext smallest single-audio smoke suite (esp_data).
-  eval_tasks:
-    - beans_next_alarm_call_presence

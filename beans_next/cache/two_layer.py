@@ -43,12 +43,6 @@ def inference_cache_key(
     model_revision
         Launcher ``/info`` ``model_revision`` field; ``None`` when absent.
 
-        Notes
-        -----
-        This value is accepted for forward compatibility with callers, but it
-        is **not** currently incorporated into the cache key. The I6-A cache key
-        design namespaces inference by ``predict_url`` and the canonical wire
-        request item only.
     item
         One batched wire request row.
 
@@ -57,20 +51,14 @@ def inference_cache_key(
     str
         Hex digest prefixed for future schema evolution.
 
-    Warnings
-    --------
-    ``model_revision`` is accepted for forward compatibility but is **not**
-    included in the key. If the model checkpoint changes at the same URL,
-    cached inference entries will still be returned. Clear or relocate the
-    cache directory whenever the launcher model changes.
     """
     canonical = json.dumps(
         item.model_dump(mode="json"),
         sort_keys=True,
         separators=(",", ":"),
     )
-    payload = predict_url + "\x00" + canonical
-    return f"inf:v1:{_sha256_hex(payload)}"
+    payload = predict_url + "\x00" + (model_revision or "") + "\x00" + canonical
+    return f"inf:v2:{_sha256_hex(payload)}"
 
 
 def scoring_cache_key(
@@ -171,9 +159,7 @@ class TwoLayerRunCache:
         predict_url
             Same URL passed to :class:`~beans_next.models.http.HttpClient`.
         model_revision
-            Launcher ``/info`` ``model_revision`` field. Accepted for forward
-            compatibility with callers; it is not currently incorporated into
-            inference cache keys.
+            Launcher ``/info`` ``model_revision`` field, included in inference keys.
 
         Returns
         -------

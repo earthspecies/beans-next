@@ -11,13 +11,14 @@ from beans_next.api.http_schemas import PredictionsV1Request, PredictionsV1Respo
 class InferenceModel(Protocol):
     """Abstract batch inference over the `predictions_v1` wire schema.
 
-    The shipped implementation in BEANS-Next is `beans_next.models.http.HttpClient`
-    (not defined in this increment). Callers and tests may use this protocol to
+    The shipped implementation in BEANS-Next is `beans_next.models.http.HttpClient`.
+    Callers and tests may use this protocol to
     type-check code that consumes launchers without importing a concrete client.
 
     Notes
     -----
-    Matching of responses to requests is by `sample_id` only (DESIGN §4.6).
+    Matching of responses to requests is by `sample_id` only (see
+    ``docs/http_contract.md``).
 
     """
 

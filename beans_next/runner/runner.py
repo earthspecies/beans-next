@@ -3,16 +3,18 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import importlib.metadata
 import json
 import logging
 import os
+import subprocess
 import sys
 import time
 from argparse import Namespace
 from collections.abc import Callable, Iterable, Mapping
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Protocol, TypeAlias, cast
@@ -35,9 +37,18 @@ from beans_next.api.types import (
     ScoredPrediction,
     TokenUsage,
 )
+from beans_next.audio.gaussian_noise import GaussianNoiseConfig
 from beans_next.cache.two_layer import TwoLayerRunCache, scoring_cache_key
-from beans_next.judges.scorer import JudgeScorer
 from beans_next.models.http import HttpClient
+from beans_next.post_process.answers import (
+    FREE_TEXT_TASKS,
+    INVALID_ANSWER,
+    SCORING_VERSION,
+    is_presence_nonanswer,
+    normalize_task_answer,
+    question_options,
+    question_text,
+)
 from beans_next.post_process.pipeline import (
     PostProcessPipelineError,
     PostProcessResult,
@@ -74,7 +85,7 @@ ScorerFn: TypeAlias = Callable[
 
 
 class _MetricsScoreSampleFn(Protocol):
-    """Optional ``beans_next.metrics.score_sample`` hook (implemented in I3-A)."""
+    """Optional ``beans_next.metrics.score_sample`` hook."""
 
     def __call__(
         self,
@@ -83,8 +94,7 @@ class _MetricsScoreSampleFn(Protocol):
         post: PostProcessResult,
         raw_predictions: list[str],
         task_type: str | None = None,
-    ) -> Mapping[str, float]:
-        ...
+    ) -> Mapping[str, float]: ...
 
 
 _DEFAULT_WIRE_SAMPLE_RATE_HZ: int = 16_000
@@ -127,12 +137,9 @@ class RunnerConfig:
         ``"captioning"``).  When set, passed to ``score_sample`` so it takes
         precedence over per-example metadata, and used to select which
         dataset-level metric to include in the run summary.
-    gcs_upload_prefix
-        Optional GCS destination prefix (``gs://<bucket>/<path>``) under which
-        all run artifacts are uploaded once :meth:`~BenchmarkRunner.run`
-        completes.  The prefix should already include the run-specific path
-        component (e.g. ``gs://my-bucket/predictions/my-run-id``).  When
-        ``None`` (default) no upload is performed.
+    preserve_file_paths
+        Keep ``file_path`` audio payloads on the wire instead of converting them
+        to base64. Enable only when the runner and model server share a filesystem.
     """
 
     output_dir: Path
@@ -142,14 +149,16 @@ class RunnerConfig:
     postprocess_version: str | None = None
     prompt_version: str | None = None
     seed: int | None = None
-    scorer_versions: dict[str, str] | None = None
+    scorer_versions: dict[str, str] | None = field(
+        default_factory=lambda: {"deterministic": SCORING_VERSION}
+    )
     run_config_hash: str | None = None
     code_git_sha: str | None = None
     resume: bool = False
     workers: int = 1
     cache_dir: Path | None = None
     task_type: str | None = None
-    gcs_upload_prefix: str | None = None
+    preserve_file_paths: bool = False
 
 
 def _package_version() -> str:
@@ -157,6 +166,67 @@ def _package_version() -> str:
         return importlib.metadata.version("beans-next")
     except importlib.metadata.PackageNotFoundError:
         return "0.0.0"
+
+
+def _code_git_sha() -> str | None:
+    """Return the explicitly recorded or locally resolved source revision.
+
+    Returns
+    -------
+    str or None
+        Git commit SHA when it can be resolved.
+    """
+    recorded = os.environ.get("BEANS_NEXT_CODE_COMMIT", "").strip()
+    if recorded:
+        return recorded
+    try:
+        return (
+            subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=5,
+            ).stdout.strip()
+            or None
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+def _gaussian_noise_config(
+    args: Namespace,
+    eval_task: Mapping[str, Any] | None = None,
+) -> GaussianNoiseConfig | None:
+    """Build the explicit noise protocol only when that modality is selected.
+
+    Returns
+    -------
+    GaussianNoiseConfig or None
+        Noise configuration for Gaussian-noise mode, otherwise ``None``.
+    """
+    if getattr(args, "modality_mode", "audio") != "gaussian-noise":
+        return None
+    task = eval_task or {}
+    dataset_revision = str(
+        getattr(args, "hf_revision", None) or task.get("revision") or "main"
+    )
+    kwargs: dict[str, Any] = {
+        "dataset_revision": dataset_revision,
+        "global_seed": int(getattr(args, "gaussian_noise_seed", 0)),
+        "protocol_version": str(
+            getattr(
+                args,
+                "gaussian_noise_protocol_version",
+                "beans-next.gaussian-noise.v1",
+            )
+        ),
+        "rms_dbfs": float(getattr(args, "gaussian_noise_rms_dbfs", -20.0)),
+    }
+    cache_dir = getattr(args, "gaussian_noise_cache_dir", None)
+    if cache_dir is not None:
+        kwargs["cache_dir"] = Path(cache_dir).expanduser().resolve()
+    return GaussianNoiseConfig(**kwargs)
 
 
 def _wire_sample_rate_hz(audio: ModelRequest) -> int:
@@ -176,7 +246,11 @@ def _wire_sample_rate_hz(audio: ModelRequest) -> int:
     return _DEFAULT_WIRE_SAMPLE_RATE_HZ
 
 
-def model_request_to_wire_item(model_request: ModelRequest) -> PredictionsV1RequestItem:
+def model_request_to_wire_item(
+    model_request: ModelRequest,
+    *,
+    preserve_file_paths: bool = False,
+) -> PredictionsV1RequestItem:
     """Convert a core :class:`~beans_next.api.types.ModelRequest` to wire item shape.
 
     Parameters
@@ -220,7 +294,7 @@ def model_request_to_wire_item(model_request: ModelRequest) -> PredictionsV1Requ
         # If the request was rendered with a local file path (common for HF rows),
         # but the model server is remote, the server can't read that path.
         # Transparently convert local WAV paths to base64_wav payloads.
-        if payload_type == "file_path":
+        if payload_type == "file_path" and not preserve_file_paths:
             try:
                 p = Path(str(data))
             except Exception:  # noqa: BLE001
@@ -307,18 +381,11 @@ class BenchmarkRunner:
     → :class:`~beans_next.api.types.ModelPrediction` → post-process
     → (optional) ``beans_next.metrics.score_sample``
     → :class:`~beans_next.api.types.ScoredPrediction`
-    → (optional) :class:`~beans_next.judges.scorer.JudgeScorer` over all items
     → on-disk JSONL / JSON artifacts.
 
     Scoring uses the optional ``scorer`` callback when provided; otherwise the
     runner attempts ``from beans_next.metrics import score_sample`` and records
     empty ``scores`` when that module is absent.
-
-    When ``judge`` is provided,
-    :meth:`~beans_next.judges.scorer.JudgeScorer.score_batch` is called once after all
-    inference and primary scoring complete. Results are written
-    to ``judge_outputs.jsonl`` in the output directory. Errored samples are excluded
-    from the judge batch.
 
     Parameters
     ----------
@@ -332,9 +399,6 @@ class BenchmarkRunner:
         Output paths, post-process steps, and reproducibility metadata.
     scorer
         Optional override for metric computation.
-    judge
-        Optional :class:`~beans_next.judges.scorer.JudgeScorer` for LLM-as-judge
-        scoring. When set, ``judge_outputs.jsonl`` is written after the run.
 
     Notes
     -----
@@ -354,7 +418,6 @@ class BenchmarkRunner:
         config: RunnerConfig,
         *,
         scorer: ScorerFn | None = None,
-        judge: JudgeScorer | None = None,
     ) -> None:
         self._client = client
         self._renderer = renderer
@@ -364,7 +427,6 @@ class BenchmarkRunner:
                 f"RunnerConfig.workers must be >= 1, got {self._config.workers}"
             )
         self._scorer = scorer
-        self._judge = judge
         self._metrics_score_sample: _MetricsScoreSampleFn | None
         if scorer is not None:
             self._metrics_score_sample = None
@@ -450,7 +512,7 @@ class BenchmarkRunner:
         May raise :exc:`ValueError` from rendering, wire conversion, or post-process
         steps. Propagates :exc:`~beans_next.models.http.HttpClientFatalError` from
         :meth:`~beans_next.models.http.HttpClient.generate`. When ``cache_dir`` is
-        unset, behavior matches pre-I6-A runners (no SQLite).
+        unset, SQLite caching is disabled.
         """
         all_rows = sorted(list(examples), key=lambda e: e.sample_id)
         out = self._config.output_dir
@@ -468,7 +530,6 @@ class BenchmarkRunner:
         # (processed_prediction, targets) pairs for dataset-level metrics.
         processed_pairs: list[tuple[str, Any]] = []
         error_state = [0]
-        judge_inputs: list[tuple[DatasetExample, str]] = []
         round_trip_times: list[float] = []
         failures: list[dict[str, Any]] = []
 
@@ -504,7 +565,6 @@ class BenchmarkRunner:
                         processed_pairs=processed_pairs,
                         error_state=error_state,
                         run_cache=run_cache,
-                        judge_inputs=judge_inputs if self._judge is not None else None,
                         round_trip_times=round_trip_times,
                         failures=failures,
                         executor=_pool,
@@ -520,14 +580,6 @@ class BenchmarkRunner:
                         },
                     )
 
-                if self._judge is not None and judge_inputs:
-                    ex_list = [pair[0] for pair in judge_inputs]
-                    text_list = [pair[1] for pair in judge_inputs]
-                    judge_results = self._judge.score_batch(ex_list, text_list)
-                    writer.write_judge_outputs(
-                        [r.model_dump(mode="json") for r in judge_results]
-                    )
-
                 summary = self._build_summary_from_artifacts_if_present(
                     fallback_rows=all_rows,
                     score_rows=score_rows,
@@ -537,13 +589,16 @@ class BenchmarkRunner:
                 )
                 writer.write_summary(summary)
                 writer.write_model_identity(dict(self._client.server_info or {}))
-            if self._config.gcs_upload_prefix:
-                from beans_next.results.gcs_upload import upload_run_artifacts
-
-                uploaded = upload_run_artifacts(out, self._config.gcs_upload_prefix)
-                _logger.info("Uploaded %d artifact(s) to GCS", len(uploaded))
             return summary
         finally:
+            write_noise_manifest = getattr(
+                self._renderer, "write_gaussian_noise_manifest", None
+            )
+            if callable(write_noise_manifest):
+                write_noise_manifest(
+                    out / "gaussian_noise_manifest.json",
+                    code_commit=self._config.code_git_sha,
+                )
             if _pool is not None:
                 _pool.shutdown(wait=True)
             if run_cache is not None:
@@ -641,9 +696,7 @@ class BenchmarkRunner:
                 for tid, scores in zip(scored_task_ids, scored_scores, strict=True):
                     buckets.setdefault(tid, []).append(scores)
                 per_task = {
-                    (tid if tid is not None else "default"): aggregate_score_means(
-                        rows
-                    )
+                    (tid if tid is not None else "default"): aggregate_score_means(rows)
                     for tid, rows in sorted(
                         buckets.items(),
                         key=lambda kv: (kv[0] is None, kv[0] or ""),
@@ -713,7 +766,6 @@ class BenchmarkRunner:
         processed_pairs: list[tuple[str, Any]] | None = None,
         error_state: list[int],
         run_cache: TwoLayerRunCache | None = None,
-        judge_inputs: list[tuple[DatasetExample, str]] | None = None,
         round_trip_times: list[float] | None = None,
         failures: list[dict[str, Any]] | None = None,
         executor: ThreadPoolExecutor | None = None,
@@ -764,7 +816,12 @@ class BenchmarkRunner:
                         }
                     )
                 continue
-            wire_items.append(model_request_to_wire_item(mr))
+            wire_items.append(
+                model_request_to_wire_item(
+                    mr,
+                    preserve_file_paths=self._config.preserve_file_paths,
+                )
+            )
             rendered.append((ex, mr))
 
         if not wire_items:
@@ -842,6 +899,17 @@ class BenchmarkRunner:
                 post = PostProcessResult(segments=[], text="", warnings=(str(exc),))
                 post_err = str(exc)
 
+            if self._config.task_type in FREE_TEXT_TASKS or question_options(
+                ex.metadata
+            ):
+                text = normalize_task_answer(
+                    raw_text, self._config.task_type, ex.metadata
+                )
+                post = PostProcessResult(segments=[text] if text else [], text=text)
+
+            if is_presence_nonanswer(raw_text, self._config.task_type):
+                post = PostProcessResult(segments=[INVALID_ANSWER], text=INVALID_ANSWER)
+
             row_err = _merge_row_error(pred, post_err)
             targets = _targets_from_example(ex)
             if targets is None and row_err is None:
@@ -856,6 +924,7 @@ class BenchmarkRunner:
                 predictions=list(pred.predictions),
                 processed_prediction=post.text,
                 targets=targets,
+                question=question_text(ex.metadata) or None,
                 scores=None,
                 postprocess_version=self._config.postprocess_version,
                 error=row_err,
@@ -924,8 +993,6 @@ class BenchmarkRunner:
                 processed_pairs.append(
                     (scored_row.processed_prediction or "", scored_row.targets)
                 )
-            if judge_inputs is not None and scored_row.error is None:
-                judge_inputs.append((ex, scored_row.processed_prediction or ""))
 
     def _renderer_prompt_id(self) -> str:
         """Return the renderer's bundled ``prompt_id``.
@@ -948,9 +1015,7 @@ class BenchmarkRunner:
     ) -> RunSummary:
         means = aggregate_score_means(score_rows)
         means.update(
-            compute_dataset_level_metrics(
-                processed_pairs or [], self._config.task_type
-            )
+            compute_dataset_level_metrics(processed_pairs or [], self._config.task_type)
         )
         per_task = per_task_score_means(rows, score_rows) if rows else {}
         prompt_v = self._config.prompt_version or self._renderer_prompt_id()
@@ -1165,6 +1230,123 @@ def _effective_limit(args: Namespace) -> int:
         return _DEFAULT_LIMIT
 
 
+def _sample_examples(
+    examples: list[DatasetExample],
+    *,
+    fraction: float | None,
+    seed: int,
+) -> list[DatasetExample]:
+    """Select an exact deterministic fraction while preserving dataset order.
+
+    Returns
+    -------
+    list[DatasetExample]
+        The full input when ``fraction`` is unset, otherwise the selected rows.
+
+    Raises
+    ------
+    SystemExit
+        If ``fraction`` is outside the interval ``(0, 1]``.
+    """
+    if fraction is None or not examples:
+        return examples
+    if fraction <= 0.0 or fraction > 1.0:
+        raise SystemExit("--sample-fraction must be greater than 0 and at most 1.")
+    if fraction == 1.0:
+        return examples
+
+    count = max(1, round(len(examples) * fraction))
+    ranked = sorted(
+        range(len(examples)),
+        key=lambda index: hashlib.sha256(
+            f"{seed}\0{examples[index].sample_id}".encode()
+        ).digest(),
+    )
+    selected = frozenset(ranked[:count])
+    return [example for index, example in enumerate(examples) if index in selected]
+
+
+def _sample_examples_stratified_by_label(
+    examples: list[DatasetExample],
+    *,
+    fraction: float | None,
+    seed: int,
+) -> list[DatasetExample]:
+    """Select an exact deterministic fraction stratified by reference label.
+
+    Returns
+    -------
+    list[DatasetExample]
+        Selected rows in their original dataset order.
+
+    Raises
+    ------
+    SystemExit
+        If ``fraction`` is outside the interval ``(0, 1]``.
+    """
+    if fraction is None or not examples or fraction == 1.0:
+        return _sample_examples(examples, fraction=fraction, seed=seed)
+    if fraction <= 0.0 or fraction > 1.0:
+        raise SystemExit("--sample-fraction must be greater than 0 and at most 1.")
+
+    target_count = max(1, round(len(examples) * fraction))
+    groups: dict[str, list[int]] = {}
+    for index, example in enumerate(examples):
+        key = json.dumps(example.labels, sort_keys=True, ensure_ascii=False)
+        groups.setdefault(key, []).append(index)
+
+    quotas = {
+        key: len(indices) * target_count / len(examples)
+        for key, indices in groups.items()
+    }
+    allocations = {key: int(quota) for key, quota in quotas.items()}
+    remaining = target_count - sum(allocations.values())
+    remainder_order = sorted(
+        groups,
+        key=lambda key: (
+            -(quotas[key] - allocations[key]),
+            hashlib.sha256(f"{seed}\0{key}".encode()).digest(),
+        ),
+    )
+    for key in remainder_order[:remaining]:
+        allocations[key] += 1
+
+    selected: set[int] = set()
+    for key, indices in groups.items():
+        ranked = sorted(
+            indices,
+            key=lambda index: hashlib.sha256(
+                f"{seed}\0{examples[index].sample_id}".encode()
+            ).digest(),
+        )
+        selected.update(ranked[: allocations[key]])
+    return [example for index, example in enumerate(examples) if index in selected]
+
+
+def _finalize_loaded_examples(
+    examples: list[DatasetExample],
+    *,
+    args: Namespace,
+) -> list[DatasetExample]:
+    """Apply the optional deterministic sample fraction to one task.
+
+    Returns
+    -------
+    list[DatasetExample]
+        Examples after per-task sampling.
+    """
+    raw_fraction = getattr(args, "sample_fraction", None)
+    fraction = float(raw_fraction) if raw_fraction is not None else None
+    seed = int(getattr(args, "seed", 0) or 0)
+    if bool(getattr(args, "stratify_by_label", False)):
+        sampled = _sample_examples_stratified_by_label(
+            examples, fraction=fraction, seed=seed
+        )
+    else:
+        sampled = _sample_examples(examples, fraction=fraction, seed=seed)
+    return sampled
+
+
 def _default_output_dir(args: Namespace, run_id: str) -> Path:
     """Resolve an output directory from CLI args.
 
@@ -1195,6 +1377,12 @@ def _prompt_spec_from_eval_task(
     -------
     beans_next.prompts.renderer.PromptSpec
         Prompt specification to render examples.
+
+    Raises
+    ------
+    ValueError
+        If the eval task's `generation_config` contains a field that is not
+        recognised by the prompt spec's generation config model.
     """
     from beans_next.prompts.renderer import (
         load_builtin_prompt_yaml,
@@ -1202,9 +1390,7 @@ def _prompt_spec_from_eval_task(
     )
 
     if getattr(args, "prompt_yaml", None):
-        spec = load_prompt_spec_from_path(
-            Path(args.prompt_yaml).expanduser().resolve()
-        )
+        spec = load_prompt_spec_from_path(Path(args.prompt_yaml).expanduser().resolve())
         return spec
     prompt_key = (
         eval_task.get("prompt_yaml")
@@ -1219,6 +1405,28 @@ def _prompt_spec_from_eval_task(
         spec = load_builtin_prompt_yaml(name)
     else:
         spec = load_builtin_prompt_yaml("classification_bioacoustic_v1.yaml")
+
+    # An eval task may pin its own generation settings (notably the audio length
+    # policy for a benchmark tier). These win over the prompt defaults and over
+    # the BEANS-Zero subset hints applied below, so a suite reproduces its
+    # published numbers without relying on per-launcher defaults or submit-time
+    # environment variables.
+    task_gen = eval_task.get("generation_config")
+    has_gen = spec.generation_config is not None
+    if isinstance(task_gen, Mapping) and task_gen and has_gen:
+        allowed = set(type(spec.generation_config).model_fields)
+        update = {k: v for k, v in task_gen.items() if k in allowed}
+        unknown = sorted(set(task_gen) - allowed)
+        if unknown:
+            raise ValueError(
+                "Unknown generation_config field(s) in eval task "
+                f"{eval_task.get('name', '<unnamed>')!r}: {', '.join(unknown)}"
+            )
+        if update:
+            spec = replace(
+                spec,
+                generation_config=spec.generation_config.model_copy(update=update),
+            )
 
     # If this is a BEANS-Zero eval task with a known subset duration, attach the
     # per-subset clip length so model servers can match the official preprocessing.
@@ -1284,6 +1492,25 @@ def _beans_zero_max_length_seconds_for_subset(subset: str) -> int | None:
     return iv if iv > 0 else None
 
 
+def _exclude_requested_sample_ids(
+    examples: list[DatasetExample], *, args: Namespace
+) -> list[DatasetExample]:
+    """Remove explicitly documented sample ids from an evaluation task.
+
+    Returns
+    -------
+    list[DatasetExample]
+        Input examples whose exact sample ids were not requested for exclusion.
+    """
+    raw_ids = getattr(args, "exclude_sample_id", None) or []
+    excluded = {
+        str(sample_id).strip() for sample_id in raw_ids if str(sample_id).strip()
+    }
+    if not excluded:
+        return examples
+    return [example for example in examples if example.sample_id not in excluded]
+
+
 def _load_examples_for_eval_task(
     eval_task: Mapping[str, Any], *, args: Namespace
 ) -> list[DatasetExample]:
@@ -1300,29 +1527,9 @@ def _load_examples_for_eval_task(
         If required config keys are missing or invalid.
     """
     from beans_next.datasets import dataset_name_equals
-    from beans_next.datasets.esp_data import (
-        iter_esp_data_beans_next_examples,
-        iter_esp_data_beans_next_multiaudio_examples,
-        iter_esp_data_beans_zero_examples,
-        iter_esp_data_birdset_examples,
-    )
-    from beans_next.datasets.hf_multiaudio import (
-        beans_next_multiaudio_row_filter,
-        iter_hf_streaming_multiaudio_examples,
-    )
-    from beans_next.datasets.hf_streaming import iter_hf_streaming_examples
 
-    # Configurable dataset backend switch:
-    # - explicit CLI `--backend` wins
-    # - then YAML `data_source` (if present in run-config or eval-task body)
-    # - then env var `BEANS_NEXT_DATA_SOURCE`
-    # - else default esp_data
-    data_source = getattr(args, "data_source", None) or eval_task.get("data_source")
-    if not isinstance(data_source, str) or not data_source.strip():
-        data_source = os.environ.get("BEANS_NEXT_DATA_SOURCE", "esp_data")
-    data_source = str(data_source).strip()
-    if data_source == "hf":
-        data_source = "huggingface"
+    modality_mode = str(getattr(args, "modality_mode", "audio") or "audio")
+    load_audio = modality_mode in {"audio", "gaussian-noise"}
 
     hf_path = cast(
         str,
@@ -1356,195 +1563,93 @@ def _load_examples_for_eval_task(
         str | None,
         eval_task.get("eval_task_id") or eval_task.get("task_id") or None,
     )
-    limit = _effective_limit(args)
+    sample_fraction = getattr(args, "sample_fraction", None)
+    limit = _DEFAULT_LIMIT if sample_fraction is not None else _effective_limit(args)
     rows: list[DatasetExample] = []
 
-    if data_source == "esp_data":
-        if not isinstance(dataset_name, str) or not dataset_name.strip():
-            raise SystemExit(
-                "esp_data loading requires a non-empty `subset`/`dataset_name`."
-            )
-        if dataset_name.strip() == "beans_next":
-            subset_name = eval_task.get("subset") or split
-            if not isinstance(subset_name, str) or not subset_name.strip():
-                raise SystemExit(
-                    "BEANSNext esp_data loading requires a non-empty `subset`."
-                )
-            for ex in iter_esp_data_beans_next_examples(
-                subset=subset_name.strip(),
-                split=str(split),
-                task_id=task_id,
-                limit=limit,
-            ):
-                rows.append(ex)
-                if len(rows) >= limit:
-                    break
-            return rows
-        if dataset_name.strip() == "beans_next_multiaudio":
-            subset_name = eval_task.get("subset") or split
-            if not isinstance(subset_name, str) or not subset_name.strip():
-                raise SystemExit(
-                    "BEANSNextMultiAudio esp_data loading requires a non-empty `subset`."
-                )
-            for ex in iter_esp_data_beans_next_multiaudio_examples(
-                split=subset_name.strip(),
-                task_id=task_id,
-                limit=limit,
-            ):
-                rows.append(ex)
-                if len(rows) >= limit:
-                    break
-            return rows
-        if dataset_name.strip() == "birdset":
-            subset_name = eval_task.get("subset") or split
-            if not isinstance(subset_name, str) or not subset_name.strip():
-                raise SystemExit(
-                    "BirdSet esp_data loading requires a non-empty `subset`."
-                )
-            for ex in iter_esp_data_birdset_examples(
-                subset=subset_name.strip(),
-                split=str(split),
-                task_id=task_id,
-                limit=limit,
-            ):
-                rows.append(ex)
-                if len(rows) >= limit:
-                    break
-            return rows
-        for ex in iter_esp_data_beans_zero_examples(
-            subset=dataset_name.strip(),
-            split=str(split),
-            task_id=task_id,
-            limit=limit,
-        ):
-            rows.append(ex)
-            if len(rows) >= limit:
-                break
-        return rows
+    if isinstance(dataset_name, str) and dataset_name.strip() == "birdset":
+        from beans_next.datasets.hf_birdset import iter_hf_birdset_examples
 
-    if data_source == "huggingface":
-        if isinstance(dataset_name, str) and dataset_name.strip() == "birdset":
-            from beans_next.datasets.hf_birdset import iter_hf_birdset_examples
-
-            subset_name = eval_task.get("subset") or split
-            if not isinstance(subset_name, str) or not subset_name.strip():
-                raise SystemExit(
-                    "BirdSet huggingface loading requires a non-empty `subset` in the "
-                    "eval task (e.g. subset: HSN-test_5s)."
-                )
-            for ex in iter_hf_birdset_examples(
-                subset=subset_name.strip(),
-                split=str(split),
-                task_id=task_id,
-                limit=limit,
-            ):
-                rows.append(ex)
-                if len(rows) >= limit:
-                    break
-            return rows
-
-        _BEANS_ZERO_REPO = "EarthSpeciesProject/BEANS-Zero"
-        _dataset_key = (
-            str(dataset_name).strip() if isinstance(dataset_name, str) else ""
-        )
-        _beans_next_hf_datasets = frozenset({"beans_next", "beans_next_multiaudio"})
-        if (
-            isinstance(hf_path, str)
-            and hf_path.strip() == _BEANS_ZERO_REPO
-            and _dataset_key not in _beans_next_hf_datasets
-        ):
-            from beans_next.datasets.hf import iter_hf_dataset_examples
-
-            if not isinstance(dataset_name, str) or not dataset_name.strip():
-                raise SystemExit(
-                    "BEANS-Zero huggingface loading requires a non-empty `subset` or "
-                    "`dataset_name` in the eval task."
-                )
-            revision = str(eval_task.get("revision") or "main")
-            for ex in iter_hf_dataset_examples(
-                hf_path.strip(),
-                split=str(split),
-                config_name=cast(str | None, hf_config),
-                revision=revision,
-                task_id=task_id,
-                row_filter=row_filter,
-            ):
-                rows.append(ex)
-                if len(rows) >= limit:
-                    break
-            return rows
-
-        from beans_next.datasets.beans_next_hub import (
-            BEANS_NEXT_HUB_REPO_ID,
-            iter_hf_beans_next_examples,
-        )
-
-        # Use eval task hf_path if set; else canonical BEANS-Next repo (not CLI hf-path
-        # default EarthSpeciesProject/BEANS-Zero).
-        repo_id = (eval_task.get("hf_path") or "").strip() or BEANS_NEXT_HUB_REPO_ID
         subset_name = eval_task.get("subset") or split
         if not isinstance(subset_name, str) or not subset_name.strip():
             raise SystemExit(
-                "huggingface backend requires a non-empty `subset` in the eval task."
+                "BirdSet huggingface loading requires a non-empty `subset` in the "
+                "eval task (e.g. subset: HSN-test_5s)."
             )
-        revision = str(eval_task.get("revision") or "main")
-        # BEANS-Next on Hugging Face is a single-table Parquet dataset. We treat the
-        # benchmark split as "test" by default (older configs sometimes used
-        # subset-named splits, and HF defaults can be "train" depending on the card).
-        hf_split = str(eval_task.get("hf_split") or "test")
-        for ex in iter_hf_beans_next_examples(
-            repo_id,
+        for ex in iter_hf_birdset_examples(
             subset=subset_name.strip(),
-            split=hf_split,
-            revision=revision,
+            split=str(split),
             task_id=task_id,
             limit=limit,
+            load_audio=load_audio,
+            revision=getattr(args, "hf_revision", None),
         ):
             rows.append(ex)
             if len(rows) >= limit:
                 break
-        return rows
+        return _finalize_loaded_examples(rows, args=args)
 
-    if not isinstance(hf_path, str) or not hf_path.strip():
-        raise SystemExit("Eval task must define `hf_path` (or provide `--hf-path`).")
+    _dataset_key = str(dataset_name).strip() if isinstance(dataset_name, str) else ""
+    _beans_next_hf_datasets = frozenset({"beans_next", "beans_next_multiaudio"})
+    if isinstance(hf_path, str) and _dataset_key not in _beans_next_hf_datasets:
+        from beans_next.datasets.hf import iter_hf_dataset_examples
 
-    if (
-        isinstance(dataset_name, str)
-        and dataset_name.strip() == "beans_next_multiaudio"
-    ):
-        tier_cfg = eval_task.get("tier")
-        if not isinstance(tier_cfg, str) or not tier_cfg.strip():
-            tier_cfg = "tier_4_in_context"
-        else:
-            tier_cfg = tier_cfg.strip()
-        subset_cfg = subset if isinstance(subset, str) and subset.strip() else None
-        row_filter_ma = beans_next_multiaudio_row_filter(
-            tier=tier_cfg,
-            subset=subset_cfg,
+        revision = str(
+            getattr(args, "hf_revision", None) or eval_task.get("revision") or "main"
         )
-        for ex in iter_hf_streaming_multiaudio_examples(
-            hf_path,
+        for ex in iter_hf_dataset_examples(
+            hf_path.strip(),
             split=str(split),
             config_name=cast(str | None, hf_config),
+            revision=revision,
             task_id=task_id,
-            row_filter=row_filter_ma,
+            row_filter=row_filter,
+            load_audio=load_audio,
         ):
             rows.append(ex)
             if len(rows) >= limit:
                 break
-        return rows
+        return _finalize_loaded_examples(rows, args=args)
 
-    for ex in iter_hf_streaming_examples(
-        hf_path,
-        split=str(split),
-        config_name=cast(str | None, hf_config),
+    from beans_next.datasets.beans_next_hub import (
+        BEANS_NEXT_HUB_REPO_ID,
+        iter_hf_beans_next_examples,
+    )
+
+    # Use eval task hf_path if set; else canonical BEANS-Next repo (not CLI hf-path
+    # default EarthSpeciesProject/BEANS-Zero).
+    repo_id = (eval_task.get("hf_path") or "").strip() or BEANS_NEXT_HUB_REPO_ID
+    # Explicit Hub task names take precedence over subset aliases.
+    subset_name = eval_task.get("hf_subset") or eval_task.get("subset") or split
+    if not isinstance(subset_name, str) or not subset_name.strip():
+        raise SystemExit(
+            "huggingface backend requires a non-empty `subset` in the eval task."
+        )
+    # Explicit CLI selection wins over the suite-wide environment override,
+    # then the eval task's pinned revision and finally main.
+    revision = str(
+        getattr(args, "hf_revision", None)
+        or os.environ.get("BEANS_NEXT_HF_REVISION", "").strip()
+        or eval_task.get("revision")
+        or "main"
+    )
+    # BEANS-Next on Hugging Face is a single-table Parquet dataset. We treat the
+    # benchmark split as "test" by default (HF defaults can be "train"
+    # depending on the card).
+    hf_split = str(eval_task.get("hf_split") or "test")
+    for ex in iter_hf_beans_next_examples(
+        repo_id,
+        subset=subset_name.strip(),
+        split=hf_split,
+        revision=revision,
         task_id=task_id,
-        row_filter=row_filter,
+        limit=limit,
+        load_audio=load_audio,
     ):
         rows.append(ex)
         if len(rows) >= limit:
             break
-    return rows
+    return _finalize_loaded_examples(rows, args=args)
 
 
 @lru_cache(maxsize=1)
@@ -1643,6 +1748,14 @@ def _postprocess_steps_for_examples(
     ]
 
     # Open-ended tasks preserve free text; label parsing would corrupt them.
+    from beans_next.post_process.answers import FREE_TEXT_TASKS, question_options
+
+    if task_type in FREE_TEXT_TASKS - {"captioning", "qa", "open_ended", "counting"}:
+        return (), tuple(cleaners)
+    if task_type == "classification" and any(
+        question_options(ex.metadata) for ex in examples
+    ):
+        return (), tuple(cleaners)
     if task_type in {"captioning", "qa", "open_ended", "counting"}:
         # BirdSet open-set scientific naming: we still want a light-touch,
         # BirdSet-specific canonicalization step when a scientific vocab is
@@ -1780,52 +1893,15 @@ def _postprocess_steps_for_examples(
     return parsers, tuple(cleaners)
 
 
-def _judge_from_args_and_task(
-    args: Namespace,
-    eval_task: Mapping[str, Any],
-) -> JudgeScorer | None:
-    """Build a :class:`~beans_next.judges.scorer.JudgeScorer` from CLI args + eval-task.
-
-    Returns ``None`` when ``--judge-url`` is absent or empty.
-
-    Parameters
-    ----------
-    args
-        CLI namespace; reads ``judge_url`` attribute.
-    eval_task
-        Eval-task config mapping; optional ``judge.template_id`` key overrides
-        the default template.
-
-    Returns
-    -------
-    JudgeScorer or None
-        Configured scorer, or ``None`` when judge is not requested.
-    """
-    judge_url = getattr(args, "judge_url", None)
-    if not isinstance(judge_url, str) or not judge_url.strip():
-        return None
-    template_id = "bioacoustic_open_qa_v1"
-    judge_block = eval_task.get("judge") if isinstance(eval_task, Mapping) else None
-    if isinstance(judge_block, Mapping):
-        tid = judge_block.get("template_id")
-        if isinstance(tid, str) and tid.strip():
-            template_id = tid.strip()
-    return JudgeScorer(judge_url.strip(), template_id=template_id)
-
-
 def run_from_cli_namespace(args: Namespace) -> None:
     """CLI-dispatched hook for `beans-next run`.
-
-    This hook owns execution when the CLI imports `beans_next.runner.runner` and finds
-    a callable named `run_from_cli_namespace` (preferred), `main_run_from_cli`, or
-    `cli_run`.
 
     The behavior is:
     - When `args.suite` is set: resolve `beans_next/registry/suite/<suite>.yaml`,
       expand it into a list of eval-task YAML ids, and run each task as its own
       `BenchmarkRunner` invocation under a deterministic output subdirectory.
-    - Otherwise: execute the same minimal HuggingFace-slice run path as the CLI's
-      built-in fallback (prompt default + HTTP endpoint + `--limit` cap).
+    - Otherwise: execute the same minimal HuggingFace-slice run path as the default
+      single-task configuration (prompt default + HTTP endpoint + `--limit` cap).
 
     Raises
     ------
@@ -1835,9 +1911,8 @@ def run_from_cli_namespace(args: Namespace) -> None:
     """
     config_path = getattr(args, "config", None)
     run_id = (
-        (getattr(args, "run_id", None) or "beans-next-cli").strip()
-        or "beans-next-cli"
-    )
+        getattr(args, "run_id", None) or "beans-next-cli"
+    ).strip() or "beans-next-cli"
     raw_workers = getattr(args, "workers", 1)
     try:
         workers = max(1, int(raw_workers))
@@ -1845,11 +1920,6 @@ def run_from_cli_namespace(args: Namespace) -> None:
         workers = 1
 
     cache_dir = _cache_dir_from_args(args)
-
-    _upload_gcs = bool(getattr(args, "upload_gcs", False))
-    _gcs_base = (getattr(args, "gcs_prefix", None) or "").rstrip("/")
-    if _upload_gcs and not _gcs_base:
-        raise SystemExit("--upload-gcs requires --gcs-prefix <gs://bucket/path>")
 
     suite_id = getattr(args, "suite", None)
     resume_requested = bool(getattr(args, "resume", False))
@@ -1882,9 +1952,8 @@ def run_from_cli_namespace(args: Namespace) -> None:
             raise SystemExit(str(exc)) from exc
 
         # If the CLI provided a predict URL override, apply it to all endpoints in the
-        # loaded run-config plan. This is required for Slurm workflows where the
-        # bundled run-configs use localhost placeholders but inference is against a
-        # remote launcher discovered via the URL-file protocol.
+        # loaded run-config plan. Bundled run-configs use localhost placeholders, so
+        # this points them at a remote server, e.g. one read from a URL file.
         predict_url_override = getattr(args, "predict_url", None)
         if predict_url_override:
             from urllib.parse import urljoin
@@ -1920,9 +1989,7 @@ def run_from_cli_namespace(args: Namespace) -> None:
             loaded_plan = loaded.plan
 
         cfg_run_id = (
-            loaded.config.run_id
-            or getattr(args, "run_id", None)
-            or "beans-next-config"
+            loaded.config.run_id or getattr(args, "run_id", None) or "beans-next-config"
         )
         cfg_run_id = str(cfg_run_id).strip() or "beans-next-config"
         run_id = cfg_run_id
@@ -1938,8 +2005,6 @@ def run_from_cli_namespace(args: Namespace) -> None:
         )
         args_for_tasks = Namespace(**vars(args))
         args_for_tasks.limit = effective_limit
-        if getattr(args_for_tasks, "data_source", None) is None:
-            args_for_tasks.data_source = loaded.config.data_source
 
         base_out.mkdir(parents=True, exist_ok=True)
 
@@ -1982,8 +2047,9 @@ def run_from_cli_namespace(args: Namespace) -> None:
                     task_cfg.setdefault("eval_task_id", eval_task_id)
 
                     try:
-                        examples = _load_examples_for_eval_task(
-                            task_cfg, args=args_for_tasks
+                        examples = _exclude_requested_sample_ids(
+                            _load_examples_for_eval_task(task_cfg, args=args_for_tasks),
+                            args=args_for_tasks,
                         )
                     except ImportError as exc:
                         raise SystemExit(str(exc)) from exc
@@ -1999,7 +2065,14 @@ def run_from_cli_namespace(args: Namespace) -> None:
                         labels_override=_labels_for_eval_task(task_cfg),
                     )
                     spec = _prompt_spec_from_eval_task(task_cfg, args=args_for_tasks)
-                    renderer = PromptRenderer(spec)
+                    modality_mode = getattr(args_for_tasks, "modality_mode", "audio")
+                    renderer = PromptRenderer(
+                        spec,
+                        modality_mode=modality_mode,
+                        gaussian_noise_config=_gaussian_noise_config(
+                            args_for_tasks, task_cfg
+                        ),
+                    )
                     task_run_id = f"{run_id}__{model.name}__{eval_task_id}"
                     out_dir = (base_out / model.name / eval_task_id).resolve()
                     out_dir.mkdir(parents=True, exist_ok=True)
@@ -2012,13 +2085,16 @@ def run_from_cli_namespace(args: Namespace) -> None:
                         workers=workers,
                         cache_dir=cache_dir,
                         task_type=task_cfg.get("task_type") or None,
-                        gcs_upload_prefix=(
-                            f"{_gcs_base}/{task_run_id}" if _upload_gcs else None
+                        prompt_version=f"{spec.prompt_id}:{modality_mode}",
+                        seed=int(getattr(args_for_tasks, "seed", 0) or 0),
+                        code_git_sha=_code_git_sha(),
+                        preserve_file_paths=bool(
+                            getattr(args_for_tasks, "preserve_file_paths", False)
+                            or model.audio_payload == "file_path"
                         ),
                     )
 
-                    judge = _judge_from_args_and_task(args_for_tasks, task_cfg)
-                    runner = BenchmarkRunner(client, renderer, cfg, judge=judge)
+                    runner = BenchmarkRunner(client, renderer, cfg)
                     summary = runner.run(examples)
 
                     items_out.append(
@@ -2062,7 +2138,7 @@ def run_from_cli_namespace(args: Namespace) -> None:
         if not suite_path.is_file():
             msg = (
                 f"Suite {suite_id!r} not found at {suite_path}. "
-                "Ensure registry content (I4-A) is present."
+                "Ensure registry content is present."
             )
             raise SystemExit(msg)
         suite_doc = _load_yaml_mapping(suite_path)
@@ -2086,9 +2162,9 @@ def run_from_cli_namespace(args: Namespace) -> None:
     with HttpClient(str(predict_url), **client_kwargs2) as client:
         if eval_task_ids is None:
             # Single-task fallback: load the full eval-task YAML when --task-id is
-            # given so prompt / task_type / subset fields are respected.  Callers
-            # that don't pass --task-id keep the previous behaviour (empty mapping,
-            # falls back to HF args + default prompt).
+            # given so prompt / task_type / subset fields are respected.  Without
+            # --task-id the mapping stays empty and HF args + the default prompt
+            # are used.
             raw_task_id = getattr(args, "task_id", None)
             if isinstance(raw_task_id, str) and raw_task_id.strip():
                 task_yaml_path = _eval_task_yaml_path(raw_task_id.strip())
@@ -2102,7 +2178,9 @@ def run_from_cli_namespace(args: Namespace) -> None:
             else:
                 single_task_cfg = {}
             try:
-                examples = _load_examples_for_eval_task(single_task_cfg, args=args)
+                examples = _exclude_requested_sample_ids(
+                    _load_examples_for_eval_task(single_task_cfg, args=args), args=args
+                )
             except ImportError as exc:
                 raise SystemExit(str(exc)) from exc
             if not examples:
@@ -2116,7 +2194,12 @@ def run_from_cli_namespace(args: Namespace) -> None:
             )
             spec = _prompt_spec_from_eval_task(single_task_cfg, args=args)
 
-            renderer = PromptRenderer(spec)
+            modality_mode = getattr(args, "modality_mode", "audio")
+            renderer = PromptRenderer(
+                spec,
+                modality_mode=modality_mode,
+                gaussian_noise_config=_gaussian_noise_config(args, single_task_cfg),
+            )
             cfg = RunnerConfig(
                 output_dir=base_out,
                 run_id=run_id,
@@ -2128,10 +2211,12 @@ def run_from_cli_namespace(args: Namespace) -> None:
                 task_type=single_task_cfg.get("task_type")
                 or getattr(args, "task_type", None)
                 or None,
-                gcs_upload_prefix=f"{_gcs_base}/{run_id}" if _upload_gcs else None,
+                prompt_version=f"{spec.prompt_id}:{modality_mode}",
+                seed=int(getattr(args, "seed", 0) or 0),
+                code_git_sha=_code_git_sha(),
+                preserve_file_paths=bool(getattr(args, "preserve_file_paths", False)),
             )
-            judge = _judge_from_args_and_task(args, single_task_cfg)
-            runner = BenchmarkRunner(client, renderer, cfg, judge=judge)
+            runner = BenchmarkRunner(client, renderer, cfg)
             runner.run(examples)
             return
 
@@ -2151,7 +2236,9 @@ def run_from_cli_namespace(args: Namespace) -> None:
 
             # Load examples (limit applies per task).
             try:
-                examples = _load_examples_for_eval_task(task_cfg, args=args)
+                examples = _exclude_requested_sample_ids(
+                    _load_examples_for_eval_task(task_cfg, args=args), args=args
+                )
             except ImportError as exc:
                 raise SystemExit(str(exc)) from exc
             if not examples:
@@ -2166,7 +2253,12 @@ def run_from_cli_namespace(args: Namespace) -> None:
                 labels_override=_labels_for_eval_task(task_cfg),
             )
             spec = _prompt_spec_from_eval_task(task_cfg, args=args)
-            renderer = PromptRenderer(spec)
+            modality_mode = getattr(args, "modality_mode", "audio")
+            renderer = PromptRenderer(
+                spec,
+                modality_mode=modality_mode,
+                gaussian_noise_config=_gaussian_noise_config(args, task_cfg),
+            )
             task_run_id = f"{run_id}__{eval_task_id}"
             out_dir = (suite_out / eval_task_id).resolve()
             cfg = RunnerConfig(
@@ -2178,12 +2270,12 @@ def run_from_cli_namespace(args: Namespace) -> None:
                 workers=workers,
                 cache_dir=cache_dir,
                 task_type=task_cfg.get("task_type") or None,
-                gcs_upload_prefix=(
-                    f"{_gcs_base}/{task_run_id}" if _upload_gcs else None
-                ),
+                prompt_version=f"{spec.prompt_id}:{modality_mode}",
+                seed=int(getattr(args, "seed", 0) or 0),
+                code_git_sha=_code_git_sha(),
+                preserve_file_paths=bool(getattr(args, "preserve_file_paths", False)),
             )
-            judge = _judge_from_args_and_task(args, task_cfg)
-            runner = BenchmarkRunner(client, renderer, cfg, judge=judge)
+            runner = BenchmarkRunner(client, renderer, cfg)
             summary = runner.run(examples)
             task_summaries.append(
                 {

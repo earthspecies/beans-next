@@ -1,9 +1,10 @@
 beans_next_alarm_call_presence:
-  task_type: detection
-  data_source: esp_data
+  task_type: presence_binary
   dataset: beans_next
   subset: alarm-call-presence
-  split: alarm-call-presence
+  split: test
   prompt: classification_beans_zero_official_v1
+  generation_config:
+    max_length_seconds: 10
   metrics:
-    - name: accuracy
+  - name: top1_accuracy

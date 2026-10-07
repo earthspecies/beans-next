@@ -15,5 +15,10 @@
   "unseen-family-sci": 10,
   "unseen-family-tax": 10,
   "captioning": 10,
-  "zf-indv": 10
+  "zf-indiv": 10,
+  "dcase": 10,
+  "enabirds": 10,
+  "gibbons": 10,
+  "hiceas": 10,
+  "rfcx": 10
 }

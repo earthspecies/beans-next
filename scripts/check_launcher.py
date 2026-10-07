@@ -102,8 +102,10 @@ def _validate_predict_two(doc: dict[str, Any], expected: set[str]) -> None:
         if not isinstance(sid, str) or not sid:
             _die(f"/predict responses[{i}].sample_id must be non-empty string")
         preds = item.get("predictions")
-        if not isinstance(preds, list) or not preds or not all(
-            isinstance(x, str) for x in preds
+        if (
+            not isinstance(preds, list)
+            or not preds
+            or not all(isinstance(x, str) for x in preds)
         ):
             _die(f"/predict responses[{sid!r}].predictions must be non-empty list[str]")
         err = item.get("error", None)

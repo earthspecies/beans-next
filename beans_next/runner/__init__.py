@@ -1,4 +1,4 @@
-"""Benchmark runner package (incremental build-out)."""
+"""Benchmark runner package."""
 
 from beans_next.runner._utils import aggregate_score_means, per_task_score_means
 from beans_next.runner.batching import (

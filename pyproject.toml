@@ -5,6 +5,7 @@ description = "BEANS-Next: HTTP-first bioacoustics audio-LM benchmark library."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
+maintainers = [{ name = "Earth Species Project" }]
 
 classifiers = [
   "Development Status :: 3 - Alpha",
@@ -19,34 +20,25 @@ classifiers = [
 ]
 
 dependencies = [
-  # Pin datasets: newer versions trigger a reproducible interpreter-finalization crash
-  # (PyGILState_Release) on this repo + the Slurm cluster when using streaming parquet.
-  # Note: if BEANS-Zero was previously cached by newer datasets, clear only that dataset's
-  # cache on the node before running (see examples/slurm/test_run_inference_clean_beans_zero_cache.sh).
+  "filelock>=3.13",
+  "fsspec>=2024.9.0",
   "datasets==3.1.0",
-  # Pin native deps to stable wheels. Unpinned latests caused interpreter-finalization crashes
-  # (PyGILState_Release) when iterating HuggingFace datasets on this environment.
+  # Compatible versions for audio and Parquet loading.
   "numpy>=1.24,<2.0",
   "pandas==2.2.3",
   "pyarrow==16.1.0",
-  # Pin hub client to a widely used stable series (avoid surprising prerelease-like behavior).
   "huggingface-hub==0.25.2",
   "pydantic>=2.7",
   "jinja2>=3.1",
   "pyyaml>=6.0",
   "soundfile>=0.12.1",
   "librosa>=0.10",
-  "semver>=3.0.4",
-  "gcsfs>=2024.9.0.post1",
-  "s3fs>=2024.9.0",
-  "google-cloud-secret-manager>=2.27.0",
-  "cloudpathlib>=0.24.0",
-  "intervaltree>=3.2.1",
 ]
 
 [dependency-groups]
 
 dev = [
+  "httpx>=0.27,<0.29",
   "build>=1.2.0",
   "pre-commit<=4.2.0",
   "pytest<=7.4.0",
@@ -56,22 +48,13 @@ dev = [
   "yamllint<=1.35.1",
   "deptry<=0.23.0",
   "fastapi<=0.116.1",
-  "httpx<=0.28.1",
   "uvicorn<=0.35.0",
 ]
-esp = [
-    "esp-data>=1.8.0",
-]
-
-[project.optional-dependencies]
-polars = ["polars>=1.4.0"]
-gcs = ["google-cloud-storage>=2.0"]
-
 [project.urls]
-Homepage = "https://github.com/earthspecies/beans-next"
 Repository = "https://github.com/earthspecies/beans-next"
 Issues = "https://github.com/earthspecies/beans-next/issues"
-Changelog = "https://github.com/earthspecies/beans-next/blob/main/CHANGELOG.md"
+Documentation = "https://github.com/earthspecies/beans-next/blob/main/README.md"
+Dataset = "https://huggingface.co/datasets/EarthSpeciesProject/BEANS-Next"
 
 [project.scripts]
 beans-next = "beans_next.cli:main"
@@ -81,11 +64,10 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.sdist]
-include = ["beans_next/**/*.yaml", "beans_next/**/*.jar", "beans_next/**/*.json"]
+include = ["beans_next", "tests", "scripts", "docs", "configs", "examples/servers", "README.md", "LICENSE", "pyproject.toml", "uv.lock"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["beans_next"]
-include = ["beans_next/**/*.yaml", "beans_next/**/*.jar", "beans_next/**/*.json"]
 
 [tool.pytest.ini_options]
 python_files = [
@@ -132,44 +114,22 @@ max-complexity = 10
 skip = "*.csv"
 
 [tool.deptry]
-exclude = ["conftest.py", ".venv", "tests"]
+exclude = [".venv", "tests"]
 extend_exclude = [
   "examples/servers/*",
   "scripts",
 ]
 
 [tool.deptry.per_rule_ignores]
-DEP001 = ["google"]
 DEP002 = [
-  "cloudpathlib",
-  "gcsfs",
-  "intervaltree",
+  "pandas", # Pin the version used by the datasets runtime.
   "librosa",
   "soundfile",
-  "s3fs",
-  "semver",
   "ffmpeg",
   "pyarrow",
   "huggingface-hub",
-  "google-cloud-storage",
 ]
-DEP003 = ["librosa", "fsspec", "google"]
-DEP004 = ["esp_data"]
-
-[tool.deptry.package_module_name_map]
-"google-cloud-storage" = ["google.cloud.storage"]
-"google" = ["google.cloud.storage"]
-"esp-data" = ["esp_data"]
+DEP003 = ["librosa"]
 
 [tool.uv]
-keyring-provider = "subprocess"
 default-groups = []
-
-[[tool.uv.index]]
-name = "esp-pypi"
-url = "https://oauth2accesstoken@us-central1-python.pkg.dev/okapi-274503/esp-pypi/simple/"
-publish-url = "https://oauth2accesstoken@us-central1-python.pkg.dev/okapi-274503/esp-pypi/"
-explicit = true
-
-[tool.uv.sources]
-esp-data = { index = "esp-pypi" }

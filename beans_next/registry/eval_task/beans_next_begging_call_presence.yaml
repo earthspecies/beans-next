@@ -1,0 +1,10 @@
+beans_next_begging_call_presence:
+  task_type: presence_binary
+  dataset: beans_next
+  subset: begging-call-presence
+  split: test
+  prompt: classification_beans_zero_official_v1
+  generation_config:
+    max_length_seconds: 10
+  metrics:
+  - name: top1_accuracy

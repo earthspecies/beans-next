@@ -1,4 +1,4 @@
-"""Runner regression: prompt render errors must be sample-level."""
+"""Runner: prompt render errors must be sample-level."""
 
 from __future__ import annotations
 
@@ -115,9 +115,7 @@ class _PartialResponseHttpClient:
         return PredictionsV1Response.model_validate(
             {
                 "schema_version": "predictions_v1",
-                "responses": [
-                    {"sample_id": first.sample_id, "predictions": ["ok"]}
-                ],
+                "responses": [{"sample_id": first.sample_id, "predictions": ["ok"]}],
             }
         )
 

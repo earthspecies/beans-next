@@ -42,7 +42,8 @@ class HttpAudioInput(BaseModel):
 class HttpGenerationConfig(BaseModel):
     """Decoding / sampling parameters for the launcher.
 
-    The contract documents ``max_tokens`` and ``temperature`` (DESIGN §4.1).
+    The contract (``docs/http_contract.md``) documents ``max_tokens`` and
+    ``temperature``.
     Additional keys may appear on the wire; they are preserved but not validated
     beyond JSON object shape when using :meth:`model_validate` on a dict with
     extra keys — this model uses ``extra='allow'`` so forward-compatible payloads

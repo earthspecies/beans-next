@@ -21,7 +21,7 @@ if [[ "${1:-}" == "--help" ]] || [[ "${1:-}" == "-h" ]]; then
   echo "  AF3_MODEL_REVISION    HuggingFace revision / git ref (default: main)"
   echo ""
   echo "Real inference requires a GPU and the ML deps in requirements.txt:"
-  echo "  torch>=2.2.0, transformers>=4.47.0, accelerate>=0.27.0, soundfile"
+  echo "  see requirements.txt (install with: uv sync --group gpu)"
   echo ""
   echo "License note:"
   echo "  nvidia/audio-flamingo-next-hf is released under the NVIDIA OneWay"

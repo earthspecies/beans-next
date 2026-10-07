@@ -1,0 +1,9 @@
+beans_next_tier4:
+  description: 'Tier 4: ordered reference audio followed by query audio. Each clip
+    is capped at 10 seconds. Requires a multi-audio model server.'
+  eval_tasks:
+  - beans_next_multiaudio_crow_4way
+  - beans_next_multiaudio_giant_otter_4way
+  - beans_next_multiaudio_unseen_species_4way
+  - beans_next_multiaudio_gibbon_fewshot_detection_balanced
+  - beans_next_multiaudio_dcase_fewshot_detection_balanced

@@ -181,8 +181,7 @@ def cmd_validate_info() -> None:
         sys.exit(1)
     if "predictions_v1" not in sv:
         print(
-            "FAIL: /info schema_versions must include 'predictions_v1' "
-            f"(got {sv!r})",
+            f"FAIL: /info schema_versions must include 'predictions_v1' (got {sv!r})",
             file=sys.stderr,
         )
         sys.exit(1)

@@ -1,0 +1,10 @@
+---
+extends: default
+
+rules:
+  # The registry supports both indented and indentless YAML sequences.
+  indentation:
+    indent-sequences: consistent
+  # Preserve the released prompt text and model identifiers without reflowing them.
+  line-length:
+    max: 128

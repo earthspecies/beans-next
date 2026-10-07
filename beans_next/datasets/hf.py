@@ -77,6 +77,7 @@ def iter_hf_dataset_examples(
     id_field: str = "id",
     row_filter: Callable[[Mapping[str, Any]], bool] | None = None,
     load_dataset_kwargs: Mapping[str, Any] | None = None,
+    load_audio: bool = True,
 ) -> Iterator[DatasetExample]:
     """Yield normalized examples from a map-style Hub dataset split.
 
@@ -102,6 +103,9 @@ def iter_hf_dataset_examples(
     load_dataset_kwargs
         Extra keyword arguments forwarded to ``datasets.load_dataset``. Must
         not set ``streaming=True``.
+    load_audio
+        Keep and decode audio columns. When ``False``, remove heavy media columns
+        before row iteration for metadata-only text evaluation.
 
     Yields
     ------
@@ -161,8 +165,10 @@ def iter_hf_dataset_examples(
     # For BEANS-Zero (91965 rows, audio Sequence(float64)), this reduces the
     # filter scan from ~57 min (cold, downloading) or ~10 s (warm, enumerate)
     # to ~1-2 s.
-    if row_filter is not None and hasattr(loaded, "select") and hasattr(
-        loaded, "features"
+    if (
+        row_filter is not None
+        and hasattr(loaded, "select")
+        and hasattr(loaded, "features")
     ):
         try:
             heavy = _heavy_columns(loaded.features)
@@ -170,7 +176,8 @@ def iter_hf_dataset_examples(
                 light = loaded.remove_columns(heavy)
                 # Bulk convert to dict of lists (one Arrow read per column).
                 light_dict: dict[str, list[Any]] = {
-                    col: light[col] for col in light.column_names  # type: ignore[union-attr]
+                    col: light[col]
+                    for col in light.column_names  # type: ignore[union-attr]
                 }
                 n_total = len(light)  # type: ignore[arg-type]
                 matching: list[int] = [
@@ -188,6 +195,12 @@ def iter_hf_dataset_examples(
                 row_filter = None  # already filtered; don't re-check below
         except Exception as exc:  # noqa: BLE001
             _LOG.debug("hf fast-filter skipped (%s); falling back to sequential", exc)
+
+    if not load_audio and hasattr(loaded, "features"):
+        heavy = _heavy_columns(loaded.features)
+        if heavy:
+            loaded = loaded.remove_columns(heavy)
+            _LOG.debug("hf metadata-only load: removed columns %s", heavy)
 
     # Use numpy format for audio to avoid GIL-heavy Arrow→Python list conversion.
     # set_format("numpy") makes dataset[i]["audio"] return a numpy float32 array

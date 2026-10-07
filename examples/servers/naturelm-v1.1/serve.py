@@ -7,7 +7,7 @@ It implements the mandatory BEANS-Next HTTP endpoints:
 - `GET /info`
 - `GET /health`
 
-Weights are loaded from a GCS checkpoint directory (``NATURELM_GCS_CHECKPOINT_URI``).
+Weights are loaded from Hugging Face or a local checkpoint directory.
 """
 
 from __future__ import annotations
@@ -35,13 +35,10 @@ PREDICTIONS_V1: Literal["predictions_v1"] = "predictions_v1"
 
 LAUNCHER_NAME: str = "beans-next-naturelm-v1.1"
 
-# GCS checkpoint directory containing the model weights.
-# Example:
-#   export NATURELM_GCS_CHECKPOINT_URI="gs://foundation-models/naturelm-audio-1.1/base_model/1290000"
-GCS_CHECKPOINT_URI: str = os.environ.get("NATURELM_GCS_CHECKPOINT_URI", "").strip()
+# Optional local copy of a model checkpoint.
+LOCAL_CHECKPOINT_DIR: str = os.environ.get("NATURELM_LOCAL_CHECKPOINT_DIR", "").strip()
 
-# Optional HuggingFace identity for /info when not using a GCS checkpoint.
-# (Used by tests and by setups that want /info to reflect gated repo identity.)
+# Hugging Face checkpoint source and revision.
 HF_REPO_ID: str = os.environ.get("NATURELM_HF_REPO_ID", "").strip()
 HF_REVISION: str = os.environ.get("NATURELM_HF_REVISION", "").strip()
 
@@ -138,7 +135,7 @@ class PredictionsV1Response(BaseModel):
 
 
 class InfoResponse(BaseModel):
-    """``GET /info`` capability document (DESIGN §4.3)."""
+    """``GET /info`` capability document (see `docs/http_contract.md`)."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -154,22 +151,6 @@ class InfoResponse(BaseModel):
     loading_stage: str | None = None
     loading_elapsed_sec: float | None = None
     last_error: str | None = None
-
-
-def _gcs_checkpoint_basename(gcs_uri: str) -> str:
-    """Derive a stable revision string from a GCS checkpoint URI.
-
-    Parameters
-    ----------
-    gcs_uri
-        Directory-like GCS URI pointing at a specific checkpoint.
-
-    Returns
-    -------
-    str
-        Basename of the URI (last path component), with any trailing slash removed.
-    """
-    return gcs_uri.rstrip("/").rsplit("/", 1)[-1]
 
 
 def _deterministic_stub_prediction(
@@ -251,87 +232,13 @@ def _decode_audio_input(inp: HttpAudioInput) -> tuple[Any, int]:
     raise ValueError(f"unsupported audio payload_type: {inp.payload_type!r}")
 
 
-def _ensure_gcs_checkpoint_available(gcs_uri: str) -> str:
-    """Download a GCS checkpoint dir to a local cache and return its path.
-
-    Returns
-    -------
-    str
-        Path to the local directory containing the downloaded checkpoint files.
-
-    Raises
-    ------
-    HTTPException
-        If the URI is invalid, GCS access fails, or `gcsfs` is unavailable.
-
-    Notes
-    -----
-    - This expects a *directory-like* GCS URI (prefix) that contains the model
-      files needed by `NatureLM.from_pretrained(<local_dir>)`.
-    - Download uses `gcsfs` if installed. If your environment authenticates via
-      GCE metadata, workload identity, or ADC, `gcsfs` will usually “just work”.
-    """
-    try:
-        import gcsfs  # type: ignore[import-not-found]
-    except Exception as exc:  # noqa: BLE001
-        raise HTTPException(
-            status_code=503,
-            detail=(
-                "GCS checkpoint requested but 'gcsfs' is not installed in this "
-                "launcher venv. Install it (launcher-only) or use HuggingFace "
-                "weights instead."
-            ),
-        ) from exc
-
-    if not gcs_uri.startswith("gs://"):
-        raise HTTPException(status_code=400, detail=f"invalid GCS uri: {gcs_uri!r}")
-
-    # Local cache root (launcher-only).
-    cache_root = os.environ.get(
-        "NATURELM_GCS_CACHE_DIR",
-        os.path.expanduser("~/.cache/beans-next/naturelm-v1.1-gcs"),
-    )
-    os.makedirs(cache_root, exist_ok=True)
-
-    # Make a stable-ish path from the URI.
-    safe = gcs_uri.removeprefix("gs://").replace("/", "__")
-    local_dir = os.path.join(cache_root, safe)
-    done_marker = os.path.join(local_dir, ".download_complete")
-
-    if os.path.exists(done_marker):
-        return local_dir
-
-    os.makedirs(local_dir, exist_ok=True)
-
-    fs = gcsfs.GCSFileSystem()
-    prefix = gcs_uri.removeprefix("gs://")
-    # gcsfs uses "bucket/path" format internally.
-    objects = fs.find(prefix)
-    if not objects:
-        raise HTTPException(
-            status_code=503, detail=f"no objects found under {gcs_uri!r}"
-        )
-
-    # Download every object into local_dir, preserving relative structure.
-    for obj in objects:
-        rel = obj[len(prefix) :].lstrip("/")
-        dest = os.path.join(local_dir, rel)
-        os.makedirs(os.path.dirname(dest), exist_ok=True)
-        fs.get(obj, dest)
-
-    with open(done_marker, "w", encoding="utf-8") as f:
-        f.write("ok\n")
-
-    return local_dir
-
-
 def _maybe_load_naturelm(snapshot_path: str) -> Any | None:  # noqa: ANN401
     """Best-effort real model import+load.
 
     Parameters
     ----------
     snapshot_path
-        Local checkpoint directory (downloaded from GCS).
+        Local checkpoint directory (downloaded from Hugging Face).
 
     Returns
     -------
@@ -344,7 +251,7 @@ def _maybe_load_naturelm(snapshot_path: str) -> Any | None:  # noqa: ANN401
         If inference is enabled but the NatureLM package cannot be imported or
         the model fails to load.
     ModuleNotFoundError
-        If the esp-research NatureLM project directory cannot be located.
+        If the model runtime NatureLM project directory cannot be located.
     """
     if os.environ.get("NATURELM_ENABLE_INFERENCE", "0").strip() != "1":
         return None
@@ -355,51 +262,12 @@ def _maybe_load_naturelm(snapshot_path: str) -> Any | None:  # noqa: ANN401
 
         import torch  # type: ignore[import-not-found]
 
-        # Prefer esp-research's authoritative NatureLM-audio-v1.5 implementation.
-        esp_research_root = os.environ.get("ESP_RESEARCH_LOCAL_PATH", "").strip()
-        project_dir_env = os.environ.get(
-            "ESP_RESEARCH_NATURELM_PROJECT_DIR", ""
-        ).strip()
-        project_dir = (
-            Path(project_dir_env)
-            if project_dir_env
-            else (
-                Path(esp_research_root) / "projects" / "NatureLM-audio-v1.5"
-                if esp_research_root
-                else None
-            )
-        )
-        if project_dir is None or not project_dir.exists():
-            raise ModuleNotFoundError(
-                "esp-research NatureLM-audio-v1.5 project not found. "
-                "Set ESP_RESEARCH_LOCAL_PATH (preferred) or "
-                "ESP_RESEARCH_NATURELM_PROJECT_DIR."
-            )
-        project_dir_str = str(project_dir)
-        if project_dir_str not in sys.path:
-            sys.path.insert(0, project_dir_str)
-
-        # ------------------------------------------------------------------
-        # Compatibility shim: esp-research expects `from esp_data.io import read_yaml`
-        # but some esp-data builds do not export it. Define it dynamically so that
-        # esp-research imports succeed without pinning esp-data.
-        # ------------------------------------------------------------------
-        try:
-            import esp_data.io as _esp_io  # type: ignore[import-not-found]
-
-            if not hasattr(_esp_io, "read_yaml"):
-                import yaml  # type: ignore[import-not-found]
-
-                def _read_yaml(path: object) -> object:
-                    p = _esp_io.anypath(path)  # supports local + cloud paths
-                    with p.open("r") as f:
-                        return yaml.safe_load(f)
-
-                _esp_io.read_yaml = _read_yaml
-        except Exception:
-            # Best-effort only; if esp-data isn't importable, downstream imports
-            # will raise an actionable error.
-            pass
+        runtime_path = os.environ.get("NATURELM_RUNTIME_PATH", "").strip()
+        if runtime_path:
+            project_dir = Path(runtime_path).expanduser().resolve()
+            if not project_dir.is_dir():
+                raise ModuleNotFoundError("NATURELM_RUNTIME_PATH is not a directory")
+            sys.path.insert(0, str(project_dir))
 
         from naturelm import GenerationConfig  # type: ignore[import-not-found]
         from naturelm import NatureLM as NatureLMModel
@@ -408,19 +276,20 @@ def _maybe_load_naturelm(snapshot_path: str) -> Any | None:  # noqa: ANN401
             status_code=503,
             detail=(
                 "NatureLM-audio runtime is not available. "
-                "This launcher expects esp-research's NatureLM-audio-v1.5 "
+                "This launcher requires the compatible NatureLM "
                 "implementation on PYTHONPATH. "
-                "Set ESP_RESEARCH_LOCAL_PATH or ESP_RESEARCH_NATURELM_PROJECT_DIR, "
+                "Set NATURELM_RUNTIME_PATH to the model runtime directory, "
                 "or run with NATURELM_STUB_MODE=1 for conformance-only mode. "
                 f"Root cause: {exc!r}"
             ),
         ) from exc
 
-    # Note: the NatureLM-audio v1.x codebase historically expects a concrete torch
+    # Note: the NatureLM-audio v1.x codebase expects a concrete torch
     # device ("cuda", "cuda:0", "cpu") rather than HF-style device maps.
     device = os.environ.get("NATURELM_DEVICE", "cuda:0")
     try:
-        # esp-research v1.5 loads from a checkpoint directory (not a transformers repo).
+        # model runtime v1.5 loads from a checkpoint directory (not a
+        # transformers repo).
         # The gated HF snapshot is expected to contain the checkpoint layout.
         # Override config path if needed.
         cfg_path_env = os.environ.get("NATURELM_CONFIG_PATH", "").strip()
@@ -435,17 +304,30 @@ def _maybe_load_naturelm(snapshot_path: str) -> Any | None:  # noqa: ANN401
         snap = Path(snapshot_path)
         ckpt_dir = snap / "checkpoint"
         if not ckpt_dir.exists():
-            # GCS checkpoints commonly store weights under `model/` with
-            # subdirectories like `llm/`, `audio_encoder/`, etc. The esp-research
+            # Model checkpoints commonly store weights under `model/` with
+            # subdirectories like `llm/`, `audio_encoder/`, etc. The model runtime
             # loader expects those as direct children of the checkpoint dir.
             model_dir = snap / "model"
             ckpt_dir = model_dir if model_dir.exists() else snap
 
-        model = NatureLMModel.from_checkpoint_dir(
-            checkpoint_dir=ckpt_dir,
-            config=cfg_path,
-        ).to(torch.device(device)).eval()
+        model = (
+            NatureLMModel.from_checkpoint_dir(
+                checkpoint_dir=ckpt_dir,
+                config=cfg_path,
+            )
+            .to(torch.device(device))
+            .eval()
+        )
     except Exception as exc:  # noqa: BLE001
+        # Print the full traceback for load failures.
+        import traceback as _tb
+
+        print(
+            f"[naturelm launcher] model load failed for checkpoint_dir={ckpt_dir!r} "
+            f"cfg_path={cfg_path!r}:",
+            flush=True,
+        )
+        _tb.print_exc()
         raise HTTPException(
             status_code=503,
             detail=f"weights downloaded but NatureLM model failed to load: {exc}",
@@ -462,7 +344,7 @@ def _maybe_load_naturelm(snapshot_path: str) -> Any | None:  # noqa: ANN401
         pass
 
     # Audio handling:
-    # - resampling/pad/truncate is handled inside the esp-research model helpers;
+    # - resampling/pad/truncate is handled inside the model runtime model helpers;
     # - we still keep the max-length control (per BEANS request) for parity with v1.0.
     sample_rate = int(os.environ.get("NATURELM_SAMPLE_RATE", "16000"))
     max_len_sec = int(os.environ.get("NATURELM_MAX_AUDIO_SECONDS", "10"))
@@ -510,26 +392,48 @@ def _ensure_ready_or_raise() -> None:
     snapshot_path: str
     model: Any | None
     try:
-        if not GCS_CHECKPOINT_URI:
-            raise HTTPException(
-                status_code=503,
-                detail=(
-                    "NATURELM_GCS_CHECKPOINT_URI is not set. "
-                    "Export it to point at a GCS checkpoint directory, e.g. "
-                    "gs://foundation-models/naturelm-audio-1.1/base_model/1290000"
-                ),
+        if LOCAL_CHECKPOINT_DIR:
+            if not os.path.isdir(LOCAL_CHECKPOINT_DIR):
+                raise HTTPException(
+                    status_code=503,
+                    detail=(
+                        f"NATURELM_LOCAL_CHECKPOINT_DIR={LOCAL_CHECKPOINT_DIR!r} "
+                        "does not exist or is not a directory."
+                    ),
+                )
+            with _lock:
+                _state.loading_stage = "loading_model_runtime"
+                _state.loading_stage_started_at = time.time()
+            resolved_revision = os.path.basename(LOCAL_CHECKPOINT_DIR.rstrip("/"))
+            snapshot_path = LOCAL_CHECKPOINT_DIR
+            model = _maybe_load_naturelm(snapshot_path)
+        else:
+            if not HF_REPO_ID:
+                raise HTTPException(
+                    status_code=503,
+                    detail=(
+                        "Neither NATURELM_LOCAL_CHECKPOINT_DIR nor "
+                        "NATURELM_HF_REPO_ID is set. Export one of them "
+                        "to point at the checkpoint directory."
+                    ),
+                )
+
+            with _lock:
+                _state.loading_stage = "downloading_hf_checkpoint"
+                _state.loading_stage_started_at = time.time()
+            from huggingface_hub import snapshot_download
+
+            snapshot_path = snapshot_download(
+                repo_id=HF_REPO_ID,
+                revision=HF_REVISION or "main",
+                token=os.environ.get("HF_TOKEN") or None,
             )
+            resolved_revision = os.path.basename(snapshot_path.rstrip("/"))
 
-        with _lock:
-            _state.loading_stage = "downloading_gcs_checkpoint"
-            _state.loading_stage_started_at = time.time()
-        resolved_revision = _gcs_checkpoint_basename(GCS_CHECKPOINT_URI)
-        snapshot_path = _ensure_gcs_checkpoint_available(GCS_CHECKPOINT_URI)
-
-        with _lock:
-            _state.loading_stage = "loading_model_runtime"
-            _state.loading_stage_started_at = time.time()
-        model = _maybe_load_naturelm(snapshot_path)
+            with _lock:
+                _state.loading_stage = "loading_model_runtime"
+                _state.loading_stage_started_at = time.time()
+            model = _maybe_load_naturelm(snapshot_path)
     except HTTPException as exc:
         with _lock:
             _state.last_error = str(exc.detail)
@@ -572,7 +476,7 @@ def _start_async_load() -> None:
         except Exception as exc:  # noqa: BLE001
             # Preserve a best-effort error message so `/health` surfaces failures
             # that are not expressed as HTTPException (e.g. unexpected runtime
-            # import/load errors inside esp-research / model code).
+            # import/load errors inside model runtime / model code).
             with _lock:
                 _state.last_error = f"unexpected init failure: {exc!r}"
         finally:
@@ -695,47 +599,58 @@ def _predict_real(
             else default_max_length_seconds
         )
 
-        # esp-research NatureLM-audio-v1.5 expects a single waveform per request.
-        # For BEANS, we currently support exactly 1 audio input per sample.
-        if len(decoded_audios) != 1:
+        # NatureLM splices one audio embedding per `<AudioHere>` placeholder,
+        # flattening audio embeddings across the audio batch
+        # (`_pad_embed_splice`). Multi-audio therefore works by passing the N
+        # clips as the audio batch alongside a single conversation carrying N
+        # placeholders -- which is what the tier-4 multi-audio fine-tune needs.
+        n_audio = len(decoded_audios)
+        if n_audio == 0:
+            return PredictionsV1ResponseItem(
+                sample_id=sample_id,
+                predictions=[],
+                latency_sec=time.perf_counter() - started,
+                error="NatureLM requires at least one audio input per request item",
+            )
+
+        # The placeholder count must match the number of clips exactly: too few
+        # clips and the splice shape mismatches; too many and the extra audio is
+        # silently ignored.
+        n_slots = sum(
+            str(m.content).count(_NATURELM_AUDIO_PLACEHOLDER) for m in item.messages
+        )
+        if n_slots != n_audio:
             return PredictionsV1ResponseItem(
                 sample_id=sample_id,
                 predictions=[],
                 latency_sec=time.perf_counter() - started,
                 error=(
-                    "NatureLM v1.1 launcher currently supports exactly 1 audio input "
-                    "per request item"
+                    f"{n_slots} {_NATURELM_AUDIO_PLACEHOLDER} placeholder(s) but "
+                    f"{n_audio} audio input(s); they must match"
                 ),
             )
 
-        # Resample/truncate/pad on our side to enforce BEANS per-subset clip length.
-        wav = np.asarray(decoded_audios[0], dtype=np.float32)
-        sr_in = int(decoded_srs[0])
-        if sr_in != sample_rate:
-            try:
-                import resampy  # type: ignore[import-not-found]
-            except Exception as exc:
+        wavs: list[np.ndarray] = []
+        masks: list[np.ndarray] = []
+        for idx in range(n_audio):
+            wav_i, mask_i, err = _prepare_waveform(
+                decoded_audios[idx],
+                int(decoded_srs[idx]),
+                sample_rate=sample_rate,
+                max_length_seconds=max_length_seconds,
+            )
+            if err is not None:
                 return PredictionsV1ResponseItem(
                     sample_id=sample_id,
                     predictions=[],
                     latency_sec=time.perf_counter() - started,
-                    error=(
-                        "resampy is required for resampling "
-                        f"(sr_in={sr_in} -> {sample_rate}): {exc}"
-                    ),
+                    error=err,
                 )
-            wav = resampy.resample(wav, sr_in, sample_rate).astype(np.float32)
+            wavs.append(wav_i)
+            masks.append(mask_i)
 
-        target_len = int(max_length_seconds * sample_rate)
-        if wav.shape[0] < target_len:
-            pad = target_len - wav.shape[0]
-            wav = np.pad(wav, (0, pad), mode="constant")
-        elif wav.shape[0] > target_len:
-            wav = wav[:target_len]
-
-        # Move to torch and call model.generate (esp-research implementation).
-        raw_wav = torch.from_numpy(wav).unsqueeze(0)  # (1, T)
-        padding_mask = torch.zeros_like(raw_wav, dtype=torch.bool)
+        raw_wav = torch.from_numpy(np.stack(wavs, axis=0))  # (N, T)
+        padding_mask = torch.from_numpy(np.stack(masks, axis=0))  # (N, T)
         raw_wav = raw_wav.to(device)
         padding_mask = padding_mask.to(device)
 
@@ -764,7 +679,7 @@ def _predict_real(
             length_penalty=float(os.environ.get("NATURELM_LENGTH_PENALTY", "1.0")),
         )
 
-        # esp-research NatureLM expects a batch of conversations (list[list[dict]]).
+        # model runtime NatureLM expects a batch of conversations (list[list[dict]]).
         # We pass BEANS messages through verbatim (raw content; no role-prefix
         # rewriting).
         conversations = [[m.model_dump() for m in item.messages]]
@@ -788,6 +703,86 @@ def _predict_real(
         finish_reason="stop",
         latency_sec=time.perf_counter() - started,
     )
+
+
+_NATURELM_AUDIO_PLACEHOLDER = "<AudioHere>"
+
+
+def _prepare_waveform(
+    audio: object,
+    sr_in: int,
+    *,
+    sample_rate: int,
+    max_length_seconds: int,
+) -> tuple[object, object, str | None]:
+    """Preprocess one waveform exactly as the reference eval does.
+
+    Mirrors `_prepare_audio` in
+    the model runtime evaluation protocol:
+    stereo -> mono, resample with `res_type="kaiser_best", scale=True`,
+    crop or right-pad to `sample_rate * max_length_seconds`, clamp to
+    [-1, 1], and mark padded positions in the mask.
+
+    Parameters
+    ----------
+    audio
+        Decoded waveform array.
+    sr_in
+        Sample rate of `audio`.
+    sample_rate
+        Model target sample rate.
+    max_length_seconds
+        Target clip length in seconds.
+
+    Returns
+    -------
+    tuple
+        `(waveform, padding_mask, error)`. On failure the first two are
+        `None` and `error` carries the reason.
+    """
+    import numpy as np
+
+    wav = np.asarray(audio, dtype=np.float32)
+
+    if wav.ndim == 2:
+        axis = 1 if wav.shape[1] <= wav.shape[0] else 0
+        wav = wav.mean(axis=axis).astype(np.float32)
+    wav = wav.squeeze()
+
+    if sr_in != sample_rate:
+        try:
+            import librosa  # type: ignore[import-not-found]
+        except Exception as exc:  # noqa: BLE001 - reported to the caller
+            return (
+                None,
+                None,
+                (
+                    f"librosa is required for resampling (sr_in={sr_in} -> "
+                    f"{sample_rate}): {exc}"
+                ),
+            )
+        wav = librosa.resample(
+            wav,
+            orig_sr=sr_in,
+            target_sr=sample_rate,
+            res_type="kaiser_best",
+            scale=True,
+        ).astype(np.float32)
+
+    target_len = int(max_length_seconds * sample_rate)
+    sig_len = wav.shape[0]
+    if sig_len > target_len:
+        wav = wav[:target_len]
+        sig_len = target_len
+    elif sig_len < target_len:
+        wav = np.pad(wav, (0, target_len - sig_len), mode="constant")
+
+    wav = np.clip(wav, -1.0, 1.0)
+
+    pad_mask = np.zeros(target_len, dtype=bool)
+    if sig_len < target_len:
+        pad_mask[sig_len:] = True
+    return wav, pad_mask, None
 
 
 def _item_response_or_error(
@@ -855,7 +850,7 @@ def health() -> dict[str, Any]:
     """Readiness probe.
 
     In normal mode, this endpoint fails fast with actionable messages for:
-    missing ``NATURELM_GCS_CHECKPOINT_URI`` and weight download/load failures.
+    missing ``NATURELM_HF_REPO_ID`` and weight download/load failures.
 
     Returns
     -------
@@ -867,11 +862,13 @@ def health() -> dict[str, Any]:
     fastapi.HTTPException
         When the model is still loading or failed to load.
     """
+    checkpoint_source = LOCAL_CHECKPOINT_DIR or HF_REPO_ID
+
     if STUB_MODE:
         return {
             "status": "ok",
             "mode": "stub",
-            "checkpoint_uri": GCS_CHECKPOINT_URI or "(not set)",
+            "checkpoint_uri": checkpoint_source or "(not set)",
         }
 
     _start_async_load()
@@ -880,7 +877,7 @@ def health() -> dict[str, Any]:
             return {
                 "status": "ok",
                 "mode": "real" if _state.model is not None else "weights-only",
-                "checkpoint_uri": GCS_CHECKPOINT_URI,
+                "checkpoint_uri": checkpoint_source,
                 "model_revision": _state.resolved_revision or "",
             }
 
@@ -900,7 +897,7 @@ def health() -> dict[str, Any]:
                 status_code=503,
                 detail=(
                     "model loading in progress; "
-                    f"checkpoint_uri={GCS_CHECKPOINT_URI!r}; stage={stage}; "
+                    f"checkpoint_uri={checkpoint_source!r}; stage={stage}; "
                     f"stage_elapsed={stage_s}; waited={started_s}"
                 ),
             )
@@ -911,13 +908,13 @@ def health() -> dict[str, Any]:
                 detail=f"model failed: {_state.last_error}",
             )
 
-    if not GCS_CHECKPOINT_URI:
+    if not checkpoint_source:
         raise HTTPException(
             status_code=503,
             detail=(
-                "NATURELM_GCS_CHECKPOINT_URI is not set. "
-                "Export it to point at a GCS checkpoint directory, e.g. "
-                "gs://foundation-models/naturelm-audio-1.1/base_model/1290000"
+                "Neither NATURELM_LOCAL_CHECKPOINT_DIR nor "
+                "NATURELM_HF_REPO_ID is set. Export one of them to "
+                "point at the checkpoint directory."
             ),
         )
 
@@ -927,19 +924,21 @@ def health() -> dict[str, Any]:
 
 @app.get("/info")
 def info() -> InfoResponse:
-    """Server capability discovery (DESIGN §4.3).
+    """Server capability discovery (see `docs/http_contract.md`).
 
     Returns
     -------
     InfoResponse
         Capability document advertised by this launcher.
     """
-    model_id = GCS_CHECKPOINT_URI if GCS_CHECKPOINT_URI else HF_REPO_ID
-    revision = _state.resolved_revision or (
-        _gcs_checkpoint_basename(GCS_CHECKPOINT_URI)
-        if GCS_CHECKPOINT_URI
-        else HF_REVISION
-    )
+    if LOCAL_CHECKPOINT_DIR:
+        model_id = LOCAL_CHECKPOINT_DIR
+        revision = _state.resolved_revision or os.path.basename(
+            LOCAL_CHECKPOINT_DIR.rstrip("/")
+        )
+    else:
+        model_id = HF_REPO_ID
+        revision = _state.resolved_revision or HF_REVISION
     sample_rate = int(os.environ.get("NATURELM_SAMPLE_RATE", "16000"))
     load_status: str | None = None
     loading_stage: str | None = None

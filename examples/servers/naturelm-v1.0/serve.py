@@ -180,7 +180,7 @@ class PredictionsV1Response(BaseModel):
 
 
 class InfoResponse(BaseModel):
-    """``GET /info`` capability document (DESIGN §4.3)."""
+    """``GET /info`` capability document (see `docs/http_contract.md`)."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -284,9 +284,7 @@ def _deterministic_stub_prediction(
     sample_id: str,
     item: PredictionsV1RequestItem,
 ) -> str:
-    messages_payload = [
-        {"role": m.role, "content": m.content} for m in item.messages
-    ]
+    messages_payload = [{"role": m.role, "content": m.content} for m in item.messages]
     audio_meta = [
         {
             "payload_type": a.payload_type,
@@ -354,10 +352,6 @@ def _load_real_pipeline(model_name: str, device: str) -> object:  # noqa: ANN401
 
     Notes
     -----
-    The NatureLM-audio package is installed from::
-
-        pip install git+https://github.com/earthspeciesproject/NatureLM-audio.git
-
     The launcher prefers the in-repo `NatureLM` Python package API first
     (``NatureLM.infer.Pipeline``). If that import fails, it falls back to a
     best-effort Transformers load using ``trust_remote_code=True``.
@@ -371,7 +365,9 @@ def _load_real_pipeline(model_name: str, device: str) -> object:  # noqa: ANN401
     load_mode = os.environ.get("NATURELM_V1_0_LOAD_MODE", "pipeline").strip().lower()
 
     def _load_via_naturelm_package() -> object:  # noqa: ANN401
-        from NatureLM.infer import Pipeline, load_model_and_config  # noqa: PLC0415
+        from NatureLM.config import Config  # noqa: PLC0415
+        from NatureLM.infer import Pipeline  # noqa: PLC0415
+        from NatureLM.models import NatureLM  # noqa: PLC0415
 
         print(
             f"[naturelm-v1.0] Loading NatureLM Pipeline from {model_name!r} "
@@ -388,7 +384,22 @@ def _load_real_pipeline(model_name: str, device: str) -> object:  # noqa: ANN401
             raise RuntimeError(
                 "NATURELM_CFG_PATH must be set to a readable inference.yml path"
             )
-        model, _cfg = load_model_and_config(cfg_path=cfg_path, device=device)
+        revision = os.environ.get("NATURELM_V1_0_MODEL_REVISION", "").strip()
+        load_kwargs: dict[str, Any] = {}
+        if revision and revision not in {"unknown", "stub"}:
+            load_kwargs["revision"] = revision
+        llama_path = os.environ.get("NATURELM_V1_0_LLAMA_PATH", "").strip()
+        if llama_path:
+            load_kwargs["llama_path"] = llama_path
+        model = NatureLM.from_pretrained(model_name, **load_kwargs)
+        model = model.to(device).eval()
+        model.llama_tokenizer.pad_token_id = model.llama_tokenizer.eos_token_id
+        model.llama_model.generation_config.pad_token_id = (
+            model.llama_tokenizer.pad_token_id
+        )
+        # Validate the same inference configuration consumed by Pipeline while
+        # loading checkpoint weights from the explicit model revision above.
+        Config.from_sources(cfg_path)
         loaded = Pipeline(model=model, cfg_path=cfg_path)
         elapsed = time.time() - t0
         print(f"[naturelm-v1.0] NatureLM Pipeline loaded in {elapsed:.1f}s")
@@ -416,8 +427,8 @@ def _load_real_pipeline(model_name: str, device: str) -> object:  # noqa: ANN401
 class _HFTransformersPipeline:
     """Best-effort wrapper exposing `infer(messages, audio, sample_rate)`.
 
-    This is used only when `NatureLM.infer.Pipeline` is unavailable (e.g. GitHub
-    install path is blocked on this host).
+    This is used only when `NatureLM.infer.Pipeline` is unavailable (e.g. the
+    NatureLM-audio package is not installed).
     """
 
     def __init__(self, model: object, processor: object, device: str) -> None:
@@ -571,8 +582,8 @@ def _generation_kwargs_from_messages(messages: list[dict[str, Any]]) -> dict[str
     dict[str, Any]
         Keyword arguments passed to `model.generate`.
     """
-    # This launcher only needs minimal compatibility for a bring-up check. If the
-    # model requires a richer API (chat templates, etc.), we fail fast elsewhere.
+    # Only minimal generation settings are needed here. If the model requires a
+    # richer API (chat templates, etc.), inference fails fast elsewhere.
     return {"max_new_tokens": 256}
 
 
@@ -680,8 +691,8 @@ def _run_real_inference(pipeline: object, item: "PredictionsV1RequestItem") -> s
     Raises
     ------
     ValueError
-        If ``item.audio_inputs`` is empty or the ``payload_type`` is not
-        ``base64_wav``, ``file_path``, or ``file_url``.
+        If `item.audio_inputs` does not contain exactly one clip, or the
+        `payload_type` is not `base64_wav`, `file_path`, or `file_url`.
     RuntimeError
         If the pipeline cannot be loaded or returns an invalid response.
     """
@@ -693,6 +704,11 @@ def _run_real_inference(pipeline: object, item: "PredictionsV1RequestItem") -> s
     # --- Decode audio --------------------------------------------------------
     if not item.audio_inputs:
         raise ValueError("Request has no audio_inputs")
+    if len(item.audio_inputs) != 1:
+        raise ValueError(
+            "NatureLM v1.0 supports one audio input; use query-only evaluation "
+            "or a multi-audio model. Refusing to drop reference/query clips."
+        )
     audio_slot = item.audio_inputs[0]  # NatureLM-audio: one audio per sample
 
     if audio_slot.payload_type == "base64_wav":
@@ -766,10 +782,7 @@ def _init_state() -> _ModelState:
         If real mode is requested (``NATURELM_V1_0_STUB=0``) but required
         dependencies are missing or model initialization fails.
     """
-    # IMPORTANT: For Increment 7 (I7-A) "real-mode feasibility" work, the launcher
-    # treats `NATURELM_V1_0_STUB` as an *opt-in* flag:
-    # - unset / falsy => real mode
-    # - truthy => stub mode
+    # Stub mode must be explicitly enabled.
     stub = _get_bool_env("NATURELM_V1_0_STUB", False)
 
     if stub:

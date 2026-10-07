@@ -11,7 +11,6 @@ pydantic==2.11.7
 # - numpy
 # - soundfile
 # - huggingface_hub
-# - NatureLM-audio (GitHub: `earthspeciesproject/NatureLM-audio`)
 # - transformers (optional best-effort fallback when GitHub install is unavailable)
 #
 # See `README.md` for the exact real-mode install commands and CPU/GPU notes.

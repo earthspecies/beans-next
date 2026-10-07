@@ -3,8 +3,18 @@
 ### Common Words for use in Compound Words ###
 ### Compound Words With 1 or 2 letter Words ###
 ### Jargon ###
+mape
+unparseable
+# Accepted input spelling in the answer parser.
+isnt
 ### Names ###
+# Scientific names in the dataset taxonomies.
+alle
+aline
+anonymus
+anser
+afer
+idae
+varius
 ### British ###
 ### Non-English ###
-
-

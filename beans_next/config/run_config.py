@@ -91,11 +91,11 @@ class RunConfig(BaseModel):
         Explicit list of eval-task ids from `registry/eval_task/`. Mutually exclusive
         with `suite`.
     limit
-        Optional cap applied by the runner (I10-B consumes this).
+        Optional cap applied by the runner.
     output_dir
-        Optional output directory override (I10-B consumes this).
+        Optional output directory override.
     run_id
-        Optional run id override (I10-B consumes this).
+        Optional run id override.
     """
 
     models: list[str | ModelEndpointRef] = Field(min_length=1)
@@ -104,7 +104,6 @@ class RunConfig(BaseModel):
     limit: int | None = Field(default=None, ge=1)
     output_dir: str | None = None
     run_id: str | None = None
-    data_source: Literal["hf", "esp_data", "huggingface"] | None = None
 
     @model_validator(mode="after")
     def _validate_suite_xor_tasks(self) -> Self:
@@ -126,7 +125,7 @@ class ExecutionItem:
 
 @dataclass(frozen=True, slots=True)
 class LoadedRunConfig:
-    """Resolved run-config suitable for the runner hook (I10-B).
+    """Resolved run-config suitable for the runner hook.
 
     Attributes
     ----------

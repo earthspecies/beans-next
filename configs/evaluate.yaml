@@ -1,0 +1,3 @@
+models:
+  - dummy_local_8000
+suite: beans_next_all_tiers

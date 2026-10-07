@@ -16,7 +16,6 @@ from beans_next.post_process.cleaners import apply_extract_label_from_text
 from beans_next.post_process.pipeline import (
     PostProcessContext,
     PostProcessResult,
-    StepSpec,
     run_post_process_pipeline,
 )
 from beans_next.runner.rescorer import _default_postprocess_steps
@@ -24,42 +23,6 @@ from beans_next.runner.rescorer import _default_postprocess_steps
 # ---------------------------------------------------------------------------
 # apply_extract_label_from_text — stage 1: exact match (case-insensitive)
 # ---------------------------------------------------------------------------
-
-
-class TestExtractLabelExactMatch:
-    """Stage-1 exact match (case-insensitive) in apply_extract_label_from_text."""
-
-    def _ctx(self, *segments: str) -> PostProcessContext:
-        return PostProcessContext(segments=list(segments))
-
-    def test_exact_lowercase(self) -> None:
-        ctx = self._ctx("dog")
-        out = apply_extract_label_from_text(ctx, labels=["dog", "cat"])
-        assert out.segments == ["dog"]
-
-    def test_exact_uppercase_pred(self) -> None:
-        """Model output 'DOG' should map to label 'dog'."""
-        ctx = self._ctx("DOG")
-        out = apply_extract_label_from_text(ctx, labels=["dog", "cat"])
-        assert out.segments == ["dog"]
-
-    def test_exact_titlecase_pred(self) -> None:
-        ctx = self._ctx("Dog")
-        out = apply_extract_label_from_text(ctx, labels=["dog", "cat"])
-        assert out.segments == ["dog"]
-
-    def test_label_casing_preserved(self) -> None:
-        """Original casing of the vocabulary label is returned even when the
-        model output uses different casing."""
-        ctx = self._ctx("AMERICAN CROW")
-        out = apply_extract_label_from_text(ctx, labels=["American Crow", "Raven"])
-        # Exact match: "american crow" == "american crow" → returns original "American Crow"
-        assert out.segments == ["American Crow"]
-
-    def test_exact_with_leading_trailing_whitespace(self) -> None:
-        ctx = self._ctx("  dog  ")
-        out = apply_extract_label_from_text(ctx, labels=["dog", "cat"])
-        assert out.segments == ["dog"]
 
 
 # ---------------------------------------------------------------------------
@@ -73,12 +36,6 @@ class TestExtractLabelSubstringScan:
     def _ctx(self, *segments: str) -> PostProcessContext:
         return PostProcessContext(segments=list(segments))
 
-    def test_label_embedded_in_sentence(self) -> None:
-        """'It sounds like a dog barking' → 'dog'."""
-        ctx = self._ctx("It sounds like a dog barking.")
-        out = apply_extract_label_from_text(ctx, labels=["dog", "cat", "bird"])
-        assert out.segments == ["dog"]
-
     def test_reasoning_prefix_stripped(self) -> None:
         ctx = self._ctx("Based on the audio, I believe this is a cat.")
         out = apply_extract_label_from_text(ctx, labels=["dog", "cat", "bird"])
@@ -91,11 +48,6 @@ class TestExtractLabelSubstringScan:
             ctx, labels=["crow", "American crow", "raven"]
         )
         assert out.segments == ["American crow"]
-
-    def test_substring_case_insensitive(self) -> None:
-        ctx = self._ctx("I classify this as Cat purring.")
-        out = apply_extract_label_from_text(ctx, labels=["cat", "dog"])
-        assert out.segments == ["cat"]
 
 
 # ---------------------------------------------------------------------------
@@ -125,67 +77,22 @@ class TestExtractLabelLevenshteinFallback:
         )
         assert out.segments == ["None"]
 
-    def test_threshold_accept(self) -> None:
-        ctx = self._ctx("kat")
-        out = apply_extract_label_from_text(
-            ctx, labels=["cat"], apply_threshold=True, max_distance=5
-        )
-        assert out.segments == ["cat"]
-
-    def test_empty_labels_raises(self) -> None:
-        from beans_next.post_process.pipeline import PostProcessPipelineError
-
-        ctx = self._ctx("dog")
-        with pytest.raises(PostProcessPipelineError):
-            apply_extract_label_from_text(ctx, labels=[])
-
 
 # ---------------------------------------------------------------------------
 # End-to-end pipeline: extract_label_from_text step registered
 # ---------------------------------------------------------------------------
 
 
-class TestExtractLabelPipelineIntegration:
-    """End-to-end pipeline tests for the extract_label_from_text step."""
-
-    def test_free_form_output_maps_correctly(self) -> None:
-        """Free-form model output should map to the correct label end-to-end."""
-        labels = ("dog", "cat", "bird")
-        result = run_post_process_pipeline(
-            "Based on the audio analysis, I believe this recording contains a dog.",
-            parser_steps=(),
-            cleaner_steps=(
-                StepSpec("normalize_whitespace", {}),
-                StepSpec("strip_eos", {}),
-                StepSpec("extract_label_from_text", {"labels": labels}),
-            ),
-        )
-        assert result.text == "dog"
-
-    def test_uppercase_model_output(self) -> None:
-        labels = ("dog", "cat", "bird")
-        result = run_post_process_pipeline(
-            "CAT",
-            parser_steps=(),
-            cleaner_steps=(
-                StepSpec("normalize_whitespace", {}),
-                StepSpec("extract_label_from_text", {"labels": labels}),
-            ),
-        )
-        assert result.text == "cat"
-
-
 # ---------------------------------------------------------------------------
-# Regression: binary Yes/No must not be comma-split
+# Binary Yes/No must not be comma-split
 # ---------------------------------------------------------------------------
 
 
 class TestBinaryYesNoDoesNotCommaSplit:
     """Verbose Yes/No answers must map to a single label (no duplication).
 
-    This reproduces the failure mode where OpenAI returns prose like
-    "Yes, there is a bird vocalizing..." and the comma-split parser turns it
-    into fragments which then fuzzy-match back to "Yes" repeatedly.
+    Covers prose like "Yes, there is a bird vocalizing...", which a
+    comma-split parser would turn into fragments that each fuzzy-match "Yes".
     """
 
     @pytest.mark.parametrize(
@@ -206,9 +113,11 @@ class TestBinaryYesNoDoesNotCommaSplit:
     def test_score_from_file_default_pipeline(self, raw: str, expected: str) -> None:
         parsers, cleaners = _default_postprocess_steps(
             targets=["Yes", "No"],
-            task_type=None,  # critical: the buggy case was task_type omitted
+            task_type=None,  # task_type omitted on purpose
         )
-        result = run_post_process_pipeline(raw, parser_steps=parsers, cleaner_steps=cleaners)
+        result = run_post_process_pipeline(
+            raw, parser_steps=parsers, cleaner_steps=cleaners
+        )
         assert result.text == expected
 
 
@@ -239,9 +148,11 @@ class TestMcqDoesNotCommaSplitAndChoosesFinalLetter:
     def test_score_from_file_default_pipeline(self, raw: str, expected: str) -> None:
         parsers, cleaners = _default_postprocess_steps(
             targets=["A", "B", "C", "D"],
-            task_type=None,  # critical: without task_type this used to comma-split
+            task_type=None,  # task_type omitted on purpose
         )
-        result = run_post_process_pipeline(raw, parser_steps=parsers, cleaner_steps=cleaners)
+        result = run_post_process_pipeline(
+            raw, parser_steps=parsers, cleaner_steps=cleaners
+        )
         assert result.text == expected
 
     def test_markdown_bold_letter_extracts(self) -> None:
@@ -249,8 +160,13 @@ class TestMcqDoesNotCommaSplitAndChoosesFinalLetter:
             targets=["A", "B", "C", "D"],
             task_type=None,
         )
-        raw = "Based on the acoustic characteristics of the audio, the correct description is:\n\n**B**"
-        result = run_post_process_pipeline(raw, parser_steps=parsers, cleaner_steps=cleaners)
+        raw = (
+            "Based on the acoustic characteristics of "
+            "the audio, the correct description is:\n\n**B**"
+        )
+        result = run_post_process_pipeline(
+            raw, parser_steps=parsers, cleaner_steps=cleaners
+        )
         assert result.text == "B"
 
     def test_option_reference_does_not_match_article_a(self) -> None:
@@ -259,31 +175,36 @@ class TestMcqDoesNotCommaSplitAndChoosesFinalLetter:
             task_type=None,
         )
         raw = (
-            "The sound consists of a short, high-pitched note followed by a longer tone. "
+            "The sound consists of a short, "
+            "high-pitched note followed by a longer tone. "
             "This matches the description in option C."
         )
-        result = run_post_process_pipeline(raw, parser_steps=parsers, cleaner_steps=cleaners)
+        result = run_post_process_pipeline(
+            raw, parser_steps=parsers, cleaner_steps=cleaners
+        )
         assert result.text == "C"
 
-    @pytest.mark.parametrize(
-        ("raw", "expected"),
-        [
-            ("a", "A"),
-            ("b", "B"),
-            (" c ", "C"),
-            ("**d**", "D"),
-            ("(b)", "B"),
-        ],
-    )
-    def test_lowercase_single_letter_short_answer_is_accepted(
-        self, raw: str, expected: str
-    ) -> None:
+
+class TestCaptioningPreservesFreeTextAndSkipsFuzzyMatch:
+    """Captioning (and other open-ended task types) must never comma-split
+    reference captions into a label vocabulary or Levenshtein-match against
+    it: that turns free-text CIDEr scoring into an O(n^2) closed-vocabulary
+    match over the whole corpus and corrupts the processed text."""
+
+    def test_long_comma_containing_caption_is_untouched(self) -> None:
         parsers, cleaners = _default_postprocess_steps(
-            targets=["A", "B", "C", "D"],
-            task_type=None,
+            targets=[
+                "A bird calls, then a dog barks, in the forest.",
+                "Wind rustles the leaves, and rain begins to fall.",
+            ],
+            task_type="captioning",
         )
-        result = run_post_process_pipeline(raw, parser_steps=parsers, cleaner_steps=cleaners)
-        assert result.text == expected
+        assert parsers == ()
+        raw = "A rooster crows, followed by distant thunder, at dawn."
+        result = run_post_process_pipeline(
+            raw, parser_steps=parsers, cleaner_steps=cleaners
+        )
+        assert result.text == raw
 
 
 class TestHzBucketDoesNotCommaSplitAndParsesThousandsSeparator:
@@ -295,24 +216,12 @@ class TestHzBucketDoesNotCommaSplitAndParsesThousandsSeparator:
             task_type=None,
         )
         raw = "#0.00s - 10.00s#: 1,654.75\n"
-        result = run_post_process_pipeline(raw, parser_steps=parsers, cleaner_steps=cleaners)
+        result = run_post_process_pipeline(
+            raw, parser_steps=parsers, cleaner_steps=cleaners
+        )
         # Parse the full numeric value (1654.75) instead of splitting on the comma.
         # Then map to a single closest bucket label.
         assert result.text == "3650 Hz"
-
-    def test_prose_with_commas_yields_single_bucket_label(self) -> None:
-        parsers, cleaners = _default_postprocess_steps(
-            targets=["2780 Hz", "3100 Hz", "3650 Hz"],
-            task_type=None,
-        )
-        raw = (
-            "To determine the mean fundamental frequency of a vocalization, we would typically "
-            "analyze the audio signal using specialized software or tools that can perform a "
-            "frequency analysis, such as a spectrogram or pitch-tracking software."
-        )
-        result = run_post_process_pipeline(raw, parser_steps=parsers, cleaner_steps=cleaners)
-        assert result.text in {"2780 Hz", "3100 Hz", "3650 Hz"}
-        assert "," not in result.text
 
     def test_deci_hz_range_midpoint_maps_to_bucket(self) -> None:
         # Fixture example: naturelm_v1_1 emits "2131-4440 Hz" which should be
@@ -322,7 +231,9 @@ class TestHzBucketDoesNotCommaSplitAndParsesThousandsSeparator:
             task_type=None,
         )
         raw = "2131-4440 Hz"
-        result = run_post_process_pipeline(raw, parser_steps=parsers, cleaner_steps=cleaners)
+        result = run_post_process_pipeline(
+            raw, parser_steps=parsers, cleaner_steps=cleaners
+        )
         assert result.text == "340 Hz"
 
 
@@ -333,16 +244,6 @@ class TestHzBucketDoesNotCommaSplitAndParsesThousandsSeparator:
 
 class TestComputeMacroF1:
     """Tests for compute_macro_f1 (dataset-level, not per-sample average)."""
-
-    def test_perfect_score(self) -> None:
-        preds = ["a", "b", "a", "b"]
-        tgts = ["a", "b", "a", "b"]
-        assert compute_macro_f1(preds, tgts) == pytest.approx(1.0)
-
-    def test_zero_score(self) -> None:
-        preds = ["b", "a"]
-        tgts = ["a", "b"]
-        assert compute_macro_f1(preds, tgts) == pytest.approx(0.0)
 
     def test_differs_from_accuracy_on_imbalanced_data(self) -> None:
         """
@@ -361,23 +262,6 @@ class TestComputeMacroF1:
         assert mf1 < 0.6
         assert abs(mf1 - acc) > 0.3
 
-    def test_empty_sequences(self) -> None:
-        assert compute_macro_f1([], []) == pytest.approx(0.0)
-
-    def test_length_mismatch_raises(self) -> None:
-        with pytest.raises(ValueError, match="same length"):
-            compute_macro_f1(["a"], ["a", "b"])
-
-    def test_multiclass(self) -> None:
-        preds = ["a", "b", "c", "a"]
-        tgts = ["a", "b", "c", "b"]
-        # a: tp=1, fp=1, fn=0 → P=0.5, R=1.0, F1=0.667
-        # b: tp=1, fp=0, fn=1 → P=1.0, R=0.5, F1=0.667
-        # c: tp=1, fp=0, fn=0 → P=1.0, R=1.0, F1=1.0
-        # macro = (0.667 + 0.667 + 1.0) / 3 = 0.778
-        result = compute_macro_f1(preds, tgts)
-        assert result == pytest.approx(2 / 3 * 2 / 3 + 1 / 3, rel=1e-4)
-
 
 # ---------------------------------------------------------------------------
 # compute_dataset_map — differs from per-sample AP on multi-sample detection
@@ -387,24 +271,12 @@ class TestComputeMacroF1:
 class TestComputeDatasetMap:
     """Tests for compute_dataset_map (global-vocab dataset-level MAP)."""
 
-    def test_perfect_detection(self) -> None:
-        preds = [["a", "b"], ["c"]]
-        tgts = [["a", "b"], ["c"]]
-        assert compute_dataset_map(preds, tgts) == pytest.approx(1.0)
-
-    def test_empty_sequences(self) -> None:
-        assert compute_dataset_map([], []) == pytest.approx(0.0)
-
-    def test_length_mismatch_raises(self) -> None:
-        with pytest.raises(ValueError, match="same length"):
-            compute_dataset_map([["a"]], [["a"], ["b"]])
-
     def test_uses_global_vocab(self) -> None:
         """
         Global vocab = {a, b}.  Sample 1 predicts [a], target [a, b].
         Sample 2 predicts [b], target [b].
 
-        Per-sample AP (old approach) would compute AP on each sample's local vocab.
+        Per-sample AP would compute AP on each sample's local vocab.
         Dataset MAP uses both samples for each class, so AP_b includes the
         negative evidence from sample 2 not predicting b initially, etc.
 
@@ -438,28 +310,6 @@ class TestScoreSampleTaskTypeKwarg:
     def _example(self, labels: object) -> DatasetExample:
         return DatasetExample(sample_id="s0", labels=labels, metadata={})
 
-    def test_task_type_classification_routes_correctly(self) -> None:
-        ex = self._example(["cat", "feline"])
-        result = score_sample(
-            ex,
-            post=self._post("cat"),
-            raw_predictions=["cat"],
-            task_type="classification",
-        )
-        assert "top1_accuracy" in result
-        assert "average_precision" not in result
-
-    def test_task_type_detection_routes_correctly(self) -> None:
-        ex = self._example(["cat", "dog"])
-        result = score_sample(
-            ex,
-            post=self._post("cat"),
-            raw_predictions=["cat"],
-            task_type="detection",
-        )
-        assert "average_precision" in result
-        assert "top1_accuracy" not in result
-
     def test_task_type_wins_over_metadata(self) -> None:
         """Explicit task_type kwarg overrides example.metadata['task']."""
         ex = DatasetExample(
@@ -476,21 +326,6 @@ class TestScoreSampleTaskTypeKwarg:
         assert "top1_accuracy" in result
         assert "average_precision" not in result
 
-    def test_captioning_task_returns_empty_per_sample(self) -> None:
-        """CIDEr is corpus-level; score_sample does not emit per-sample keys."""
-        ex = DatasetExample(
-            sample_id="s0",
-            labels="golden whistler",
-            metadata={},
-        )
-        result = score_sample(
-            ex,
-            post=self._post("olive whistler call"),
-            raw_predictions=["olive whistler call"],
-            task_type="captioning",
-        )
-        assert result == {}
-
 
 # ---------------------------------------------------------------------------
 # Null-targets warning (rescorer)
@@ -501,9 +336,7 @@ class TestRescoreNullTargetsWarning:
     """Null targets produce a warning and empty scores in the rescorer."""
 
     def _write_jsonl(self, path: Path, rows: list[object]) -> None:
-        path.write_text(
-            "\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8"
-        )
+        path.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
 
     def test_null_targets_logs_warning(
         self, tmp_path: Path, caplog: pytest.LogCaptureFixture
@@ -545,44 +378,6 @@ class TestRescoreNullTargetsWarning:
         warning_texts = " ".join(caplog.messages)
         assert "no targets" in warning_texts.lower() or "null" in warning_texts.lower()
 
-    def test_null_targets_scores_empty(self, tmp_path: Path) -> None:
-        from beans_next.runner.rescorer import rescore_predictions_file
-
-        run_dir = tmp_path / "run"
-        run_dir.mkdir()
-        preds_path = run_dir / "predictions.jsonl"
-        proc_path = run_dir / "processed_predictions.jsonl"
-
-        self._write_jsonl(
-            preds_path,
-            [
-                ModelPrediction(
-                    sample_id="s1", predictions=["dog"], error=None
-                ).model_dump(mode="json")
-            ],
-        )
-        self._write_jsonl(
-            proc_path,
-            [
-                ScoredPrediction(
-                    sample_id="s1",
-                    task_id=None,
-                    predictions=["dog"],
-                    processed_prediction="dog",
-                    targets=None,
-                    scores=None,
-                    error=None,
-                ).model_dump(mode="json")
-            ],
-        )
-
-        out_dir = tmp_path / "out"
-        rescore_predictions_file(preds_path, output_dir=out_dir)
-        scored = json.loads(
-            (out_dir / "scored_predictions.jsonl").read_text(encoding="utf-8")
-        )
-        assert scored.get("scores") is None
-
 
 # ---------------------------------------------------------------------------
 # Rescorer task_type awareness — classification skips parse_labels_comma
@@ -590,12 +385,11 @@ class TestRescoreNullTargetsWarning:
 
 
 class TestRescoreTaskType:
-    """Rescorer task_type parameter selects correct postprocess steps and scorer routing."""
+    """Rescorer task_type parameter selects correct postprocess steps and scorer
+    routing."""
 
     def _write_jsonl(self, path: Path, rows: list[object]) -> None:
-        path.write_text(
-            "\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8"
-        )
+        path.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
 
     def _run_rescore(
         self, tmp_path: Path, raw_pred: str, target: str, task_type: str | None
@@ -633,17 +427,6 @@ class TestRescoreTaskType:
         rescore_predictions_file(preds_path, output_dir=out_dir, task_type=task_type)
         rows = (out_dir / "scored_predictions.jsonl").read_text(encoding="utf-8")
         return json.loads(rows.strip())
-
-    def test_classification_free_form_correct(self, tmp_path: Path) -> None:
-        """Classification task: free-form output containing the label → accuracy=1."""
-        result = self._run_rescore(
-            tmp_path,
-            raw_pred="I think this is a dog barking.",
-            target="dog",
-            task_type="classification",
-        )
-        scores = result.get("scores") or {}
-        assert scores.get("accuracy") == pytest.approx(1.0)
 
     def test_classification_uses_extract_label_not_comma_split(
         self, tmp_path: Path

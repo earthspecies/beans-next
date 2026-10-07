@@ -23,11 +23,6 @@ lightning_logs/
 *.safetensors
 saved_models/
 
-# Logs
-#logs/
-#*.log
-logs/manager_runs/
-
 # Benchmark artifacts (generated)
 /results/
 beans-next-results/
@@ -36,3 +31,6 @@ beans-next-results/
 .DS_Store
 .Trashes
 Thumbs.db
+
+# Local prediction exports (generated)
+beans-next-predictions-export/

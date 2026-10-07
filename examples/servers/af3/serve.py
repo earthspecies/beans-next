@@ -11,7 +11,7 @@ Stub mode (``AF3_STUB=1``):
     testing and CPU-only validation.
 
 Real inference (``AF3_STUB=0``, default when env var is absent):
-    Loads the model at startup (requires GPU + transformers ≥ 4.47).
+    Loads the model at startup (requires a GPU and transformers 5.16.1).
     Audio is accepted as ``base64_wav``, ``file_path``, or ``file_url``;
     base64 and URL payloads are written to a per-request temp directory
     that is cleaned up after each call.
@@ -33,10 +33,11 @@ import shutil
 import tempfile
 import threading
 import time
+import traceback
 import urllib.request
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any, Literal, Protocol
 
 from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel, ConfigDict, ValidationError
@@ -46,7 +47,13 @@ PREDICTIONS_V1: Literal["predictions_v1"] = "predictions_v1"
 LAUNCHER_NAME: str = "beans-next-af-next"
 _DEFAULT_MODEL_ID: str = "nvidia/audio-flamingo-next-hf"
 _DEFAULT_MAX_NEW_TOKENS: int = 512
+# Optional cap on input audio length. A uniform cap across launchers ensures
+# models are compared on the same input. 0 / unset means "no cap".
+_DEFAULT_MAX_AUDIO_SECONDS: float = float(
+    os.environ.get("AF3_MAX_AUDIO_SECONDS", "0") or 0
+)
 _DEFAULT_REPETITION_PENALTY: float = 1.2
+_MIN_VALID_AUDIO_FRAMES_PER_WINDOW: int = 3
 
 MAX_BATCH_SIZE: int = int(os.environ.get("AF3_MAX_BATCH_SIZE", "4"))
 
@@ -55,6 +62,29 @@ _SUPPORTS_BATCHING: bool = True
 _SCHEMA_VERSIONS: list[str] = [PREDICTIONS_V1]
 
 _AUDIO_PLACEHOLDER: re.Pattern[str] = re.compile(r"<Audio><AudioHere></Audio>")
+
+
+class _AudioArray(Protocol):
+    """Minimal array interface needed for safe AF-Next tail trimming."""
+
+    shape: tuple[int, ...]
+
+    def __getitem__(self, key: slice) -> _AudioArray: ...
+
+
+class _FeatureExtractor(Protocol):
+    """Type contract for the Audio Flamingo feature extractor fields."""
+
+    sampling_rate: int
+    chunk_length: int
+    hop_length: int
+
+
+class _AudioProcessor(Protocol):
+    """Type contract for processors that expose an audio feature extractor."""
+
+    feature_extractor: _FeatureExtractor
+
 
 # Module-level model handles; populated by _load_model() at startup.
 _model: Any = None
@@ -76,6 +106,11 @@ class _LoadState:
 _LOAD_STATE = _LoadState()
 _LOAD_LOCK = threading.Lock()
 
+# FastAPI runs the sync `/predict` handler in a threadpool, so several requests
+# can reach the model at once. A single CUDA model instance is not thread-safe,
+# so all GPU work is serialized behind one lock.
+_INFER_LOCK = threading.Lock()
+
 
 def _stub_enabled() -> bool:
     return os.environ.get("AF3_STUB", "").strip() not in ("", "0", "false", "False")
@@ -84,19 +119,24 @@ def _stub_enabled() -> bool:
 def _load_model() -> None:
     global _model, _processor, _loaded_model_id, _loaded_model_revision
     import torch
-    from transformers import AutoModel, AutoProcessor
+    import transformers
+    from transformers import AutoConfig, AutoModel, AutoProcessor
 
-    if os.environ.get("AF3_ALLOW_CPU", "").strip() not in (
-        "1",
-        "true",
-        "True",
-    ) and not torch.cuda.is_available():
+    if (
+        os.environ.get("AF3_ALLOW_CPU", "").strip()
+        not in (
+            "1",
+            "true",
+            "True",
+        )
+        and not torch.cuda.is_available()
+    ):
         raise RuntimeError(
             "AF-Next real mode requires CUDA, but torch.cuda.is_available() is False. "
-            "The cluster driver must match the PyTorch CUDA build. "
+            "The NVIDIA driver must match the PyTorch CUDA build. "
             "Install the launcher "
             "with `uv sync --group gpu` (torch from the PyTorch cu124 index; see "
-            "examples/servers/af3/pyproject.toml), or on misconfigured nodes set "
+            "examples/servers/af3/pyproject.toml), or set "
             "AF3_ALLOW_CPU=1 for debugging only."
         )
 
@@ -110,7 +150,29 @@ def _load_model() -> None:
     _processor = AutoProcessor.from_pretrained(
         model_id, **({"revision": revision} if revision else {})
     )
-    _model = AutoModel.from_pretrained(model_id, **kwargs).eval()
+    _install_safe_audio_processor_call(_processor)
+    # `AutoModel` resolves to the base MusicFlamingoModel, which has no
+    # `generate`. Load the class the checkpoint's config declares
+    # (`MusicFlamingoForConditionalGeneration`, which mixes in GenerationMixin)
+    # instead of an Auto* alias.
+    model_cls: Any = AutoModel
+    cfg = AutoConfig.from_pretrained(
+        model_id, **({"revision": revision} if revision else {})
+    )
+    declared = (getattr(cfg, "architectures", None) or [None])[0]
+    if isinstance(declared, str) and hasattr(transformers, declared):
+        model_cls = getattr(transformers, declared)
+    print(f"AF3 model class: {getattr(model_cls, '__name__', model_cls)}", flush=True)
+    _model = model_cls.from_pretrained(model_id, **kwargs).eval()
+    if not hasattr(_model, "generate"):
+        raise RuntimeError(
+            f"loaded {type(_model).__name__} which has no `generate`; "
+            "the checkpoint config should declare a generation-capable class"
+        )
+
+    # Multi-audio (tier 4) requires this; see _install_multi_audio_validation.
+    status = _install_multi_audio_validation(_processor)
+    print(f"AF3 multi-audio validation: {status}", flush=True)
 
     _loaded_model_id = model_id
     # Best-effort: read the resolved revision from the model config or env.
@@ -148,6 +210,7 @@ async def lifespan(app: FastAPI) -> None:  # type: ignore[type-arg]
                 _LOAD_STATE.stage_started_at = None
                 _LOAD_STATE.last_error = None
         except Exception as exc:  # noqa: BLE001
+            traceback.print_exc()
             with _LOAD_LOCK:
                 _LOAD_STATE.status = "failed"
                 _LOAD_STATE.last_error = str(exc)
@@ -267,6 +330,70 @@ def _deterministic_prediction(sample_id: str, item: PredictionsV1RequestItem) ->
 # ---------------------------------------------------------------------------
 
 
+def _drop_zero_token_audio_tail(
+    audio: _AudioArray,
+    *,
+    window_size: int,
+    min_tail_samples: int,
+) -> _AudioArray:
+    """Drop a final chunk that cannot produce one AF-Next audio token.
+
+    Returns
+    -------
+    _AudioArray
+        The original array, or a view ending at the preceding chunk boundary.
+    """
+    n_samples = int(audio.shape[0])
+    tail_samples = n_samples % window_size
+    if n_samples > window_size and 0 < tail_samples < min_tail_samples:
+        return audio[: n_samples - tail_samples]
+    return audio
+
+
+def _install_safe_audio_processor_call(processor: object) -> None:
+    """Prevent zero-token trailing windows in the pinned HF processor.
+
+    Transformers splits audio into 30-second windows. A trailing window shorter
+    than three Whisper hop frames produces zero encoder tokens, which the
+    timestamp code cannot index. Drop only that unusable sub-30-ms tail before
+    feature extraction.
+    """
+    processor_class = type(processor)
+    if getattr(processor_class, "_beans_next_safe_tail_patch", False):
+        return
+
+    original_call = processor_class.__call__
+
+    def safe_call(
+        self: _AudioProcessor,
+        text: object,
+        audio: object | None = None,
+        **kwargs: object,
+    ) -> object:
+        if audio is not None:
+            from transformers.audio_utils import make_list_of_audio
+
+            feature_extractor = self.feature_extractor
+            window_size = int(
+                feature_extractor.sampling_rate * feature_extractor.chunk_length
+            )
+            min_tail_samples = int(
+                feature_extractor.hop_length * _MIN_VALID_AUDIO_FRAMES_PER_WINDOW
+            )
+            audio = [
+                _drop_zero_token_audio_tail(
+                    item,
+                    window_size=window_size,
+                    min_tail_samples=min_tail_samples,
+                )
+                for item in make_list_of_audio(audio)
+            ]
+        return original_call(self, text, audio=audio, **kwargs)
+
+    processor_class.__call__ = safe_call
+    processor_class._beans_next_safe_tail_patch = True
+
+
 def _resolve_audio_path(audio: HttpAudioInput, tmp_dir: str) -> str:
     """Return a local file path for ``audio``, writing to ``tmp_dir`` if needed.
 
@@ -306,46 +433,197 @@ def _resolve_audio_path(audio: HttpAudioInput, tmp_dir: str) -> str:
     raise ValueError(f"Unsupported audio payload_type: {audio.payload_type!r}")
 
 
+def _truncate_audio(path: str, max_seconds: float, tmp_dir: str) -> str:
+    """Return a path whose audio is at most `max_seconds` long.
+
+    Parameters
+    ----------
+    path
+        Path to the source audio file.
+    max_seconds
+        Maximum duration to keep. Values <= 0 disable truncation.
+    tmp_dir
+        Directory for the truncated copy.
+
+    Returns
+    -------
+    str
+        `path` when no truncation is needed, else the path of a truncated WAV.
+    """
+    if max_seconds is None or max_seconds <= 0:
+        return path
+    import soundfile as sf
+
+    info = sf.info(path)
+    if info.frames <= int(max_seconds * info.samplerate):
+        return path
+    data, sr = sf.read(path, frames=int(max_seconds * info.samplerate), dtype="float32")
+    fd, out = tempfile.mkstemp(suffix=".wav", dir=tmp_dir)
+    os.close(fd)
+    sf.write(out, data, sr)
+    return out
+
+
+def _install_multi_audio_validation(processor: object) -> str:  # noqa: C901
+    """Replace AF-Next's batch-parity check with a placeholder/audio parity check.
+
+    `AudioFlamingo3Processor.validate_inputs` raises
+    `Got {len(text)} text but {len(audio)} audios; they must match 1:1` -- it
+    compares the *batch size* to the audio count, so a single conversation
+    carrying N clips is rejected. This launcher needs multi-audio conversations:
+
+    - the paper describes training on multi-turn, multi-audio interleaved data,
+      and the model card lists 1M multi-audio instruction examples;
+    - the library's own chat template renders one `<sound>` placeholder per clip
+      for a multi-turn conversation;
+    - without the batch-parity assertion the rest of the pipeline handles it -- audio
+      features come back as (N, 128, 3000) and each `<sound>` expands to its
+      own duration-derived token span with none left unconsumed.
+
+    The replacement checks that the number of audio placeholders equals the
+    number of audio inputs. Every other check in the base `ProcessorMixin` still
+    runs. The replacement is skipped when the batch-parity assertion is absent.
+
+    Parameters
+    ----------
+    processor
+        The loaded AF-Next processor.
+
+    Returns
+    -------
+    str
+        A short status string for the startup log and `/info`.
+    """
+    import inspect
+
+    cls = type(processor)
+    original = getattr(cls, "validate_inputs", None)
+    if original is None:
+        return "absent: processor exposes no validate_inputs"
+    try:
+        src = inspect.getsource(original)
+    except (OSError, TypeError):
+        src = ""
+    if "must match 1:1" not in src:
+        return "not needed: processor has no batch-parity assertion"
+
+    audio_token = getattr(processor, "audio_token", None) or "<sound>"
+
+    def validate_inputs(
+        self: object,
+        audio: object = None,
+        text: object = None,
+        **kwargs: object,
+    ) -> None:
+        """Validate placeholder/audio parity instead of batch parity.
+
+        Raises
+        ------
+        ValueError
+            If the rendered text's audio-placeholder count does not match the
+            number of audio inputs.
+        """
+        from transformers.processing_utils import ProcessorMixin
+
+        ProcessorMixin.validate_inputs(self, audio=audio, text=text, **kwargs)
+        if text is None or audio is None:
+            return
+        texts = [text] if isinstance(text, str) else list(text)
+        n_slots = sum(str(t).count(audio_token) for t in texts)
+        n_audio = len(audio)
+        if n_slots != n_audio:
+            msg = (
+                f"{n_slots} {audio_token} placeholder(s) but {n_audio} audio "
+                "input(s); they must match."
+            )
+            raise ValueError(msg)
+
+    cls.validate_inputs = validate_inputs  # type: ignore[method-assign]
+    return "installed: placeholder/audio parity replaces batch parity"
+
+
 def _build_conversation(
     messages: list[HttpChatMessage],
     audio_paths: list[str],
 ) -> list[dict[str, Any]]:
     """Convert ``predictions_v1`` messages + resolved paths to AF-Next format.
 
-    Audio placeholders (``<Audio><AudioHere></Audio>``) in message content are
-    replaced with ``{"type": "audio", "path": ...}`` content items in order.
-    Text segments surrounding placeholders become ``{"type": "text", "text": ...}``
-    items.  Messages with no placeholders are passed as plain string content.
+    AF-Next's canonical multi-audio form is **one audio per conversation turn**,
+    matching the checkpoint's own system prompt ("On each turn you receive an
+    optional audio clip") and the paper's description of training on multi-turn,
+    multi-audio interleaved data. Packing several clips into a single turn does
+    not work: the chat template renders only one ``<sound>`` placeholder and the
+    remaining clips are silently dropped, so the model would answer a
+    multi-audio question having heard one clip.
+
+    A message carrying N>1 placeholders is therefore split into N turns of the
+    same role, each holding the text that preceded its clip. The original text
+    is preserved verbatim and nothing is invented -- no synthetic assistant
+    replies are inserted -- so the prompt still reads in order. Messages with
+    zero or one placeholder keep their original single-turn shape.
 
     Returns
     -------
     list[dict[str, Any]]
-        Conversation in AF-Next format.
+        Conversation in AF-Next format, at most one audio item per turn.
+
+    Raises
+    ------
+    ValueError
+        If there are more audio placeholders than audio inputs. Dropping the
+        surplus silently would send the model a prompt referring to clips it
+        never received.
     """
+    total_placeholders = sum(
+        len(_AUDIO_PLACEHOLDER.split(m.content)) - 1 for m in messages
+    )
+    if total_placeholders > len(audio_paths):
+        msg_text = (
+            f"{total_placeholders} audio placeholder(s) but only "
+            f"{len(audio_paths)} audio input(s); refusing to drop clips."
+        )
+        raise ValueError(msg_text)
+
     audio_idx = 0
     conv: list[dict[str, Any]] = []
     for msg in messages:
         parts = _AUDIO_PLACEHOLDER.split(msg.content)
-        items: list[dict[str, Any]] = []
-        for i, text_part in enumerate(parts):
-            if text_part:
-                items.append({"type": "text", "text": text_part})
-            if i < len(parts) - 1 and audio_idx < len(audio_paths):
-                items.append({"type": "audio", "path": audio_paths[audio_idx]})
-                audio_idx += 1
-        conv.append({"role": msg.role, "content": items})
+        n_placeholders = len(parts) - 1
 
-    if audio_idx < len(audio_paths):
-        target = next(
-            (m for m in conv if m["role"] == "user"),
-            conv[0] if conv else None,
+        if n_placeholders <= 1:
+            items: list[dict[str, Any]] = []
+            for i, text_part in enumerate(parts):
+                if text_part:
+                    items.append({"type": "text", "text": text_part})
+                if i < n_placeholders and audio_idx < len(audio_paths):
+                    items.append({"type": "audio", "path": audio_paths[audio_idx]})
+                    audio_idx += 1
+            conv.append({"role": msg.role, "content": items})
+            continue
+
+        for i in range(n_placeholders):
+            turn: list[dict[str, Any]] = []
+            if parts[i]:
+                turn.append({"type": "text", "text": parts[i]})
+            if audio_idx < len(audio_paths):
+                turn.append({"type": "audio", "path": audio_paths[audio_idx]})
+                audio_idx += 1
+            if turn:
+                conv.append({"role": msg.role, "content": turn})
+        tail = parts[-1]
+        if tail.strip():
+            conv.append({"role": msg.role, "content": [{"type": "text", "text": tail}]})
+
+    # Audio inputs beyond the placeholder count get their own trailing turns,
+    # rather than being crowded into an existing one.
+    while audio_idx < len(audio_paths):
+        conv.append(
+            {
+                "role": "user",
+                "content": [{"type": "audio", "path": audio_paths[audio_idx]}],
+            }
         )
-        if target is None:
-            target = {"role": "user", "content": []}
-            conv.append(target)
-        target["content"].extend(
-            {"type": "audio", "path": path} for path in audio_paths[audio_idx:]
-        )
+        audio_idx += 1
     return conv
 
 
@@ -363,6 +641,12 @@ def _run_inference(item: PredictionsV1RequestItem) -> PredictionsV1ResponseItem:
     tmp_dir = tempfile.mkdtemp(prefix="af3-audio-")
     try:
         audio_paths = [_resolve_audio_path(a, tmp_dir) for a in item.audio_inputs]
+        # Contract value wins over the env default so a suite can pin its own cap.
+        req_max = getattr(item.generation_config, "max_length_seconds", None)
+        max_audio_sec = (
+            float(req_max) if req_max is not None else _DEFAULT_MAX_AUDIO_SECONDS
+        )
+        audio_paths = [_truncate_audio(p, max_audio_sec, tmp_dir) for p in audio_paths]
         conversation = [_build_conversation(item.messages, audio_paths)]
 
         gen_cfg = item.generation_config
@@ -378,29 +662,32 @@ def _run_inference(item: PredictionsV1RequestItem) -> PredictionsV1ResponseItem:
             else:
                 generate_kwargs["do_sample"] = False
 
-        batch = _processor.apply_chat_template(
-            conversation,
-            tokenize=True,
-            add_generation_prompt=True,
-            return_dict=True,
-        )
-        batch = {
-            k: (v.to(_model.device) if hasattr(v, "to") else v)
-            for k, v in batch.items()
-        }
-        if "input_features" in batch:
-            batch["input_features"] = batch["input_features"].to(_model.dtype)
+        # Serialize processor + model work: a single CUDA model instance is not
+        # safe to drive from FastAPI's threadpool concurrently (see _INFER_LOCK).
+        with _INFER_LOCK:
+            batch = _processor.apply_chat_template(
+                conversation,
+                tokenize=True,
+                add_generation_prompt=True,
+                return_dict=True,
+            )
+            batch = {
+                k: (v.to(_model.device) if hasattr(v, "to") else v)
+                for k, v in batch.items()
+            }
+            if "input_features" in batch:
+                batch["input_features"] = batch["input_features"].to(_model.dtype)
 
-        with torch.inference_mode():
-            generated = _model.generate(**batch, **generate_kwargs)
+            with torch.inference_mode():
+                generated = _model.generate(**batch, **generate_kwargs)
 
-        prompt_len = batch["input_ids"].shape[1]
-        completion = generated[:, prompt_len:]
-        text = _processor.batch_decode(
-            completion,
-            skip_special_tokens=True,
-            clean_up_tokenization_spaces=False,
-        )[0]
+            prompt_len = batch["input_ids"].shape[1]
+            completion = generated[:, prompt_len:]
+            text = _processor.batch_decode(
+                completion,
+                skip_special_tokens=True,
+                clean_up_tokenization_spaces=False,
+            )[0]
 
         return PredictionsV1ResponseItem(
             sample_id=item.sample_id,
