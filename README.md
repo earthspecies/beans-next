@@ -1,6 +1,23 @@
 # BEANS-Next evaluation
 
+[![Hugging Face: BEANS-Next](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-BEANS--Next-yellow)](https://huggingface.co/datasets/EarthSpeciesProject/BEANS-Next)
+[![Hugging Face: ROOTS](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-ROOTS-yellow)](https://huggingface.co/datasets/EarthSpeciesProject/ROOTS)
+[![CI status](https://github.com/earthspecies/beans-next/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/earthspecies/beans-next/actions/workflows/ci.yml)
+[![Pre-commit status](https://github.com/earthspecies/beans-next/actions/workflows/pre-commit.yml/badge.svg?branch=main)](https://github.com/earthspecies/beans-next/actions/workflows/pre-commit.yml)
+
+BEANS-Next is maintained by [Earth Species Project](https://www.earthspecies.org/).
+It accompanies *BEANS-Next and ROOTS: Broadening Audio-Language Capabilities for Bioacoustics*.
+
 Evaluate audio-language models on the benchmark tasks and comparison datasets in the paper.
+The [BEANS-Next dataset](https://huggingface.co/datasets/EarthSpeciesProject/BEANS-Next)
+contains 37,718 examples across 45 tasks. The paper suites select 42 of those tasks.
+
+![BEANS-Next evaluates bioacoustic audio-language models across four tiers; ROOTS provides audio-language training data.](docs/img/overview.png)
+
+BEANS-Next provides evaluation tasks across four tiers, from acoustic perception to in-context learning.
+The paper's training data is available separately as
+[ROOTS](https://huggingface.co/datasets/EarthSpeciesProject/ROOTS).
+
 All evaluation data comes from Hugging Face. Local HF snapshots also work.
 Model servers run in separate environments and communicate with the evaluator through HTTP.
 
@@ -9,6 +26,8 @@ Model servers run in separate environments and communicate with the evaluator th
 Use Python 3.11 or 3.12 and `uv`.
 
 ```bash
+git clone https://github.com/earthspecies/beans-next.git
+cd beans-next
 uv sync --locked --group dev
 uv run beans-next --help
 ```
@@ -43,7 +62,7 @@ Set `--modality-mode` to `text-only`, `text-only-informed`, or `gaussian-noise` 
 The default is `audio`.
 
 See the [evaluation guide](docs/evaluation.md) for metrics, ablations, local snapshots, and result files.
-The [reproduction guide](docs/reproduction.md) describes evaluation runs and result tables.
+The [reproduction guide](docs/reproduction.md) gives the paper's public dataset commit and describes evaluation runs and result tables.
 
 ## Tests
 

@@ -11,6 +11,7 @@ from beans_next.datasets import beans_next_hub
 from beans_next.runner.runner import _load_examples_for_eval_task
 
 
+@pytest.mark.parametrize("dataset", ["beans_next", "beans_next_multiaudio"])
 @pytest.mark.parametrize(
     ("cli_revision", "env_revision", "task_revision", "expected"),
     [
@@ -22,6 +23,7 @@ from beans_next.runner.runner import _load_examples_for_eval_task
 )
 def test_hf_revision_and_subset_survive_modality_selection(
     monkeypatch: pytest.MonkeyPatch,
+    dataset: str,
     cli_revision: str | None,
     env_revision: str,
     task_revision: str | None,
@@ -36,11 +38,14 @@ def test_hf_revision_and_subset_survive_modality_selection(
 
     monkeypatch.setenv("BEANS_NEXT_HF_REVISION", env_revision)
     monkeypatch.setattr(beans_next_hub, "iter_hf_beans_next_examples", load)
+    subset = (
+        "crow-4way" if dataset == "beans_next_multiaudio" else "alarm-call-presence"
+    )
     rows = _load_examples_for_eval_task(
         {
-            "dataset": "beans_next",
-            "subset": "alarm-call-presence",
-            "hf_subset": "alarm-call-presence",
+            "dataset": dataset,
+            "subset": subset,
+            "hf_subset": subset,
             "revision": task_revision,
         },
         args=Namespace(
@@ -51,6 +56,7 @@ def test_hf_revision_and_subset_survive_modality_selection(
         ),
     )
     assert [row.sample_id for row in rows] == ["fixture"]
+    assert captured["repo_id"] == "EarthSpeciesProject/BEANS-Next"
     assert captured["revision"] == expected
-    assert captured["subset"] == "alarm-call-presence"
+    assert captured["subset"] == subset
     assert captured["load_audio"] is True

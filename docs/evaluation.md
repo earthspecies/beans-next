@@ -2,7 +2,7 @@
 
 ## Data
 
-The evaluator uses Hugging Face datasets only. BEANS-Next loads [the dataset release](https://huggingface.co/datasets/iclr2027anon/BEANS-Next), with metadata rows and ordered audio paths.
+The evaluator uses Hugging Face datasets only. BEANS-Next loads [the public ESP dataset](https://huggingface.co/datasets/EarthSpeciesProject/BEANS-Next), with metadata rows and ordered audio paths.
 BEANS-Zero and BirdSet have separate HF loaders because their schemas differ.
 
 For BEANS-Next, set `BEANS_NEXT_HF_BEANS_NEXT_ROOT` to a local HF snapshot directory.

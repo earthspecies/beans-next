@@ -5,6 +5,7 @@ description = "BEANS-Next: HTTP-first bioacoustics audio-LM benchmark library."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
+maintainers = [{ name = "Earth Species Project" }]
 
 classifiers = [
   "Development Status :: 3 - Alpha",
@@ -49,6 +50,12 @@ dev = [
   "fastapi<=0.116.1",
   "uvicorn<=0.35.0",
 ]
+[project.urls]
+Repository = "https://github.com/earthspecies/beans-next"
+Issues = "https://github.com/earthspecies/beans-next/issues"
+Documentation = "https://github.com/earthspecies/beans-next/blob/main/README.md"
+Dataset = "https://huggingface.co/datasets/EarthSpeciesProject/BEANS-Next"
+
 [project.scripts]
 beans-next = "beans_next.cli:main"
 
