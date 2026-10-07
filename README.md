@@ -9,7 +9,7 @@ The benchmark spans acoustic perception, biological category recognition, scene 
 as described in our companion paper (arXiv link coming soon).
 
 The [BEANS-Next dataset](https://huggingface.co/datasets/EarthSpeciesProject/BEANS-Next)
-contains 37,718 examples across 45 tasks. The paper suites select 42 of those tasks.
+contains 37,718 examples across 45 tasks.
 
 ![BEANS-Next evaluates bioacoustic audio-language models across four tiers; ROOTS provides audio-language training data.](docs/img/overview.png)
 
