@@ -1,9 +1,7 @@
-# BEANS-Next evaluation
+# BEANS-Next
 
 [![Hugging Face: BEANS-Next](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-BEANS--Next-yellow)](https://huggingface.co/datasets/EarthSpeciesProject/BEANS-Next)
 [![Hugging Face: ROOTS](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-ROOTS-yellow)](https://huggingface.co/datasets/EarthSpeciesProject/ROOTS)
-[![CI status](https://github.com/earthspecies/beans-next/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/earthspecies/beans-next/actions/workflows/ci.yml)
-[![Pre-commit status](https://github.com/earthspecies/beans-next/actions/workflows/pre-commit.yml/badge.svg?branch=main)](https://github.com/earthspecies/beans-next/actions/workflows/pre-commit.yml)
 
 BEANS-Next is maintained by [Earth Species Project](https://www.earthspecies.org/).
 It accompanies *BEANS-Next and ROOTS: Broadening Audio-Language Capabilities for Bioacoustics*.
@@ -81,7 +79,14 @@ Server contract tests use local HTTP ports. They do not require GPUs or model we
 - `scripts/`: server checks, result tables, and Gaussian-noise analysis.
 - `tests/`: local fixtures and tests.
 
+## Citation
+
+Coming soon, with the arXiv release.
+
 ## License
 
-The evaluator uses the [Apache-2.0 license](LICENSE).
-The adapted CIDEr implementation retains its [upstream license](beans_next/metrics/_cider/LICENSE).
+The BEANS-Next code uses the [Apache-2.0 license](LICENSE), except where otherwise noted.
+Third-party code retains its upstream license and attribution notices, including the
+[bundled CIDEr license](beans_next/metrics/_cider/LICENSE).
+Dependencies, model weights, and datasets have their own licenses; see their upstream
+repositories, model cards, and dataset cards for the applicable terms.
