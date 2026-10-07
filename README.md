@@ -85,8 +85,5 @@ Coming soon, with the arXiv release.
 
 ## License
 
-The BEANS-Next code uses the [Apache-2.0 license](LICENSE), except where otherwise noted.
-Third-party code retains its upstream license and attribution notices, including the
-[bundled CIDEr license](beans_next/metrics/_cider/LICENSE).
-Dependencies, model weights, and datasets have their own licenses; see their upstream
-repositories, model cards, and dataset cards for the applicable terms.
+Licensed under [Apache-2.0](LICENSE), except for the adapted CIDEr implementation,
+which retains its [upstream license](beans_next/metrics/_cider/LICENSE).
