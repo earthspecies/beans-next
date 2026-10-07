@@ -3,16 +3,16 @@
 [![Hugging Face: BEANS-Next](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-BEANS--Next-yellow)](https://huggingface.co/datasets/EarthSpeciesProject/BEANS-Next)
 [![Hugging Face: ROOTS](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-ROOTS-yellow)](https://huggingface.co/datasets/EarthSpeciesProject/ROOTS)
 
-BEANS-Next is maintained by [Earth Species Project](https://www.earthspecies.org/).
-It accompanies *BEANS-Next and ROOTS: Broadening Audio-Language Capabilities for Bioacoustics*.
+BEANS-Next is a benchmark for evaluating audio-language models on bioacoustic tasks.
+This repository provides tools for loading the data, running model inference, and computing evaluation metrics.
+The benchmark spans acoustic perception, biological category recognition, scene understanding, and in-context learning,
+as described in our companion paper (arXiv link coming soon).
 
-Evaluate audio-language models on the benchmark tasks and comparison datasets in the paper.
 The [BEANS-Next dataset](https://huggingface.co/datasets/EarthSpeciesProject/BEANS-Next)
 contains 37,718 examples across 45 tasks. The paper suites select 42 of those tasks.
 
 ![BEANS-Next evaluates bioacoustic audio-language models across four tiers; ROOTS provides audio-language training data.](docs/img/overview.png)
 
-BEANS-Next provides evaluation tasks across four tiers, from acoustic perception to in-context learning.
 The paper's training data is available separately as
 [ROOTS](https://huggingface.co/datasets/EarthSpeciesProject/ROOTS).
 
