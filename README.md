@@ -6,7 +6,7 @@
 BEANS-Next is a benchmark for evaluating audio-language models on bioacoustic tasks.
 This repository provides tools for loading the data, running model inference, and computing evaluation metrics.
 The benchmark spans acoustic perception, biological category recognition, scene understanding, and in-context learning,
-as described in our companion paper (arXiv link coming soon).
+as described in our [companion paper](https://arxiv.org/abs/2610.10663).
 
 The [BEANS-Next dataset](https://huggingface.co/datasets/EarthSpeciesProject/BEANS-Next)
 contains 37,718 examples across 45 tasks.
@@ -81,7 +81,17 @@ Server contract tests use local HTTP ports. They do not require GPUs or model we
 
 ## Citation
 
-Coming soon, with the arXiv release.
+```bibtex
+@misc{plachouras2026beansnextroots,
+  title={{BEANS-Next and ROOTS}: Broadening Audio-Language Capabilities for Bioacoustics},
+  author={Christos Plachouras and David Robinson and Marius Miron and Gagan Narula and Paul Laisné and Anthony L. T. Fine and Benno Weck and Ellen Gilsenan-McMahon and Diane Kim and Laura Hay Mack and Maddie Cusimano and Sara Keen and Lukas Rauch and Benjamin Hoffman and Emmanuel Chemla and Emmanouil Benetos and Johan Pauwels and Milad Alizadeh and Matthieu Geist and Olivier Pietquin},
+  year={2026},
+  eprint={2610.10663},
+  archivePrefix={arXiv},
+  primaryClass={cs.SD},
+  url={https://arxiv.org/abs/2610.10663}
+}
+```
 
 ## License
 
